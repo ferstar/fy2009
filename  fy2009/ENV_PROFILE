@@ -1,0 +1,6 @@
+Bellow macros should be defined or undefined depending on OS version or other env. conditions
+1.__GETTID_AVAILABLE__
+if linux version is equal or greater than 2.6, above macro should be defined
+
+2.__ENABLE_EPOLL__
+if linux version is equal or greater than 2.6, above macro should be define

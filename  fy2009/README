@@ -1,0 +1,20 @@
+FengYi2009 is an open source project which intends to implement a real-time communication software
+for generic purpose. It should be portable between LINUX and Windows OS.
+
+Feng: a kind of tower, the ancient Chinese military force used it to communicate by smoking on top of it
+Yi  : post-horse, the ancient Chinese used it to deliver mails
+ 
+Author: DreamFreelancer
+email : zhangxb66@hotmail.com
+Date  : 2009-4-28
+
+Conventions in this projects:
+====prefix====
+====surfix==== 
+_t: type or class
+_tt: type template
+_it: interface or abstrast class
+
+====locale====
+utf-8 is applied through this project
+
