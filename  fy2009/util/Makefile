@@ -1,3 +1,13 @@
+# ====================================================================
+# See the file LICENSE for redistribution information.
+#
+# Copyright (c) 2009 The FengYi2009 Project, All rights reserved.
+#
+# Author: DreamFreelancer, zhangxb66@2008.sina.com
+#
+# [History]
+# initialize: 2009-4-29
+#====================================================================
 include ../Make.defines
 
 INC_FLAG=-I ../h
