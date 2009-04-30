@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2009 The FengYi2009 Project, All rights reserved.
  *
- * Author: DreamFreelancer, zhangxb66@hotmail.com
+ * Author: DreamFreelancer, zhangxb66@2008.sina.com
  *
  * [History]
  * initialize: 2009-4-28
