@@ -1,14 +1,3 @@
-# ====================================================================
-# See the file LICENSE for redistribution information.
-#
-# Copyright (c) 2009 The FengYi2009 Project, All rights reserved.
-#
-# Author: DreamFreelancer, zhangxb66@2008.sina.com
-#
-# [History]
-# initialize: 2009-4-29
-#====================================================================
-
 CXX = g++
 OS_D = -D POSIX -D LINUX
-DEFAULT_FLAGS = $(OS_D) -g -D CCP_ENABLE_ASSERT -D CCP_TRACE_ENABLE_IO -D__CCP_DEBUG_DUMP_IO__ -DCCP_TRACE_ENABLE_FUNC 
+DEFAULT_FLAGS = $(OS_D) -g 

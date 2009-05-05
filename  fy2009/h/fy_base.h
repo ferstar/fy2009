@@ -19,6 +19,7 @@
 #ifdef POSIX
 
 #include <unistd.h>
+#include <sys/time.h>
 #include <pthread.h>
 
 #elif defined(WIN32)
@@ -330,6 +331,65 @@ private:
 #endif //POSIX
 };
 
+/*[tip] tick-count utility services
+ *[desc] provide some common operations about tick-count
+ *[history]
+ *Initialize: 2007-3-12
+ */
+class tc_util_t
+{
+public:
+    /*function: check if current tick-count has exeeded para tick-count end or not,it must 
+                treat tick-count overflow properly
+      usage:	use to treat time-out or other timespan logic
+      remark:	you must ensure tc_end and tc_cur are later than tc_start, it doesn't mean
+		tc_end and tc_cur are greater than tc_start because tick-count may overflow.
+		on the other hand, the tc_deta must much less than the whole range of uint32
+		and tc_deta must be non-zero
+
+      history:	2007-3-12   
+    */
+    static bool is_over_tc_end(uint32 tc_start, uint32 tc_deta,
+		uint32 tc_cur) throw(); 
+		
+    /*function: calculate difference between two tick-count
+      history: 2007-3-15
+    */
+    static uint32 diff_of_tc(uint32 tc_start, uint32 tc_end) throw();
+};
+
+#ifdef POSIX
+
+/*[tip]struct timeval utility services
+ *[desc] provide some common operations about struct timeval
+ *[history] 
+ *Initialize: 2005-10-25
+ */
+class timeval_util_t
+{
+public:
+    /*function: to calculate difference between of two struct timeval which often returned from gettimeofday()
+      usage:    use to do performance test which need high accuracy
+      remark:   it returns the differ timeval of para tv2 subtract para tv1. tv2 can be small than tv1,it makes sure
+                the result timeval's tv_sec field always has same sign with tv_usec.
+      test:     the overhead of this fuction self is less than 1 microsecond(1/1000000 second)
+      history:  2005-10-25
+    */
+    static struct timeval diff_of_timeval(const struct timeval& tv1,
+		const struct timeval& tv2) throw() __attribute__((const));
+
+    /*function: change the return timeval of diff_of_timeval() to tick count(1/1000 second)
+      usage:    use to performance test which need normal accuracy(tick count level)
+      remark:   when the accuracy in tick count can meet need, it has simpler type of the 
+                return value than diff_of_timeval()
+      test: it work whether tv2 greater than tv1 or not
+      history:  2005-10-27
+    */
+    static int32 diff_of_timeval_tc(const struct timeval& tv1,
+		const struct timeval& tv2) throw() __attribute__((const));
+
+};
+
 /*[tip] efficient timestamp service, follows singleton dessign pattern
  *[desc] typical asynchronous application has to frequently access system time, but don't need very accurate,
  * general time service is a system service,which involve context switch,is slight expensive,not very suitable for frequent
@@ -339,10 +399,10 @@ private:
  *
  *[memo]
  * test shows this clock is very excellent, it's much more efficient than its equivalent of system service, 2006-8-10 usa
+ * GetTickCount under Windows is efficient enough, so this service isn't needed under windows,2009-5-5
  *[history] 
  * Initialize: 2006-8-4
  */
-/*
 class user_clock_t
 {
 public:
@@ -386,7 +446,30 @@ private:
         int32 _lt_ahead_cp;//_local_time go ahead check point(uint:ms)
         critical_section_t _cs;//make sure user_clock_t is ready get_localtime,2007-3-5
 };
-*/ 
+
+#	define get_tick_count(user_clock) user_clock->get_usr_tick()
+//user-clock resolusion
+#	define get_tick_count_res(user_clock) user_clock->get_resolution()
+
+#elif defined(WIN32)
+
+/*[tip] user clock stub
+ *[desc]just a stub class, it does nothing under windows
+ *[history]
+ * Initialize: 2009-5-5
+ */
+class user_clock_t
+{
+public:
+        static user_clock_t *instance() throw() { return 0; }
+};
+
+#	define get_tick_count(user_clock) ::GetTickCount()
+//clock resolsuion is one
+#	define get_tick_count_res(user_clock) (1)
+
+#endif //POSIX
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_BASE_DREAMFREELANCER_20080322_H__

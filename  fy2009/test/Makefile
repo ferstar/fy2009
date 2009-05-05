@@ -1,13 +1,3 @@
-# ====================================================================
-# See the file LICENSE for redistribution information.
-#
-# Copyright (c) 2009 The FengYi2009 Project, All rights reserved.
-#
-# Author: DreamFreelancer, zhangxb66@2008.sina.com
-#
-# [History]
-# initialize: 2009-4-29
-#====================================================================
 include ../Make.defines
 
 INC_FLAG=-I../h
@@ -22,7 +12,7 @@ clean:clean_base
 ###################################################
 #test base,2006-7-13
 base:fyt_base.cpp
-	$(CXX) $(DEFAULT_FLAGS) $(INC_FLAG) -g -o $(PATH_BIN)/$@ fyt_base.cpp
+	$(CXX) $(DEFAULT_FLAGS) $(INC_FLAG) -lpthread -g -o $(PATH_BIN)/$@ fyt_base.cpp $(PATH_LIB)/fy_util.a
 
 ###################################################
 ###################################################

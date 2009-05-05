@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2009 The FengYi2009 Project, All rights reserved.
  *
- * Author: DreamFreelancer, zhangxb66@2008.sina.com
+ * Author: DreamFreelancer, zhangxb66@hotmail.com
  *
  * [History]
  * initialize: 2009-4-29
@@ -100,6 +100,19 @@ void test_bb_t(argv_t& argv)
         tmp_buf=0;
 }
 
+//test user_clock_t,pass 2009-5-5
+void test_user_clock()
+{
+	user_clock_t *usr_clk=user_clock_t::instance();
+#ifdef POSIX
+	sleep(1);
+#elif defined(WIN32)
+	Sleep(1);
+#endif
+
+	printf("user_clk tick:%lu, resolution:%lu\n", get_tick_count(usr_clk), get_tick_count_res(usr_clk));
+}
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -134,7 +147,8 @@ int main(int argc, char **argv)
 	else
 		printf("hasn't arg a3\n");
 */
-	test_bb_t(fy_argv);
+	//test_bb_t(fy_argv);
+	test_user_clock();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
