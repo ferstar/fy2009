@@ -345,6 +345,8 @@ uint32 user_clock_t::get_localtime(struct tm *lt) throw()
 	{
 			_s_ltb=_local_time.tv_sec;
 			localtime_r(&(_local_time.tv_sec),&_tm_ltb);
+			_tm_ltb.tm_year+=1900;
+			++_tm_ltb.tm_mon;
 			memcpy(lt,(void*)&_tm_ltb,sizeof(struct tm));
 	}
 	else //not first call
@@ -354,6 +356,8 @@ uint32 user_clock_t::get_localtime(struct tm *lt) throw()
 			{
 					_s_ltb=_local_time.tv_sec; 
 					localtime_r(&(_local_time.tv_sec),&_tm_ltb);
+					_tm_ltb.tm_year+=1900;
+					++_tm_ltb.tm_mon;
 					memcpy(lt,(void*)&_tm_ltb,sizeof(struct tm)); 
 			}
 			else// little than 1min from last call localtime_r

@@ -25,6 +25,7 @@
 #elif defined(WIN32)
 
 #include <windows.h>
+#include <time.h>
 
 #endif //POSIX
 
@@ -413,7 +414,7 @@ public:
         //this tick unit isn't ms(system tick-count), it's unit is get_resolution()
         inline uint32 get_usr_tick() const throw() {return _tick;}
 
-        //return residual of second/1000(ms)
+        //return residual of milli-seconds
         //this function can be called by serveral thread simultaneously, but becuase only one thread(_thd_f) may
         //change related member variable, so lock isn't needed and must be forbiden
         uint32 get_localtime(struct tm *lt) throw();
@@ -450,6 +451,7 @@ private:
 #	define get_tick_count(user_clock) user_clock->get_usr_tick()
 //user-clock resolusion
 #	define get_tick_count_res(user_clock) user_clock->get_resolution()
+#	define get_local_time(lt,user_clock) user_clock->get_localtime(lt)
 
 #elif defined(WIN32)
 
@@ -462,11 +464,32 @@ class user_clock_t
 {
 public:
         static user_clock_t *instance() throw() { return 0; }
+		//GetLocalTime of Windows is about as 5 times faster as localtime_r of Linux,
+		//to simplify implementation, this function will be implemented by calling
+		//::GetLocalTime directly
+		inline uint32 get_localtime(struct tm *lt) throw()
+		{
+			SYSTEMTIME stm;
+			::GetLocalTime(&stm);
+			if(!lt) return 0;
+			lt->tm_sec = stm.wSecond;
+			lt->tm_min = stm.wMinute;
+			lt->tm_hour = stm.wHour;
+			lt->tm_mday = stm.wDay;
+			lt->tm_mon = stm.wMonth;
+			lt->tm_year = stm.wYear;
+			lt->tm_wday = stm.wDayOfWeek;
+			lt->tm_yday = 0; //unspecified
+			lt->tm_isdst = 0; //unspecified
+
+			return stm.wMilliseconds;
+		}
 };
 
 #	define get_tick_count(user_clock) ::GetTickCount()
 //clock resolsuion is one
 #	define get_tick_count_res(user_clock) (1)
+#	define get_local_time(lt,user_clock) user_clock->get_localtime(lt)
 
 #endif //POSIX
 

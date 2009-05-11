@@ -113,6 +113,98 @@ void test_user_clock()
 	printf("user_clk tick:%lu, resolution:%lu\n", get_tick_count(usr_clk), get_tick_count_res(usr_clk));
 }
 
+#ifdef LINUX
+
+void test_user_clock_performance_linux()
+{
+        user_clock_t *usr_clk=user_clock_t::instance();
+        sleep(1);
+        struct timeval tv1,tv2;
+        int32 ll;
+        ::gettimeofday(&tv1,0);
+        for(int i=0;i<10000000; ++i)
+        {
+                ll=get_tick_count(usr_clk);
+        }
+        ::gettimeofday(&tv2,0);
+		//in my test, it's 80ms, as efficient as a stub time function call--2009-5-6
+        printf("elasped time(linux):%lu\n", timeval_util_t::diff_of_timeval_tc(tv1,tv2));
+}
+
+#define test_user_clock_performance test_user_clock_performance_linux
+
+void test_localtime_performance_linux()
+{
+        struct tm var_tm;
+        int32 ms;
+        user_clock_t *usr_clk=user_clock_t::instance();
+        sleep(1);
+        struct timeval tv1,tv2;
+        ::gettimeofday(&tv1,0);
+        for(int i=0;i<10000000; ++i)
+        {
+		ms=get_local_time(&var_tm,usr_clk);
+	/*
+		printf("year:%d, mon:%d, day:%d, h:%d, min:%d, sec:%d, msec:%d\n",
+			var_tm.tm_year, var_tm.tm_mon, var_tm.tm_mday,
+			var_tm.tm_hour, var_tm.tm_min, var_tm.tm_sec, ms);
+		return;
+	*/
+        }
+        ::gettimeofday(&tv2,0);
+        //in my test, it's 1084ms--it's more expensive than get_tick_count,
+        //fortunately, it's seldom called in general,2009-5-6
+        printf("elasped time(linux):%lu\n", timeval_util_t::diff_of_timeval_tc(tv1,tv2));
+}
+
+#define test_localtime_performance  test_localtime_performance_linux
+
+#elif defined(WIN32)
+
+void test_user_clock_performance_win()
+{
+        user_clock_t *usr_clk=user_clock_t::instance();
+        long tc1,tc2;
+        int32 ll;
+        tc1=::GetTickCount();
+        for(int i=0;i<10000000; ++i)
+        {
+                ll=get_tick_count(usr_clk);
+        }
+        tc2=::GetTickCount();
+		//in my test, it's 125ms, as efficient as calling ::GetTickCount() direclty
+		//2009-5-6
+        printf("elasped time(win32):%lu\n", tc2 - tc1);
+}
+
+#define test_user_clock_performance test_user_clock_performance_win
+
+void test_localtime_performance_win()
+{
+        struct tm var_tm;
+        int32 ms;
+        user_clock_t *usr_clk=user_clock_t::instance();
+        long tc1,tc2;
+        tc1=::GetTickCount();
+        for(int i=0;i<10000000; ++i)
+        {
+                ms=get_local_time(&var_tm,usr_clk);
+		/*
+				printf("year:%d, mon:%d, day:%d, wday:%d, h:%d, min:%d, sec:%d, msec:%d\n",
+					var_tm.tm_year, var_tm.tm_mon, var_tm.tm_mday, var_tm.tm_wday, 
+					var_tm.tm_hour, var_tm.tm_min, var_tm.tm_sec, ms);
+				return ;
+		*/
+        }
+        tc2=::GetTickCount();
+        printf("elasped time(win):%lu\n", tc2-tc1);
+}
+
+#define test_localtime_performance  test_localtime_performance_win
+
+
+#endif
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -148,7 +240,9 @@ int main(int argc, char **argv)
 		printf("hasn't arg a3\n");
 */
 	//test_bb_t(fy_argv);
-	test_user_clock();
+	//test_user_clock();
+	//test_user_clock_performance();
+	test_localtime_performance();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
