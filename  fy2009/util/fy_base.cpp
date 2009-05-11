@@ -146,6 +146,102 @@ int32 timeval_util_t::diff_of_timeval_tc(const struct timeval& tv1,const struct 
       return tvDiff.tv_sec*1000+tvDiff.tv_usec/1000;
 }
 
+//event_t
+event_t::event_t(bool initial_signalled)
+{
+#ifdef POSIX
+
+        pthread_cond_init(&_cnd,0);
+        _signalled=initial_signalled;
+
+#elif defined(WIN32)
+
+	//it's resetted automatically
+	_he = ::CreateEvent(NULL, FALSE, initial_signalled, NULL);
+	
+#endif //POSIX
+}
+
+event_t::~event_t()
+{
+#ifdef POSIX
+
+        pthread_cond_destroy(&_cnd);
+
+#elif defined(WIN32)
+
+	if(_he)
+	{
+		::CloseHandle(_he);
+		_he = 0;
+	}
+#endif
+}
+
+void event_t::signal()
+{
+#ifdef POSIX
+
+        if(_signalled) return; //only lock on demand
+
+        smart_lock_t slock(&_cs);
+
+        pthread_cond_signal(&_cnd);
+        _signalled=true;
+
+#elif defined(WIN32)
+
+	 ::SetEvent(_he);
+
+#endif
+}
+
+int32 event_t::wait(uint32 ms_timeout)
+{
+        int32 ret=0;
+
+#ifdef POSIX
+
+        smart_lock_t slock(&_cs);
+
+        if(_signalled)//current state is signalled
+        {
+                _signalled=false;
+                return ret; //only lock on demand
+        }
+
+        if(EVENT_WAIT_INFINITE == ms_timeout)
+        {
+                pthread_cond_wait(&_cnd,&(_cs.get_mutex()));
+                _signalled=false;
+        }
+        else
+        {
+                struct timeval ct;
+                struct timespec abstime;
+
+                gettimeofday(&ct,0);
+                uint32 dest_us = ct.tv_usec + ms_timeout*1000;
+                abstime.tv_sec = ct.tv_sec + dest_us/1000000;
+                abstime.tv_nsec = (dest_us % 1000000)*1000;
+
+                ret = pthread_cond_timedwait(&_cnd, &(_cs.get_mutex()), &abstime);
+		if(!ret) _signalled=false;
+        }
+
+#elif defined(WIN32)
+
+	if (::WaitForSingleObject(_he, time_out) == WAIT_OBJECT_0)
+		return 0;
+
+	else //time out
+		return -1;
+
+#endif //POSIX
+
+        return ret;
+}
+
 //user_clock_t
 user_clock_t *user_clock_t::_s_inst=0;//initialize static member
 critical_section_t user_clock_t::_s_cs=critical_section_t();
