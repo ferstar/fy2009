@@ -332,6 +332,76 @@ private:
 #endif //POSIX
 };
 
+/*[tip]smart lock
+ *[desc] it's often difficult to make sure matched calling lock/unlock. this class can meet this requirement automatically,
+ * you still can manually call unlock if you want.
+ *
+ *[memo]
+ * this object should be always used as stack object
+ *[history]
+ * Initialize: 2006-9-28
+ */
+class smart_lock_t
+{
+public:
+        smart_lock_t(critical_section_t *p_cs) throw()
+        {
+                _p_cs=p_cs;
+                if(_p_cs) _p_cs->lock(); //auto lock
+        }
+
+        ~smart_lock_t() throw() { unlock(); } //auto unlock to avoid dead lock
+
+        //can call it to unlock on demand before destructor
+        inline void unlock() throw()
+        {
+                if(_p_cs)
+                {
+                        _p_cs->unlock();
+                        _p_cs=0;
+                }
+        }
+private:
+        critical_section_t* _p_cs;
+};
+
+/*[timp]event, a kind of thread synchronization device 
+ *[desc] event synchronization device. due to the limitation of Linux, you can't wait for multi event objects 
+ * at the same time. to do it, you should use below event_slot_t or event_queue_t
+ *
+ *[history] 
+ * Initialize: 2008-4-18
+ */
+const uint32 EVENT_WAIT_INFINITE=0xffffff;
+
+class event_t
+{
+public:
+        event_t(bool initial_signalled=true);
+        ~event_t();
+
+        //free a waiting thread(s),not support multi waiting threads
+        //--for performance,if current state is signalled, this function will return immediately.
+        void signal();
+
+        //wait for state is changed to signalled, if current state is signalled, it return immediately,
+        //otherwise, calling thread will be blocked until other thread call signal() to wake it up
+        int32 wait(uint32 ms_timeout=EVENT_WAIT_INFINITE);//wait for other thread call signal() till ms_timeout expired
+private:
+        critical_section_t _cs;
+
+#ifdef POSIX
+
+        pthread_cond_t  _cnd;
+        bool _signalled;
+
+#elif defined(WIN32)
+
+	HANDLE _he;
+
+#endif //POSIX
+};
+
 /*[tip] tick-count utility services
  *[desc] provide some common operations about tick-count
  *[history]
