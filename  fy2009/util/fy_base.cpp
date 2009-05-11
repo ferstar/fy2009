@@ -90,62 +90,6 @@ bool critical_section_t::try_lock() throw()
 #endif
 }
 
-//tc_util_t
-bool tc_util_t::is_over_tc_end(uint32 tc_start, uint32 tc_deta, uint32 tc_cur) throw()
-{
-        uint32 tc_end=tc_start + tc_deta;
-
-        //none of tc_end and tc_start overflow
-        if(tc_end >= tc_start)
-        {
-                if(tc_cur > tc_end ||
-                   tc_cur < tc_start) return true;//tc_cur<tc_start means tc_cur overflow
-        }
-        else //tc_end overflow
-        {
-                if(tc_cur < tc_start && tc_cur > tc_end) return true;
-        }
-
-        return false;
-}
-
-uint32 tc_util_t::diff_of_tc(uint32 tc_start, uint32 tc_end) throw()
-{   
-        if(tc_end >= tc_start) return tc_end - tc_start; 
-        //tc_end overflow
-        return 0xffffffff - tc_start + tc_end;
-}
-
-#ifdef POSIX
-
-//timeval_util_t
-struct timeval timeval_util_t::diff_of_timeval(const struct timeval& tv1,const struct timeval& tv2) throw()
-{
-      struct timeval tvDiff;
-      tvDiff.tv_sec=tv2.tv_sec-tv1.tv_sec;
-      tvDiff.tv_usec=tv2.tv_usec-tv1.tv_usec;
-
-      //tv_sec and tv_usec must have same sign
-      if(tvDiff.tv_sec>0 && tvDiff.tv_usec<0)
-      {
-        tvDiff.tv_sec--;
-        tvDiff.tv_usec+=1000000;
-      }
-      else if(tvDiff.tv_sec<0 && tvDiff.tv_usec>0)
-      {
-        tvDiff.tv_sec++;
-        tvDiff.tv_usec-=1000000;
-      }
-
-      return tvDiff;
-}
-
-int32 timeval_util_t::diff_of_timeval_tc(const struct timeval& tv1,const struct timeval& tv2) throw()
-{
-      struct timeval tvDiff=diff_of_timeval(tv1,tv2);
-      return tvDiff.tv_sec*1000+tvDiff.tv_usec/1000;
-}
-
 //event_t
 event_t::event_t(bool initial_signalled)
 {
@@ -231,7 +175,7 @@ int32 event_t::wait(uint32 ms_timeout)
 
 #elif defined(WIN32)
 
-	if (::WaitForSingleObject(_he, time_out) == WAIT_OBJECT_0)
+	if (::WaitForSingleObject(_he, ms_timeout) == WAIT_OBJECT_0)
 		return 0;
 
 	else //time out
@@ -240,6 +184,62 @@ int32 event_t::wait(uint32 ms_timeout)
 #endif //POSIX
 
         return ret;
+}
+
+//tc_util_t
+bool tc_util_t::is_over_tc_end(uint32 tc_start, uint32 tc_deta, uint32 tc_cur) throw()
+{
+        uint32 tc_end=tc_start + tc_deta;
+
+        //none of tc_end and tc_start overflow
+        if(tc_end >= tc_start)
+        {
+                if(tc_cur > tc_end ||
+                   tc_cur < tc_start) return true;//tc_cur<tc_start means tc_cur overflow
+        }
+        else //tc_end overflow
+        {
+                if(tc_cur < tc_start && tc_cur > tc_end) return true;
+        }
+
+        return false;
+}
+
+uint32 tc_util_t::diff_of_tc(uint32 tc_start, uint32 tc_end) throw()
+{   
+        if(tc_end >= tc_start) return tc_end - tc_start; 
+        //tc_end overflow
+        return 0xffffffff - tc_start + tc_end;
+}
+
+#ifdef POSIX
+
+//timeval_util_t
+struct timeval timeval_util_t::diff_of_timeval(const struct timeval& tv1,const struct timeval& tv2) throw()
+{
+      struct timeval tvDiff;
+      tvDiff.tv_sec=tv2.tv_sec-tv1.tv_sec;
+      tvDiff.tv_usec=tv2.tv_usec-tv1.tv_usec;
+
+      //tv_sec and tv_usec must have same sign
+      if(tvDiff.tv_sec>0 && tvDiff.tv_usec<0)
+      {
+        tvDiff.tv_sec--;
+        tvDiff.tv_usec+=1000000;
+      }
+      else if(tvDiff.tv_sec<0 && tvDiff.tv_usec>0)
+      {
+        tvDiff.tv_sec++;
+        tvDiff.tv_usec-=1000000;
+      }
+
+      return tvDiff;
+}
+
+int32 timeval_util_t::diff_of_timeval_tc(const struct timeval& tv1,const struct timeval& tv2) throw()
+{
+      struct timeval tvDiff=diff_of_timeval(tv1,tv2);
+      return tvDiff.tv_sec*1000+tvDiff.tv_usec/1000;
 }
 
 //user_clock_t

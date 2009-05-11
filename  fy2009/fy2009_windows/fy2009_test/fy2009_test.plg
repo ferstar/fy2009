@@ -6,18 +6,19 @@
 --------------------Configuration: fy2009_test - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP7AD.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP6E.tmp" with contents
 [
 /nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fp"Debug/fy2009_test.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"F:\fy2009\test\fyt_base.cpp"
+"E:\kelvin_space\do\fy2009\test\fyt_base.cpp"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP7AD.tmp" 
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP7AE.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP6E.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP6F.tmp" with contents
 [
 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/fy2009_test.pdb" /debug /machine:I386 /out:"Debug/fy2009_test.exe" /pdbtype:sept 
 .\Debug\fyt_base.obj
+\kelvin_space\do\fy2009\fy2009_windows\fy2009_util_windows\Debug\fy_util.lib
 ]
-Creating command line "link.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP7AE.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP6F.tmp"
 <h3>Output Window</h3>
 Compiling...
 fyt_base.cpp

@@ -205,6 +205,40 @@ void test_localtime_performance_win()
 
 #endif
 
+#ifdef POSIX
+#elif defined(WIN32)
+
+DWORD WINAPI test_event_thd_fun(LPVOID pParam)
+{
+	event_t *pe=(event_t*)pParam;
+	int cnt=0;
+	while(cnt<10)
+	{
+		if(pe->wait())
+			printf("wait event[%d] time-out(win)\n",++cnt);
+		else
+			printf("wait and got event[%d](win)\n",++cnt);
+	}
+	return 0;
+}
+//pass test 2009-5-11
+void test_event_win()
+{
+	event_t evt(true);
+	HANDLE h_thd=::CreateThread(NULL, 0, test_event_thd_fun, (void*)&evt, 0, NULL);
+	int cnt=0;
+	while(cnt<10)
+	{
+		printf("signal[%d]\n",cnt);
+		evt.signal();
+		::Sleep(1000);
+		++cnt;
+	}
+}
+
+#define test_event test_event_win
+
+#endif
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -242,7 +276,8 @@ int main(int argc, char **argv)
 	//test_bb_t(fy_argv);
 	//test_user_clock();
 	//test_user_clock_performance();
-	test_localtime_performance();
+	//test_localtime_performance();
+	test_event();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
