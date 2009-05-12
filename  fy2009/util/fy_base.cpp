@@ -17,7 +17,7 @@
 #endif
 
 #include "fy_base.h"
-
+#include <stdio.h>
 USING_FY_NAME_SPACE
 
 //critical_section_t
@@ -536,6 +536,8 @@ uint32 user_clock_t::get_localtime(struct tm *lt) throw()
 	return _local_time.tv_usec/1000;
 }
 
+#endif //POSIX
+
 //string_util_t
 bool string_util_t::_s_is_ws(int8 c)
 {
@@ -603,7 +605,7 @@ void string_builder_t::reset(bool bShrinkage)
         for(uint32 i=0;i<_cur_pos;i++)
         {
                 if(!(_piece_v[i].need_free)) continue;
-                delete [] _piece_v[i].str;
+                delete [] const_cast<char*>(_piece_v[i].str);
                 _piece_v[i].need_free=false;
         }
         if(bShrinkage)
@@ -632,7 +634,7 @@ string_builder_t& string_builder_t::operator <<(int8 data)
                 str_data=new int8[STR_LEN_I8];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_I8, "%d",data);
+        ::sprintf(str_data,"%d",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -653,7 +655,7 @@ string_builder_t& string_builder_t::operator <<(uint8 data)
                 str_data=new int8[STR_LEN_I8];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_I8, "%u",data);
+        ::sprintf(str_data,"%u",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -675,7 +677,7 @@ string_builder_t& string_builder_t::operator <<(int16 data)
                 str_data=new int8[STR_LEN_I16];
                 need_free=true;
         }
-        ::snprintf(str_data, STR_LEN_I16, "%d",data);
+        ::sprintf(str_data, "%d",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -696,7 +698,7 @@ string_builder_t& string_builder_t::operator <<(uint16 data)
                 str_data=new int8[STR_LEN_I16];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_I16, "%u",data);
+        ::sprintf(str_data,"%u",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -718,7 +720,7 @@ string_builder_t& string_builder_t::operator <<(int32 data)
                 str_data=new int8[STR_LEN_I32];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_I32,"%ld",data);
+        ::sprintf(str_data,"%ld",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -739,7 +741,7 @@ string_builder_t& string_builder_t::operator <<(uint32 data)
                 str_data=new int8[STR_LEN_I32];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_I32,"%lu",data);
+        ::sprintf(str_data,"%lu",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -762,7 +764,7 @@ string_builder_t& string_builder_t::operator <<(float data)
                 str_data=new int8[STR_LEN_F32];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_F32,"%g",data);
+        ::sprintf(str_data,"%g",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -785,7 +787,7 @@ string_builder_t& string_builder_t::operator <<(double data)
                 str_data=new int8[STR_LEN_F64];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_F64,"%g",data);
+        ::sprintf(str_data,"%g",data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -808,7 +810,7 @@ string_builder_t& string_builder_t::operator <<(const void *data)
                 str_data=new int8[STR_LEN_POINTER];
                 need_free=true;
         }
-        ::snprintf(str_data,STR_LEN_POINTER,"0x%lx",(uint32)data);
+        ::sprintf(str_data,"0x%lx",(uint32)data);
         _append_str(str_data,need_free);
 
         return *this;
@@ -908,5 +910,3 @@ void  string_builder_t::prealloc_n(uint32 count_n)
         prealloc(count_n*STR_LEN_F64);
 }
 
-
-#endif //POSIX

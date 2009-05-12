@@ -13,6 +13,7 @@
 #define __FENGYI2009_BASE_DREAMFREELANCER_20080322_H__ 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <exception>
 #include <sys/types.h>
