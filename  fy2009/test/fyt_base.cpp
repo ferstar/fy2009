@@ -277,6 +277,59 @@ void test_event_win()
 #define test_event test_event_win
 
 #endif
+
+#ifdef POSIX
+
+//2008-4-18,passed test
+//2009-5-12, passed re-test
+void *tf_es(void *arg)
+{
+        event_slot_t *pes=(event_slot_t *)arg;
+        event_slot_t::slot_vec_t slot_vec;
+
+        while(true)
+        {
+                int ret=pes->wait(slot_vec);
+                int32 cnt=slot_vec.size();
+                printf("got some slots,cnt=%d,wait ret:%d\n",cnt,ret);
+                bool exit_flag=false;
+                for(int32 i=0;i<cnt;++i)
+                {
+                        printf("got signal slot:%d\n",slot_vec[i]);
+                        if(slot_vec[i] == 0) exit_flag=true;
+                }
+                if(exit_flag)
+                {
+                        printf("exit event slot thread\n");
+                        return 0;
+                }
+        }
+        return 0;
+}
+
+void test_event_slot_linux()
+{
+        event_slot_t es(4);
+        pthread_t thd;
+        pthread_create(&thd, 0, tf_es, (void *)&es);
+        printf("before main thread sleep\n");
+        usleep(1000000);
+        printf("after main thread wake up\n");
+
+        es.signal(1);
+        usleep(1000);
+        es.signal(2);
+        usleep(1000);
+        es.signal(0);
+        es.signal(2);
+
+        pthread_join(thd,0);
+}
+
+#define test_event_slot test_event_slot_linux
+
+#endif //POSIX
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -315,7 +368,8 @@ int main(int argc, char **argv)
 	//test_user_clock();
 	//test_user_clock_performance();
 	//test_localtime_performance();
-	test_event();
+	//test_event();
+	test_event_slot();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

@@ -16,6 +16,8 @@
 #include <string.h>
 #include <exception>
 #include <sys/types.h>
+#include <vector>
+
 #ifdef POSIX
 
 #include <unistd.h>
@@ -302,6 +304,7 @@ typedef buffer_tt<int8> bb_t; //byte buffer type
  *
  *[history] 
  *Initialize: 2006-8-4
+ *Revise:     2009-5-10
 */
 class critical_section_t
 {
@@ -365,12 +368,13 @@ private:
         critical_section_t* _p_cs;
 };
 
-/*[timp]event, a kind of thread synchronization device 
- *[desc] event synchronization device. due to the limitation of Linux, you can't wait for multi event objects 
- * at the same time. to do it, you should use below event_slot_t or event_queue_t
+/*[timp]event, inter-thread synchronization device 
+ *[desc] suitable for "one waker, one waitor" mode. due to the limitation of Linux, you can't wait for multi 
+ * event objects at the same time. to do it, you should use below event_slot_t or event_queue_t
  *
  *[history] 
  * Initialize: 2008-4-18
+ * Revise:     2009-5-11
  */
 const uint32 EVENT_WAIT_INFINITE=0xffffff;
 
@@ -386,6 +390,7 @@ public:
 
         //wait for state is changed to signalled, if current state is signalled, it return immediately,
         //otherwise, calling thread will be blocked until other thread call signal() to wake it up
+	//return zero if got event, nonzero if timeout
         int32 wait(uint32 ms_timeout=EVENT_WAIT_INFINITE);//wait for other thread call signal() till ms_timeout expired
 private:
         critical_section_t _cs;
@@ -400,6 +405,37 @@ private:
 	HANDLE _he;
 
 #endif //POSIX
+};
+
+/*[tip]event slot, inter-thread synchronization device
+ *[desc] suitable for "multi waker, one waitor" mode, can support waiting for multi-objects semantic
+ *[memo] implemenation only can make sure either singal() or wait() with constant complexity,
+ *      here signal() are chosen, obviously, too big _slot_cnt is harmful with performance
+ *[history] 
+ *Initialize: 2008-4-17
+ */
+const uint16 DEF_EVENT_SLOT_COUNT=32;
+
+class event_slot_t
+{
+public:
+        typedef std::vector<uint16> slot_vec_t;
+public:
+        event_slot_t(uint16 slot_count=DEF_EVENT_SLOT_COUNT);
+        ~event_slot_t();
+
+        //signalled event slot identified by slot_index and wake up blocking wait()
+        void signal(uint16 slot_index); //value range:0 to _slot_cnt
+
+        //wait for any slot is signalled and push signalled slot index into signalled_vec
+        //return the count of signaled slots 
+        //timeout unit: tick-count
+        int32 wait(slot_vec_t& signalled_vec, uint32 ms_timeout=EVENT_WAIT_INFINITE);
+private:
+        critical_section_t _cs;
+	event_t _evt;
+        int8 *_slot;
+        uint16 _slot_cnt;
 };
 
 /*[tip] tick-count utility services

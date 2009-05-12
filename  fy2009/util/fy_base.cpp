@@ -186,6 +186,74 @@ int32 event_t::wait(uint32 ms_timeout)
         return ret;
 }
 
+
+//event_slot_t
+event_slot_t::event_slot_t(uint16 slot_count) : _evt(false)
+{
+        _slot_cnt = slot_count;
+        _slot = new int8[ _slot_cnt ];
+        memset(_slot, 0, _slot_cnt);
+}
+
+event_slot_t::~event_slot_t()
+{
+        if(_slot) delete [] _slot;
+}
+
+void event_slot_t::signal(uint16 slot_index)
+{
+        if(slot_index >= _slot_cnt)
+        {
+                int8 sz_tmp[256];
+                ::sprintf(sz_tmp,"event_slot_t::signal,invalid slot_index:%d, _slot_cnt:%d\r\n", slot_index, _slot_cnt);
+                __INTERNAL_FY_TRACE(sz_tmp);
+                return;
+        }
+
+        if(_slot[slot_index]) return; 
+
+        smart_lock_t slock(&_cs);
+
+        _slot[slot_index] = 1;
+	
+	slock.unlock();
+
+	_evt.signal(); //free wait thread
+}
+
+int32 event_slot_t::wait(slot_vec_t& signalled_vec, uint32 ms_timeout)
+{
+        signalled_vec.clear();
+
+        smart_lock_t slock(&_cs);
+
+        for(uint16 i=0; i<_slot_cnt; ++i)
+        {
+                if(_slot[i]) signalled_vec.push_back(i);
+        }
+        if(!signalled_vec.empty())
+        {
+                memset(_slot, 0, _slot_cnt);//reset slots
+                return signalled_vec.size(); //only wait on demand
+        }
+	
+	slock.unlock();
+
+	if(!_evt.wait(ms_timeout)) //not time-out
+        {
+		smart_lock_t slock(&_cs);
+
+                for(uint16 i=0; i<_slot_cnt; ++i)
+                {
+                        if(_slot[i]) signalled_vec.push_back(i);
+                }
+                memset(_slot, 0, _slot_cnt);//reset slots
+		
+		return signalled_vec.size();
+        }
+        return 0; 
+}
+
 //tc_util_t
 bool tc_util_t::is_over_tc_end(uint32 tc_start, uint32 tc_deta, uint32 tc_cur) throw()
 {
