@@ -291,16 +291,16 @@ void *tf_es(void *arg)
         {
                 int ret=pes->wait(slot_vec);
                 int32 cnt=slot_vec.size();
-                printf("got some slots,cnt=%d,wait ret:%d\n",cnt,ret);
+                printf("got some slots(LINUX),cnt=%d,wait ret:%d\n",cnt,ret);
                 bool exit_flag=false;
                 for(int32 i=0;i<cnt;++i)
                 {
-                        printf("got signal slot:%d\n",slot_vec[i]);
+                        printf("got signal slot(LINUX):%d\n",slot_vec[i]);
                         if(slot_vec[i] == 0) exit_flag=true;
                 }
                 if(exit_flag)
                 {
-                        printf("exit event slot thread\n");
+                        printf("exit event slot thread(LINUX)\n");
                         return 0;
                 }
         }
@@ -312,9 +312,9 @@ void test_event_slot_linux()
         event_slot_t es(4);
         pthread_t thd;
         pthread_create(&thd, 0, tf_es, (void *)&es);
-        printf("before main thread sleep\n");
+        printf("before main thread sleep(LINUX)\n");
         usleep(1000000);
-        printf("after main thread wake up\n");
+        printf("after main thread wake up(LINUX)\n");
 
         es.signal(1);
         usleep(1000);
@@ -327,6 +327,53 @@ void test_event_slot_linux()
 }
 
 #define test_event_slot test_event_slot_linux
+
+#elif defined(WIN32)
+
+DWORD WINAPI tf_es(LPVOID pParam)
+{
+        event_slot_t *pes=(event_slot_t *)pParam;
+        event_slot_t::slot_vec_t slot_vec;
+
+        while(true)
+        {
+                int ret=pes->wait(slot_vec);
+                int32 cnt=slot_vec.size();
+                printf("got some slots(WIN),cnt=%d,wait ret:%d\n",cnt,ret);
+                bool exit_flag=false;
+                for(int32 i=0;i<cnt;++i)
+                {
+                        printf("got signal slot(WIN):%d\n",slot_vec[i]);
+                        if(slot_vec[i] == 0) exit_flag=true;
+                }
+                if(exit_flag)
+                {
+                        printf("exit event slot thread(WIN)\n");
+                        return 0;
+                }
+        }
+        return 0;
+}
+
+//pass test,2009-5-12
+void test_event_slot_win()
+{
+        event_slot_t es(4);
+		HANDLE h_thd=::CreateThread(NULL, 0, tf_es, (void*)&es, 0, NULL);
+        printf("before main thread sleep(WIN)\n");
+        ::Sleep(1000);
+        printf("after main thread wake up(WIN)\n");
+
+        es.signal(1);
+        ::Sleep(1);
+        es.signal(2);
+        ::Sleep(1);
+        es.signal(0);
+        es.signal(2);
+		::Sleep(1000);
+}
+
+#define test_event_slot test_event_slot_win
 
 #endif //POSIX
 
