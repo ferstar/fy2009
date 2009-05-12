@@ -188,7 +188,7 @@ int32 event_t::wait(uint32 ms_timeout)
 
 
 //event_slot_t
-event_slot_t::event_slot_t(uint16 slot_count) : _evt(false)
+event_slot_t::event_slot_t(uint16 slot_count) : _cs(true),_evt(false)
 {
         _slot_cnt = slot_count;
         _slot = new int8[ _slot_cnt ];

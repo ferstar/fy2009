@@ -17,6 +17,7 @@
 #include <exception>
 #include <sys/types.h>
 #include <vector>
+#include <queue>
 
 #ifdef POSIX
 
@@ -409,10 +410,13 @@ private:
 
 /*[tip]event slot, inter-thread synchronization device
  *[desc] suitable for "multi waker, one waitor" mode, can support waiting for multi-objects semantic
- *[memo] implemenation only can make sure either singal() or wait() with constant complexity,
- *      here signal() are chosen, obviously, too big _slot_cnt is harmful with performance
+ *[memo] before waiting, if same slot is signalled more than once, waiter thread can only got signaled slot once,
+ * that is, waitor thread don't know how many times a specified slot is signalled.
+ * implemenation only can make sure either singal() or wait() with constant complexity,
+ * here signal() are chosen, obviously, too big _slot_cnt is harmful with performance
  *[history] 
  *Initialize: 2008-4-17
+ *Revise:     2009-5-12
  */
 const uint16 DEF_EVENT_SLOT_COUNT=32;
 
@@ -598,6 +602,34 @@ public:
 #	define get_local_time(lt,user_clock) user_clock->get_localtime(lt)
 
 #endif //POSIX
+
+/*[tip]root interface for dynamic type discovery
+ *[desc] it's often important for serveral interfaces implemented by one class to dynamically discover each other.
+ *       to support this feature, any interface MUST inherit from below interface and any class must overwrite it.
+ *[memo] dynamic_cast or static_cast is another alternative,but they can't work in multi parents are inheritted 
+ *       which have one or more same ancient
+ *[history] 
+ * Initialize: 2006-10-13
+ */
+class lookup_it
+{
+public:
+        //any discoverable interface MUST be identified by an unique id
+        virtual void *lookup(uint32 iid) throw()=0;
+};
+
+/*[tip]interface to support tracibility
+ *[desc] any tracable object MUST be identified by a readable object id, this interface specifies this requirement,
+ *       any tracable class should realize this interface
+ *[history] 
+ * Initialize: 2008-3-18
+ */
+class object_id_it : public lookup_it
+{
+public:
+        //return an unique object id and ensure it's readable for tracibility
+        virtual const int8 *get_object_id() throw()=0;
+};
 
 DECL_FY_NAME_SPACE_END
 
