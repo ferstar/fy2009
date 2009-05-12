@@ -377,6 +377,35 @@ void test_event_slot_win()
 
 #endif //POSIX
 
+void test_string_builder(void)
+{
+        int8 i8=-10;
+        uint8 ui8=10;
+        int16 i16=-1024;
+        uint16 ui16=1024;
+        int32 i32=-1048576;
+        uint32 ui32=1048576;
+        float f32=3.1415926535;
+        double f64=-314159265358979323.84626;
+
+        int8 hello[]="hello everyone!";
+
+        string_builder_t sb;
+        sb<<string_builder_t::eUNCPY_STR<<hello<<"i8="<<i8<<";ui8="<<ui8<<";i16="<<i16<<";ui16="<<ui16
+		<<";i32="<<i32<<";ui32="<<ui32<<";f32="<<f32<<";f64="<<f64;
+
+        sb<<";pointer of f64 variable="<<(void *)&f64;
+        bb_t bb;
+        uint32 len=sb.build(bb);
+        printf("%s\n",(int8*)bb);
+
+        string_builder_t sb2;
+        sb2<<"";
+        printf("sb2****\n");
+        sb2.build(bb);
+        printf("%s\n",(int8*)bb);
+}
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -416,7 +445,8 @@ int main(int argc, char **argv)
 	//test_user_clock_performance();
 	//test_localtime_performance();
 	//test_event();
-	test_event_slot();
+	//test_event_slot();
+	test_string_builder();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

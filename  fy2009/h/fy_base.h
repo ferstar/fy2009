@@ -631,6 +631,129 @@ public:
         virtual const int8 *get_object_id() throw()=0;
 };
 
+/*[tip] string utility
+ *[desc] define some static string functionss
+ *[history] 
+ *Initialize: 2007-2-12
+ */
+class string_util_t
+{
+public:
+        //trim both left and right white space of para str in place, return start position of result string in para str
+        // and length of result string if para p_len isn't null
+        //pass test 2007-2-12
+        //--note that, it doesn't change the para str end position even if right white space exists, it only returns a
+        //length indicator to reveal the right white space's existence.
+        static const int8 *s_trim_inplace(const int8 *str,uint32 *p_len);
+
+private:
+        //check if a character is white space
+        inline static bool _s_is_ws(int8 c);
+};
+
+/*[tip]merge multi string pieces to one
+ *[desc] merging many string pieces to one is more useful, but often is low efficient, std::ostringstream is a good choice,
+ * unfortunately, it spends too much on construction, so not good enough for basic services. this class will do better.
+ * for performance, this class isn't responsible for lifecycle management for any string pieces, if uncpy_str is set
+ *[memo] test reveals that pre-allocated _piece_v by former build operation can fairely accelerate later build operation
+ * (pdp decreases from 0.70 to 0.25,and pre-allocated buffer for numeric piece by alloc_buffer_n can also accerlate
+ * build performance(pdp decreases from 8.74 to 2.03--2006-8-1
+ * this class is used in exception framework, so it is never allowed to throw any exceptions,2006-8-2
+ * test proves it's also more efficient than std::ostringstream on formatting string,prealloc buffer and eUNCPY_STR
+ * can improve performance obviously, 2008-4-7
+ *[history] 
+ *Initialize: 2006-7-28
+ */
+class string_builder_t
+{
+public:
+        //indicate open/close copy string flag, which means sucessive string paramenter will be copied/attached by this object
+        typedef enum
+        {
+                eCPY_STR,
+                eUNCPY_STR
+        } cpy_str_e;
+public:
+        string_builder_t();
+        ~string_builder_t();
+
+        string_builder_t& operator <<(int8 data);
+        string_builder_t& operator <<(uint8 data);
+        string_builder_t& operator <<(int16 data);
+        string_builder_t& operator <<(uint16 data);
+        string_builder_t& operator <<(int32 data);
+        string_builder_t& operator <<(uint32 data);
+        string_builder_t& operator <<(float data);//not recommend to use
+        string_builder_t& operator <<(double data);//not recommend to use
+        string_builder_t& operator <<(const void *data);//format pointer as hex string
+
+        //if cpy_str_flag == eCPY_STR,life cycle of successive string para piece will be independent with para string,2008-4-10
+        string_builder_t& operator <<(const cpy_str_e& cpy_str_flag);
+
+        //if eCPY_STR is set,builder will be independent from sz_str, otherwise, sz_str shoulde be valid before calling build()
+        string_builder_t& operator <<(const int8* sz_str);
+
+        inline uint32 get_result_size() const throw(){ return _len_total; }//return length of result string,not byte length
+
+        //build all string pieces to one,return length of result string
+        uint32 build(bb_t& bb);
+
+        //pre-allocated specified count of bytes space to cache cpy_str or numeric data,
+        //can call it multi times if object is empty(eg. after reset),if alloc_size para is zero,_buf_n will be freed
+        void prealloc(uint32 alloc_size);
+
+        //similar to prealloc, but the para count_n means to alloc enough space to hold count_n pieces of numeric formatted string
+        void prealloc_n(uint32 count_n);
+
+        //reset object to 'empty',if bShrinkage is true,_piece_v will be freed, otherwise, _piece_v and _len_v will be kept.
+        void reset(bool bShrinkage=false);
+
+protected:
+        //describe a piece of string
+        class _piece_t
+        {
+        public:
+                _piece_t()
+                {
+                        str=0;
+                        len=0;
+                        need_free=false;
+                }
+                _piece_t(const int8 *str,bool need_free)
+                {
+                        if(str)
+                        {
+                                this->str=str;
+                                this->len=::strlen(str);
+                                this->need_free=need_free;
+                        }
+                        else
+                        {
+                                this->str=0;
+                                this->len=0;
+                                this->need_free=false;
+                        }
+                }
+        public:
+                const int8 *str;//string piece buffer
+                uint32 len;//length of string piece
+                bool need_free;//need string builder free it on destruction or not
+        };
+protected:
+        inline void _append_str(const int8 *str,bool bNeedFree);//append one piece string
+protected:
+        _piece_t *_piece_v;//vector for string pieces
+        uint32 _len_v; //length of _str_v
+        int8 *_buf_n;//preallocated buffer to accelerate numeric piece converting to string
+        uint32 _len_buf_n;//length of _buf_n;
+        uint32 _cur_pos_buf_n;//start position for next result string of numberic piece
+        uint32 _cur_pos; //next index of string pieces
+        uint32 _len_total;//total length of result string
+        cpy_str_e _cpy_str_flag;
+private:
+        string_builder_t(const string_builder_t& sb){} //forbidden copy ctor
+};
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_BASE_DREAMFREELANCER_20080322_H__

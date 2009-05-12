@@ -536,4 +536,377 @@ uint32 user_clock_t::get_localtime(struct tm *lt) throw()
 	return _local_time.tv_usec/1000;
 }
 
+//string_util_t
+bool string_util_t::_s_is_ws(int8 c)
+{
+        switch(c)
+        {
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\n':
+                return true;
+        default:
+                return false;
+        }
+}
+
+const int8 *string_util_t::s_trim_inplace(const int8 *str,uint32 *p_len)
+{
+        if(!str)
+        {
+                if(p_len) *p_len =0;
+                return str;
+        }
+
+        //trim prefix white space
+        const int8 *p_s=str;
+        while(_s_is_ws(*p_s)) { ++p_s; }
+
+        //trim surfix white space
+        const int8 *p_e=str+strlen(str) - 1;
+
+        if(p_e < p_s)//pure white spaces string
+        {
+                if(p_len) *p_len=0;
+                return p_s;
+        }
+
+        while(_s_is_ws(*p_e)) { --p_e; }
+
+        if(p_len) *p_len= p_e - p_s + 1;
+
+        return p_s;
+}
+
+//string_builder_t
+string_builder_t::string_builder_t()
+{
+        _piece_v=0;
+        _buf_n=0;
+        _len_v=_cur_pos=_len_total=0;
+        _len_buf_n=_cur_pos_buf_n=0;
+        _cpy_str_flag=eCPY_STR;
+}
+
+string_builder_t::~string_builder_t()
+{
+        reset();
+        if(_piece_v) delete [] _piece_v;
+        if(_buf_n) delete [] _buf_n;
+}
+
+void string_builder_t::reset(bool bShrinkage)
+{
+        if(!_cur_pos) return;//empty object
+        //free string pieces with need_free=true
+        for(uint32 i=0;i<_cur_pos;i++)
+        {
+                if(!(_piece_v[i].need_free)) continue;
+                delete [] _piece_v[i].str;
+                _piece_v[i].need_free=false;
+        }
+        if(bShrinkage)
+        {
+                 delete [] _piece_v;
+                 _piece_v=0;
+                 _len_v=0;
+        }
+        _cur_pos=_len_total=0;//reset
+        _cur_pos_buf_n=0;
+}
+
+const uint32 STR_LEN_I8=4;
+string_builder_t& string_builder_t::operator <<(int8 data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_I8)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_I8;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_I8];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_I8, "%d",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+string_builder_t& string_builder_t::operator <<(uint8 data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_I8)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_I8;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_I8];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_I8, "%u",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+const uint32 STR_LEN_I16=6;
+string_builder_t& string_builder_t::operator <<(int16 data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_I16)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_I16;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_I16];
+                need_free=true;
+        }
+        ::snprintf(str_data, STR_LEN_I16, "%d",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+string_builder_t& string_builder_t::operator <<(uint16 data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_I16)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_I16;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_I16];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_I16, "%u",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+const uint32 STR_LEN_I32=12;
+string_builder_t& string_builder_t::operator <<(int32 data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_I32)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_I32;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_I32];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_I32,"%ld",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+string_builder_t& string_builder_t::operator <<(uint32 data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_I32)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_I32;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_I32];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_I32,"%lu",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+//min:1.17549435e-38F; max:3.40282347e+38F--ref:/usr/include/c++/3.2/limits
+const uint32 STR_LEN_F32=16;
+string_builder_t& string_builder_t::operator <<(float data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_F32)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_F32;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_F32];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_F32,"%g",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+//min:2.2250738585072014e-308; max:1.7976931348623157e+308
+const uint32 STR_LEN_F64=24;
+string_builder_t& string_builder_t::operator <<(double data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_F64)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_F64;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_F64];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_F64,"%g",data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+//the following 3 is 2("0x")+1('\0')
+const uint32 STR_LEN_POINTER=sizeof(int)*2+3;
+string_builder_t& string_builder_t::operator <<(const void *data)
+{
+        int8 *str_data;
+        bool need_free;
+        if(_len_buf_n - _cur_pos_buf_n>=STR_LEN_POINTER)
+        {
+                str_data=_buf_n+_cur_pos_buf_n;
+                need_free=false;
+                _cur_pos_buf_n+=STR_LEN_POINTER;
+        }
+        else
+        {
+                str_data=new int8[STR_LEN_POINTER];
+                need_free=true;
+        }
+        ::snprintf(str_data,STR_LEN_POINTER,"0x%lx",(uint32)data);
+        _append_str(str_data,need_free);
+
+        return *this;
+}
+
+string_builder_t& string_builder_t::operator <<(const int8* cstr)
+{
+        if(!cstr) return *this;
+
+        if(_cpy_str_flag == eCPY_STR)
+        {
+                int8 *str_data;
+                uint32 para_len=::strlen(cstr)+1;
+                bool need_free;
+                if(_len_buf_n - _cur_pos_buf_n>=para_len)
+                {
+                        str_data=_buf_n+_cur_pos_buf_n;
+                        need_free=false;
+                        _cur_pos_buf_n+=para_len;
+                }
+                else
+                {
+                        str_data=new int8[para_len];
+                        need_free=true;
+                }
+                memcpy((int8*)str_data,(const int8*)(cstr),para_len);
+                _append_str(str_data,need_free);
+        }
+        else
+        {
+                _append_str(cstr,false);
+        }
+        return *this;
+}
+
+string_builder_t& string_builder_t::operator <<(const cpy_str_e& cpy_str_flag)
+{
+        _cpy_str_flag=cpy_str_flag;
+
+        return *this;
+}
+
+uint32 string_builder_t::build(bb_t& bb)
+{
+        if(!_len_total)
+        {
+                bb.fill_from("",1,0);
+                bb.set_filled_len(0);
+                return 0;
+        }
+        bb.reserve(_len_total+1);
+        uint32 cur_offset=0;
+        for(uint32 i=0;i<_cur_pos;i++)
+        {
+                cur_offset=bb.fill_from(_piece_v[i].str,_piece_v[i].len);
+        }
+        int8 *bb_buf=(int8*)bb;
+        bb_buf[cur_offset]=0;
+
+        return _len_total;
+}
+
+void string_builder_t::_append_str(const int8 *str,bool bNeedFree)
+{
+        if(!str) return;
+        if(_cur_pos==_len_v) //_piece_v is full,expand _piece_v
+        {
+                uint32 new_len=(_len_v?_len_v<<1:2);
+                _piece_t*pp_v=new _piece_t[new_len];
+                if(_len_v) memcpy(pp_v,_piece_v,_len_v*sizeof(_piece_t));//copy old _piece_v to new buffer
+                //free old _piece_v
+                if(_piece_v) delete [] _piece_v;
+                _piece_v=pp_v;
+                _len_v=new_len;
+        }
+
+        _piece_v[_cur_pos++]=_piece_t(str,bNeedFree);
+        _len_total+=_piece_v[_cur_pos - 1].len;
+}
+
+void string_builder_t::prealloc(uint32 alloc_size)
+{
+        if(_cur_pos_buf_n) return;
+        if(_buf_n) delete [] _buf_n;//free old buffer
+        _buf_n=0;
+        _len_buf_n=0;
+
+        if(alloc_size)//allocate new buffer
+        {
+                _len_buf_n=alloc_size;
+                _buf_n=new int8[_len_buf_n];
+        }
+}
+
+void  string_builder_t::prealloc_n(uint32 count_n)
+{
+        prealloc(count_n*STR_LEN_F64);
+}
+
+
 #endif //POSIX
