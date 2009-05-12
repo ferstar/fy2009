@@ -206,6 +206,44 @@ void test_localtime_performance_win()
 #endif
 
 #ifdef POSIX
+
+void *test_event_thd_fun(void * pParam)
+{
+        event_t *pe=(event_t*)pParam;
+        int cnt=0;
+        while(cnt<10)
+        {
+                if(pe->wait())
+                        printf("wait event[%d] time-out(linux)\n",++cnt);
+                else
+                        printf("wait and got event[%d](linux)\n",++cnt);
+        }
+        return 0;
+}
+
+//pass test, 2009-5-12
+void test_event_linux()
+{
+	event_t evt;
+                
+	pthread_t thd=0;
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);	
+	pthread_create(&thd, &attr, test_event_thd_fun, (void*)&evt);
+
+        int cnt=0;
+        while(cnt<10)
+        {
+                printf("signal[%d]\n",cnt);
+                evt.signal();
+                ::sleep(1);
+                ++cnt;
+        }
+}
+
+#define test_event test_event_linux
+
 #elif defined(WIN32)
 
 DWORD WINAPI test_event_thd_fun(LPVOID pParam)
