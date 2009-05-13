@@ -406,6 +406,11 @@ void test_string_builder(void)
         printf("%s\n",(int8*)bb);
 }
 
+void test_internal_fy_trace_ex()
+{
+	__INTERNAL_FY_TRACE_EX("hello internal trace_ex:(int8)--"<<(int8)8<<",i16="<<(int16)16<<",i32="<<(int32)32<<"\n");
+}
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -446,7 +451,8 @@ int main(int argc, char **argv)
 	//test_localtime_performance();
 	//test_event();
 	//test_event_slot();
-	test_string_builder();
+	//test_string_builder();
+	test_internal_fy_trace_ex();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

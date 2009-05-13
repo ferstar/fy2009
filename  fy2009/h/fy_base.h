@@ -755,6 +755,27 @@ private:
         string_builder_t(const string_builder_t& sb){} //forbidden copy ctor
 };
 
+/*[tip] lower layer trace service with formatting output
+ *[desc] output trace info to stdandard error, it's used within basic ccp service modules which
+ *       can't access higher layer ccp trace service but can use string_builder_t
+ *[memo] test shows that trace info outputed by printf often loses tail info while redirect standard error device, but
+ *            ::write will not.
+ *[history] 
+ * Initialize: 2008-4-23
+ * Revise:     2009-5-13
+ */
+#ifdef POSIX
+
+#define __INTERNAL_FY_TRACE_EX(desc) do{ string_builder_t sb; sb<<desc; bb_t bb; sb.build(bb);\
+           ::write(STDERR_FILENO, (int8*)bb, ::strlen((int8*)bb)); }while(false)
+
+#elif defined(WIN32)
+
+#define __INTERNAL_FY_TRACE_EX(desc) do{ string_builder_t sb; sb<<desc; bb_t bb; sb.build(bb);\
+           ::printf("%s",(int8*)bb); }while(false)
+
+#endif //POSIX
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_BASE_DREAMFREELANCER_20080322_H__
