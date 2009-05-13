@@ -12,7 +12,7 @@ clean:clean_base
 ###################################################
 #test base,2006-7-13
 base:fyt_base.cpp
-	$(CXX) $(DEFAULT_FLAGS) $(INC_FLAG) -lpthread -g -o $(PATH_BIN)/$@ fyt_base.cpp $(PATH_LIB)/fy_util.a
+	$(CXX) $(DEFAULT_FLAGS) $(INC_FLAG) -DFY_ENABLE_ASSERT -lpthread -g -o $(PATH_BIN)/$@ fyt_base.cpp $(PATH_LIB)/fy_util.a
 
 ###################################################
 ###################################################

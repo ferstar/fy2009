@@ -910,3 +910,156 @@ void  string_builder_t::prealloc_n(uint32 count_n)
         prealloc(count_n*STR_LEN_F64);
 }
 
+//__exception_body_t::_exp_row_t
+__exception_body_t::_exp_row_t::_exp_row_t() throw(): m_line_num(0){}
+
+__exception_body_t::_exp_row_t::_exp_row_t(const int8 *src_file, int32 line_num,
+                const int8 *object_id, const int8 *function_name, const int8 *spot, const int8 *desc) throw()
+{
+        m_src_file.fill_from(src_file, ::strlen(src_file)+1, 0);
+        m_line_num=line_num;
+        m_obj_id.fill_from(object_id, ::strlen(object_id)+1, 0);
+        m_fun.fill_from(function_name, ::strlen(function_name)+1, 0);
+        m_spot.fill_from(spot, ::strlen(spot)+1, 0);
+        m_desc.fill_from(desc, ::strlen(desc)+1, 0);
+}
+
+__exception_body_t::_exp_row_t::_exp_row_t(const _exp_row_t& er) throw()
+{
+        m_src_file.copy_from(er.m_src_file);
+        m_line_num=er.m_line_num;
+        m_obj_id.copy_from(er.m_obj_id);
+        m_fun.copy_from(er.m_fun);
+        m_spot.copy_from(er.m_spot);
+        m_desc.copy_from(er.m_desc);
+}
+
+//__exception_body_t
+__exception_body_t::__exception_body_t(const int8 *src_file, int32 line_num,
+                const int8 *object_id, const int8 *function_name, const int8 *spot, const int8 *desc) throw()
+{
+        FY_TRY
+
+        _ref_cnt=0;
+        _exp_vec.push_back(_exp_row_t(src_file, line_num, object_id, function_name, spot, desc));
+
+        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+}
+
+void __exception_body_t::push_back(const int8 *src_file, int32 line_num,
+                const int8 *object_id, const int8 *function_name, const int8 *spot, const int8 *desc) throw()
+{
+        FY_TRY
+
+        _exp_vec.push_back(_exp_row_t(src_file, line_num, object_id, function_name, spot, desc));
+
+        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+}
+
+void __exception_body_t::to_string(bb_t& bb, bool verbose_flag) const throw()
+{
+        FY_TRY
+
+        int32 max_row_index=_exp_vec.size()-1;
+        if(max_row_index < 0)
+        {
+                bb.set_filled_len(0);
+                return;
+        }
+
+        string_builder_t sb_desc;
+        for(int i=max_row_index; i>=0; --i)
+        {
+                if(verbose_flag)
+                {
+                        sb_desc << (i == max_row_index? "<src=" : "\r\n<src=") \
+                                << _exp_vec[i].m_src_file.get_buf() << "><ln=" << _exp_vec[i].m_line_num \
+                                << "><oid=" << _exp_vec[i].m_obj_id.get_buf() << "><fn=" \
+                                << _exp_vec[i].m_fun.get_buf() << "><spt=" << _exp_vec[i].m_spot.get_buf() \
+                                << ">--" << _exp_vec[i].m_desc.get_buf();
+                }
+                else if(i != max_row_index)//non-topmost row
+                {
+                        sb_desc << "." << _exp_vec[i].m_spot.get_buf();
+                }
+                else //topmost row
+                {
+                        sb_desc<< _exp_vec[i].m_spot.get_buf();
+                }
+        }
+
+        sb_desc.build(bb);
+
+        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+}
+
+bool __exception_body_t::iterate(int32 step_index, bb_t& source_file_ref, int32& line_num_ref,
+                        bb_t& object_id_ref, bb_t& function_name_ref, bb_t& spot_ref, bb_t& desc_ref) throw()
+{
+        FY_TRY
+
+        if(step_index >= _exp_vec.size() ||
+                step_index < 0) return false;
+
+        source_file_ref.copy_from(_exp_vec[step_index].m_src_file);
+        line_num_ref = _exp_vec[step_index].m_line_num;
+        object_id_ref.copy_from(_exp_vec[step_index].m_obj_id);
+        function_name_ref.copy_from(_exp_vec[step_index].m_fun);
+        spot_ref.copy_from(_exp_vec[step_index].m_spot);
+        desc_ref.copy_from(_exp_vec[step_index].m_desc);
+
+        return true;
+
+        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+
+        return false;
+}
+
+void __exception_body_t::_add_reference()
+{
+        ++_ref_cnt;
+}
+
+void __exception_body_t::_release_reference()
+{
+        if(--_ref_cnt == 0) delete this;
+}
+
+//exception_t
+exception_t::exception_t() throw()
+{
+        FY_TRY
+
+        _cc_cnt=0;
+        _exp_body=new __exception_body_t();
+        _exp_body->_add_reference();
+
+        __INTERNAL_FY_EXCEPTION_TERMINATOR();
+}
+
+exception_t::exception_t(const int8 *src_file, int32 line_num, const int8 *object_id, const int8 *function_name,
+        const int8 *spot, const int8 *desc) throw()
+{
+       FY_TRY
+
+       _cc_cnt=0;
+
+       _exp_body=new __exception_body_t(src_file, line_num, object_id, function_name, spot, desc);
+       _exp_body->_add_reference();
+
+       __INTERNAL_FY_EXCEPTION_TERMINATOR();
+}
+
+exception_t::exception_t(const exception_t& e) throw()
+{
+        _cc_cnt = e._cc_cnt + 1;
+        _exp_body=e._exp_body;
+        if(_exp_body) _exp_body->_add_reference();
+}
+
+exception_t::~exception_t()
+{
+        if(_exp_body) _exp_body->_release_reference();
+}
+
+

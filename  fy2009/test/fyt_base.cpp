@@ -406,9 +406,113 @@ void test_string_builder(void)
         printf("%s\n",(int8*)bb);
 }
 
+//pass test 2009-5-13
 void test_internal_fy_trace_ex()
 {
 	__INTERNAL_FY_TRACE_EX("hello internal trace_ex:(int8)--"<<(int8)8<<",i16="<<(int16)16<<",i32="<<(int32)32<<"\n");
+}
+
+//test exception mechanism
+//2008-3-19
+class exp_test_t
+{
+public:
+        void f1()
+        {
+                FY_DECL_EXCEPTION_CTX("exp_test_t","f1");
+                FY_TRY
+
+                FY_THROW("ef1s1","throw an exception");
+
+                FY_CATCH_N_THROW_AGAIN("ef1s2","f1 pass",);
+        }
+        void f2()
+        {
+                FY_DECL_EXCEPTION_CTX("exp_test_t","f2");
+
+                FY_TRY
+
+                f1();
+
+                FY_CATCH_N_THROW_AGAIN("ef2s1","f2 pass",);
+        }
+        void f3()
+        {
+                FY_DECL_EXCEPTION_CTX("exp_test_t","f3");
+
+                FY_TRY
+
+                f2();
+
+                FY_CATCH_N_THROW_AGAIN("ef3s1","f3 pass",);
+        }
+};
+
+class exp_test_ex_t : public object_id_impl_t
+{
+public:
+        void f1()
+        {
+                FY_DECL_EXCEPTION_CTX_EX("f1");
+                FY_TRY
+
+                FY_THROW_EX("exf1s1","throw an exception");
+
+                FY_CATCH_N_THROW_AGAIN_EX("exf1s2","pass",);
+        }
+        void f2()
+        {
+                FY_DECL_EXCEPTION_CTX_EX("f2");
+                FY_TRY
+
+                f1();
+
+                FY_CATCH_N_THROW_AGAIN_EX("exf2s1","pass",);
+        }
+protected:
+        void _lazy_init_object_id() throw(){ OID_DEF_IMP("exp_test_ex_t"); }
+};
+
+//pass test against both narrow and wide charater,2008-4-10
+//pass re-test, 2009-5-13
+void test_exception()
+{
+        exp_test_t et;
+        FY_TRY
+        et.f3();
+        }catch(exception_t& e){
+                bb_t tbb;
+                e.to_string(tbb,true);
+                printf("cc count:%d,exception desc:%s\n",e.get_cc_count(),(int8*)tbb);
+        }
+}
+//pass test against both narrow and wide charater,2008-4-10
+//pass re-test,2009-5-13
+void test_exception_ex()
+{
+        exp_test_ex_t etx;
+        FY_TRY
+        etx.f2();
+        }catch(exception_t& e){
+                bb_t tbb;
+                e.to_string(tbb,true);
+                printf("cc count:%d,exception desc:%s\n",e.get_cc_count(),(int8*)tbb);
+        }
+}
+
+//pass test against both narrow and wide charater,2008-4-10
+//pass re-test,2009-5-13, define/undefine FY_ENABLE_ASSERT
+void test_assert()
+{
+        FY_TRY
+
+        FY_ASSERT(20>30);
+
+        }catch(exception_t& e){
+                bb_t tbb;
+                e.to_string(tbb);
+                printf("%s\n",(int8*)tbb);
+        }
 }
 
 int main(int argc, char **argv)
@@ -452,7 +556,10 @@ int main(int argc, char **argv)
 	//test_event();
 	//test_event_slot();
 	//test_string_builder();
-	test_internal_fy_trace_ex();
+	//test_internal_fy_trace_ex();
+	//test_exception();
+	//test_exception_ex();
+	test_assert();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

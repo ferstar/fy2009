@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <vector>
 #include <queue>
+#include "fy_iid.h"
 
 #ifdef POSIX
 
@@ -33,29 +34,7 @@
 
 #endif //POSIX
 
-//macros about fy2009 namespace declaration and using
-
-#define DECL_FY_NAME_SPACE_BEGIN namespace fy2009{
-#define DECL_FY_NAME_SPACE_END   } 
-
-#define USING_FY_NAME_SPACE using namespace fy2009;
-
 DECL_FY_NAME_SPACE_BEGIN
-
-/*[tip] primitive typedefs
- *[desc] which indicates length of type. it makes it easy to calculate the serialized length
- *
- *[history]
- * passed test on win32 and linux,2006-5-23
- */
-typedef char int8; //size is 8 bits
-typedef unsigned char uint8; //size is 8 bits
-
-typedef short int16; //size is 16 bits
-typedef unsigned short uint16; //size is 16 bits
-
-typedef long int32; //size is 32 bits 
-typedef unsigned long uint32; //size is 32 bits
 
 /*[tip] buffer type template
  *[desc] 
@@ -775,6 +754,225 @@ private:
            ::printf("%s",(int8*)bb); }while(false)
 
 #endif //POSIX
+
+/*[tip] exception service
+ *[desc] The effective exception process is always important to make program robust.
+ *       The throw and try...catch mechanism has been proved to be an efficient method and has been becoming mainstream
+ *       , but most exception class describes where the exception occurs rather detailly than the path.
+ *       I think the path that exception passed is as important as where it occured for troubleshooting,
+ *       The following exception class will catch both where exception occurs and the path it has walked through
+ *[memo]
+ *1.any member function of this class is disallowed to throw exception, this exception type is not remotable,
+ *  to report exception to remote client, should wrapp it to a remotable exception object and transfer the wrapper
+ *  to remote side.
+ *2. a global error number is more manageable, but in practice, it's very difficult to realize,
+ * so this class replaces global exception number with a local unique spot string, although, it's preferred to specify
+ * a short and globally unique spot, but it's not necessary. a merged string of spots through exception path is often
+ * globally unique,it's also not necessary,2008-4-10
+ *
+ *[history] 
+ *Initialize: 2005-11-30 created
+ *Revise:     2008-3-13  
+ * change string_t to c-string for performance, because construction of string_t is a little expensive,2008-4-7
+ */
+class exception_t;
+
+/*[tip]internal object for exception mechanism
+ *[desc]holding exception detail data, it will not be copied by try...catch mechnism , avoid frequently call its
+ * expendisve copy ctor,try ... catch will copy light object exception_t which manages the real exception
+ * data object by reference mechanism
+ */
+class __exception_body_t
+{
+        friend class exception_t;
+public:
+        __exception_body_t() throw() { _ref_cnt=0; }
+        //create exception with its occurence description
+        __exception_body_t(const int8 *src_file, int32 line_num,
+                        const int8 *object_id, const int8 *function_name, const int8 *spot, const int8 *desc) throw();
+
+        virtual ~__exception_body_t() throw(){}
+
+        //add an exception row to describe exception path or its occurence
+        void push_back(const int8 *src_file, int32 line_num,
+                        const int8 *object_id, const int8 *function_name, const int8 *spot, const int8 *desc) throw();
+
+        //build excpetion description string, if verbose_flag is true, will build  a string to describe all exception path
+        //in detail for technical guy, otherwise, only descibe the topmost excpetion row for end-user
+        void to_string(bb_t& bb, bool verbose_flag=true) const throw();
+
+        //the following is designed for programmer to iterate _exp_vec or other purpose
+        //->
+        inline int32 get_path_steps() const throw() { return _exp_vec.size(); } //return size of _exp_vec;
+
+        //max step_index is get_path_steps() - 1, zero step_index is relevant to exception occurence
+        //return true on success, false on failure
+        bool iterate(int32 step_index, bb_t& source_file_ref, int32& line_num_ref, bb_t& object_id_ref, bb_t& function_name_ref,
+                        bb_t& spot_ref, bb_t& desc_ref) throw();
+
+        //<-
+
+protected:
+        class _exp_row_t
+        {
+        public:
+                _exp_row_t() throw();
+                _exp_row_t(const int8 *src_file, int32 line_num,
+                                const int8 *object_id, const int8 *function_name, const int8 *spot,
+                                const int8 *desc) throw();
+                _exp_row_t(const _exp_row_t& er) throw(); //copy ctor
+
+        public:
+                //source file name where exceptions occurs or passes
+                bb_t m_src_file;
+                int32 m_line_num; //line number of source file
+
+                //object id where exceptions occurs or passes
+                //for global function it can be reserved string like "global" or other equivalent
+                bb_t m_obj_id;
+                bb_t m_fun;//function name where excpetion occurs or passes
+                bb_t m_spot; //identify where the exception occurs within the function
+                bb_t m_desc; //exception description
+        };
+protected:
+        __exception_body_t(const __exception_body_t& exp) throw(){} //copy ctor
+        void _add_reference();
+        void _release_reference();
+protected:
+        std::vector<_exp_row_t> _exp_vec;//hold all exception path
+        uint32 _ref_cnt;
+};
+
+/*it's a flightweight exception class, it only hold smart pointer to real exception data, so its copy ctor is efficient,
+ *which can meet try...catch requirements to call copy ctor frequently
+ */
+class exception_t
+{
+public:
+        exception_t() throw();
+        exception_t(const int8 *src_file, int32 line_num,
+                        const int8 *object_id, const int8 *function_name, const int8 *spot, const int8 *desc) throw();
+
+        exception_t(const exception_t& e) throw();
+        virtual ~exception_t();
+
+        //exception is thrown out of each code scope, copy ctor will be called once, _cc_cnt will be increased
+        //_cc_cnt == 1 means catch clause catchs an exception within same scope
+        inline uint32 get_cc_count() const throw() { return _cc_cnt; }
+
+        void to_string(bb_t& bb, bool verbose_flag=true) const throw() { _exp_body->to_string(bb, verbose_flag); }
+
+        __exception_body_t *operator ->() throw() { return _exp_body; }
+protected:
+        uint32 _cc_cnt;//count copy constructor is called
+        __exception_body_t *_exp_body;
+};
+
+/*[tip]
+ *[desc] some macros to make ease exception handling
+ *[history] 
+ * Initialize: 2008-3-19
+ * Revise:     2009-5-13
+ */
+//internal macro to throw an exception
+#define __INTERNAL_FY_THROW(object_id, function_name, spot, desc) do{ string_builder_t sb; sb<<desc; bb_t bb;\
+   sb.build(bb);\
+   throw exception_t(__FILE__, __LINE__,\
+             object_id, function_name, spot, (int8*)bb); }while(false)
+
+//declare exception context, it should appears in the front of a function definition
+#define FY_DECL_EXCEPTION_CTX(object_id, function_name) int8 __exp_object_id_klv_20080317[]=object_id;\
+ int8 __exp_function_name_klv_20080317[]=function_name
+
+//throw an exception, it always appears after FY_DECL_EXCEPTION_CTX
+#define FY_THROW(spot, desc) __INTERNAL_FY_THROW(__exp_object_id_klv_20080317, \
+ __exp_function_name_klv_20080317, spot, desc)
+
+//internal catch and throw again an exception
+#define __INTERNAL_FY_CATCH_N_THROW_AGAIN(object_id, function_name, spot, desc, final_code) }catch(exception_t& e){\
+       final_code;\
+       if(e.get_cc_count() == 1) throw e;\
+       e->push_back(__FILE__, __LINE__, object_id, function_name, spot, desc);\
+       throw e;}catch(std::exception& e){\
+       final_code;\
+       __INTERNAL_FY_THROW(object_id, function_name, spot, e.what());\
+       }catch(...){\
+       final_code; \
+       __INTERNAL_FY_THROW(object_id, function_name, spot, "unknown exception");}
+
+//catch an expcetion and throw it again, it always appears after FY_DECL_EXCEPTION_CTX
+#define FY_CATCH_N_THROW_AGAIN(spot, desc, final_code) __INTERNAL_FY_CATCH_N_THROW_AGAIN(\
+          __exp_object_id_klv_20080317, __exp_function_name_klv_20080317, spot, desc, final_code)
+
+//declare exception context for class which support get_object_id() function
+#define FY_DECL_EXCEPTION_CTX_EX(function_name) int8 __exp_function_name_ex_klv_20080317[]=function_name
+
+//throw an exception, it always appears after FY_DECL_EXCEPTION_CTX_EX
+#define FY_THROW_EX(spot, desc)  __INTERNAL_FY_THROW(this->get_object_id(), __exp_function_name_ex_klv_20080317, spot, desc)
+
+//catch an expcetion and throw it again, it always appears after FY_DECL_EXCEPTION_CTX_EX
+#define FY_CATCH_N_THROW_AGAIN_EX(spot, desc, final_code) __INTERNAL_FY_CATCH_N_THROW_AGAIN(\
+         this->get_object_id(), __exp_function_name_ex_klv_20080317, spot, desc, final_code)
+
+#if defined(FY_ENABLE_ASSERT)
+
+#       define FY_ASSERT(exp) if(!(exp)) { __INTERNAL_FY_THROW("ASSERT","ASSERT", "ASSERT", #exp); }
+
+#else
+
+#       define FY_ASSERT(exp)
+
+#endif
+
+/*[tip]macro to build default object_id_it
+ *[desc] the default format of object_id: <class_name>_<hex this pointer> 
+ *[history] 
+ * Initialize: 2006-12-1,usa
+ */
+#define OID_DEF_IMP(class_name) FY_TRY\
+ string_builder_t sb;\
+ sb<<(class_name)<<"_"<<(void*)this;\
+ sb.build(_object_id); __INTERNAL_FY_EXCEPTION_TERMINATOR()
+
+/*[tip]default implementation of object_id_it
+ */
+class object_id_impl_t : public object_id_it
+{
+public:
+        object_id_impl_t(){}
+        virtual ~object_id_impl_t(){}
+
+        //lookup_it
+        void *lookup(uint32 iid) throw()
+	{
+        	switch(iid)
+        	{
+        	case IID_self:
+        	case IID_lookup:
+                	return this;
+
+        	case IID_object_id:
+                	return static_cast<object_id_it *>(this);
+
+        	default:
+                	return 0;
+        	}
+	}
+
+        //object_id_it
+        //descendant should not overwrite it
+        inline const int8 *get_object_id() throw()
+        {
+                if(_object_id.get_filled_len() == 0) _lazy_init_object_id();//lazy initialize object_id
+                return (int8*)_object_id;
+        }
+protected:
+        //it should be overwritten by descendant
+        virtual void _lazy_init_object_id() throw() { OID_DEF_IMP("object_id_impl") }
+
+protected:
+        bb_t _object_id;
+};
 
 DECL_FY_NAME_SPACE_END
 
