@@ -974,6 +974,312 @@ protected:
         bb_t _object_id;
 };
 
+/*[tip]reference count interface
+ *[desc] reference count based objects' life cycle management is proved useful. any reference-count-aware class should
+ * realize this interface
+ *[memo]
+ * semantic convention: reference count mechanism is used to control heap objects' life cycle, It's add_reference() must
+ * be called as soon as a heap object is constructed, and heap object will be destroyed just after its reference count is
+ * released to zero.
+ *[history] 
+ *Initialize: 2006-6-19
+*/
+class ref_cnt_it : public lookup_it
+{
+public:
+        virtual void add_reference()=0;
+        virtual void release_reference()=0;
+        virtual uint32 get_ref_cnt() const throw()=0; //for tracibility
+};
+
+/*[tip] default implementation of ref_cnt_it 
+ *[desc] any class can inherit reference-count mechanism from this class,
+ *       you can specify an outer critical_section_t object for thread-safe, or null for non-thread-safe
+ *       to eliminate mess, all ref_cnt_it based object must always be allocated on heap, though this means tiny performance down
+ *       than stack object in some occasions, but both support heap object and stack object will lead to much mess
+ *       and crash risk, so ALWAYS CREATE RCO(ref_cnt_it-based object) ON HEAP is a good practice,2008-3-26
+ *[history] 
+ *Initialize: 2006-6-19
+ */
+class ref_cnt_impl_t : public ref_cnt_it
+{
+public:
+       virtual ~ref_cnt_impl_t(){}
+
+        //set_lock is called with a non-null para will enable thread-safe
+        void set_lock(critical_section_t *cs) throw();
+
+        bool is_thread_safe() const throw() { return _p_cs!=0; }
+
+        //lookup_i
+        void *lookup(uint32 iid) throw();
+
+        //ref_cnt_i
+        void add_reference();
+        void release_reference();
+        inline uint32 get_ref_cnt() const throw(){ return _ref_cnt; }
+protected:
+        //disable instantiate it directly
+        ref_cnt_impl_t() throw();
+        ref_cnt_impl_t(critical_section_t *cs) throw();
+
+protected:
+        uint32 _ref_cnt;
+        critical_section_t *_p_cs;//set it to nonull,it will be thread-safe
+};
+
+/*[tip] smart pointer to wrapp ref_cnt_it
+ *[desc] reference count based object's lifecycle management is proved useful. but manually add/release reference
+ * is programmer's nightmare, and often cause memory leak, the following smart pointer can automatically add/release 
+ * reference correctly.
+ *
+ *[memo] this smart pointer assumes that T implements ref_cnt_i or equivalent interface. 
+ * It's forbidden to manually add or release reference passing by smart pointer
+ *
+ *[history] 
+ * Initialize: 2006-9-14
+ */
+template < typename T> class _NoAddOrReleaseRefPtr : public T
+{
+private:
+        //forbid  to call add_reference and release_reference
+        void add_reference(){}
+        void release_reference(){}
+};
+
+template < typename T> class smart_pointer_tt
+{
+public:
+        smart_pointer_tt() throw() { _p=0; }
+        smart_pointer_tt(T *p,bool shallow_copy_opt=false)//default:attach a raw pointer
+        {
+                _p=p;
+                if(shallow_copy_opt && _p) _p->add_reference();
+        }
+
+        smart_pointer_tt(const smart_pointer_tt& sp)//shallow copy para pointer
+        {
+                _p=sp._p;
+                if(_p) _p->add_reference();
+        }
+        ~smart_pointer_tt(){ if(_p) _p->release_reference(); }
+        const smart_pointer_tt& operator =(const smart_pointer_tt& sp)//shallow copy para pointer
+        {
+                if(_p) _p->release_reference();
+                _p=sp._p;
+                if(_p) _p->add_reference();
+
+                return sp;
+        }
+
+        bool is_null() const throw() { return _p == 0; }
+        bool is_same_as(const smart_pointer_tt& sp) const throw() { return _p == sp._p; }
+        bool is_same_as(T *raw_obj) const throw() { return _p == raw_obj; }
+        //attach a zero pointer means to clear,2009-1-5
+        void attach(T *p)//not add new pointer's reference
+        {
+                if(_p) _p->release_reference();//release old raw pointer
+                _p=p;
+        }
+        T *detach() throw()
+        {
+                T *p=_p;
+                _p=0;
+                return p;
+        }
+        //copy_from a zero pointer is same as attach a zero pointer,2009-1-5
+        void copy_from(T *p)//add reference
+        {
+                if(_p) _p->release_reference();
+                _p=p;
+                if(_p) _p->add_reference();
+        }
+        operator T*() throw() { return _p; }
+
+        _NoAddOrReleaseRefPtr<T> *operator ->() throw() { return (_NoAddOrReleaseRefPtr<T> *)_p; }
+        T& operator *() throw() { return *_p; }
+
+        const T *get_p_const() const throw() { return _p; }
+protected:
+        T * _p;//raw pointer which implements ref_cnt_t or equivalent interface
+};
+
+/*[tip] smart pointer to support Dynamic Interface Discovery(DID) mechanism
+ *[desc] type T can be an interface that doesn't inherit from ref_cnt_it, if only concrete class implements both T interface 
+ * and ref_cnt_it, it will work
+ *[history]
+ * Initialize: 2007-2-15
+ */
+template < typename T> class smart_pointer_lu_tt
+{
+public:
+        smart_pointer_lu_tt() throw(): _p(0),_pr(0) {}
+        smart_pointer_lu_tt(T *p, bool shallow_copy_opt=false)//default:attach a raw pointer
+        {
+                _p=p;
+                if(_p)
+                {
+                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt);
+                        if(shallow_copy_opt && _pr) _pr->add_reference();
+                }
+                else
+                {
+                        _pr=0;
+                }
+        }
+
+        smart_pointer_lu_tt(const smart_pointer_lu_tt& sp)//shallow copy para pointer
+        {
+                _p=sp._p;
+                _pr=sp._pr;
+                if(_pr) _pr->add_reference();
+        }
+        ~smart_pointer_lu_tt(){ if(_pr) _pr->release_reference(); }
+
+        bool is_null() const throw() { return _p == 0; }
+        bool is_same_as(const smart_pointer_lu_tt& sp) const throw()
+        {
+                if(_p)
+                {
+                        if(sp._p)
+                                return _p->lookup(IID_self) == sp._p->lookup(IID_self);
+                        else
+                                return false;
+                }
+                else
+                        return sp._p == 0;
+        }
+
+        bool is_same_as(T *raw_obj) const throw()
+        {
+                if(_p)
+                {
+                        if(raw_obj)
+                                return _p->lookup(IID_self) == raw_obj->lookup(IID_self);
+                        else
+                                return false;
+                }
+                else
+                        return raw_obj == 0;
+        }
+
+        const smart_pointer_lu_tt& operator =(const smart_pointer_lu_tt& sp)//shallow copy para pointer
+        {
+                if(_pr) _pr->release_reference();
+                _p=sp._p;
+                _pr=sp._pr;
+                if(_pr) _pr->add_reference();
+
+                return sp;
+        }
+        //attach a zero pointer means to clear,2009-1-5
+        void attach(T *p)//not add new pointer's reference
+        {
+                if(_pr) _pr->release_reference();//release old raw pointer
+                _p=p;
+                if(_p)
+                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt);
+                else
+                        _pr=0;
+        }
+        T *detach() throw()
+        {
+                T *p=_p;
+                _p=0;
+                _pr=0;
+                return p;
+        }
+        //copy_from a zero pointer is same as attach a zero pointer,2009-1-5
+        void copy_from(T *p)//add reference
+        {
+                if(_pr) _pr->release_reference();
+                _p=p;
+                if(_p)
+                {
+                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt);
+                        if(_pr) _pr->add_reference();
+                }
+                else
+                        _pr=0;
+        }
+        operator T*() throw() { return _p; }
+
+        _NoAddOrReleaseRefPtr<T> *operator ->() throw() { return (_NoAddOrReleaseRefPtr<T> *)_p; }
+        T& operator *() throw() { return *_p; }
+
+        const T *get_p_const() const throw() { return _p; }
+private:
+        T * _p;//target interface pointer which doesn't inherit IRefCnt
+        ref_cnt_it *_pr; //ref_cnt_it pointer which concrete class implements
+};
+
+typedef smart_pointer_lu_tt<lookup_it> sp_lookup_t;
+
+/*[tip] smart pointer convertion macro 
+ *[desc] macro to do type cast between parent type and its child type smart pointer
+ *[memo] destination smart pointer will shallow copy from source smart pointer but not attach from it
+ *            dest_type must be parent or child of src_type
+ *[history] 
+ * Initialize: 2007-3-21
+ */
+#define SP_CAST(dest_type, src_type, src_sp) (smart_pointer_tt< dest_type >((dest_type*)(src_type*)src_sp, true))
+
+/*[tip]smart pointer convertion macro which support lookup_it interface
+ *[desc] this macro can do type cast between multi interfaces, which inherits from lookup_it,implemented by same class
+ *[history] 
+ * Initialize: 2007-3-21
+ */
+#define SP_LU_CAST(dest_type, dest_type_id, src_sp) (smart_pointer_lu_tt< dest_type >(\
+                   (dest_type*)src_sp->lookup(dest_type_id),true))
+
+/*[tip]ref_cnt_it adaptor
+ *[desc] adapt ref_cnt_it mechansim to any type without it
+ *[memo] raw type must be allocated on heap
+ *[history] 
+ * Initialize: 2007-2-5
+ */
+template < typename T> class ref_cnt_adaptor_tt : public ref_cnt_impl_t
+{
+public:
+        //after this call, life cycle of pointer_on_heap will be controlled by this object
+        static smart_pointer_tt< ref_cnt_adaptor_tt<T> > create(T *pointer_on_heap, uint32 array_size=0, bool thread_safe=false)
+        {
+                ref_cnt_adaptor_tt<T> *p=new ref_cnt_adaptor_tt<T>(pointer_on_heap, array_size);
+                p->add_reference();
+                if(thread_safe) p->set_lock(&p->_cs);
+
+                return smart_pointer_tt<ref_cnt_adaptor_tt<T> >(p);
+        }
+
+        T *get_p() throw(){ return _pointer_on_heap; } //don't delete pointer returned by this call
+        const T *get_p_const() const throw() { return _pointer_on_heap; }
+        T *operator ->() throw() { return _pointer_on_heap; }
+public:
+        ~ref_cnt_adaptor_tt()
+        {
+                if(_pointer_on_heap)
+                {
+                        if(_array_size)
+                                delete [] _pointer_on_heap;
+                        else
+                                delete _pointer_on_heap;
+                }
+        } //virtual destructor
+        uint32 get_array_size() const throw() { return _array_size; }
+private:
+        //disable direct calling constructor;
+        ref_cnt_adaptor_tt() throw(){ _pointer_on_heap = 0; _array_size=0; }
+        ref_cnt_adaptor_tt(T *pointer_on_heap, uint32 array_size=0) throw()
+        {
+                _pointer_on_heap = pointer_on_heap;
+                _array_size = array_size;
+        }
+private:
+        T *_pointer_on_heap; //object without ref_cnt_it mechanism,it must be allocated on heap
+        uint32 _array_size;//if T* points to array, it's array size, otherwise, it's zero
+        critical_section_t _cs;
+};
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_BASE_DREAMFREELANCER_20080322_H__

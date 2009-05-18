@@ -405,6 +405,50 @@ void test_string_builder(void)
         sb2.build(bb);
         printf("%s\n",(int8*)bb);
 }
+#include <sstream>
+void test_string_builder_performance()
+{
+        int8 i8=-10;
+        uint8 ui8=10;
+        int16 i16=-1024;
+        uint16 ui16=1024;
+        int32 i32=-1048576;
+        uint32 ui32=1048576;
+        float f32=3.1415926535;
+        double f64=-314159265358979323.84626;
+
+        int8 hello[]="hello everyone!";
+
+	struct timeval tv1,tv2;
+	::gettimeofday(&tv1, 0);
+	for(int i=0;i<10000;++i)
+	{
+
+		//string builder performance
+        	string_builder_t sb;
+		sb.prealloc(256);
+		sb<<string_builder_t::eUNCPY_STR<<hello<<"i8="<<i8<<";ui8="<<ui8<<";i16="<<i16<<";ui16="<<ui16
+                	<<";i32="<<i32<<";ui32="<<ui32<<";f32="<<f32<<";f64="<<f64;
+		bb_t bb;
+        	sb.build(bb);
+
+/*
+		//sprintf perforamnce
+		char buf[256];
+		::sprintf(buf, "%si8=%d;ui8=%lu;i16=%d;ui16=%lu;i32=%d;ui32=%lu;f32=%f;f64=%f",
+			hello, i8, ui8,i16,ui16,i32,ui32,f32,f64);
+*/
+/*
+		//stringstream performance
+		std::stringstream ss;
+		ss<<hello<<"i8="<<i8<<";ui8="<<ui8<<";i16="<<i16<<";ui16="<<ui16
+                        <<";i32="<<i32<<";ui32="<<ui32<<";f32="<<f32<<";f64="<<f64;
+		const char *rst_str=(ss.str()).c_str();
+*/
+	}
+	::gettimeofday(&tv2,0);
+	printf("string builder takes time:%lu\n",timeval_util_t::diff_of_timeval_tc(tv1,tv2));
+}
 
 //pass test 2009-5-13
 void test_internal_fy_trace_ex()
@@ -495,7 +539,7 @@ void test_exception_ex()
         etx.f2();
         }catch(exception_t& e){
                 bb_t tbb;
-                e.to_string(tbb,true);
+                e.to_string(tbb,false);
                 printf("cc count:%d,exception desc:%s\n",e.get_cc_count(),(int8*)tbb);
         }
 }
@@ -556,10 +600,11 @@ int main(int argc, char **argv)
 	//test_event();
 	//test_event_slot();
 	//test_string_builder();
+	//test_string_builder_performance();
 	//test_internal_fy_trace_ex();
 	//test_exception();
-	//test_exception_ex();
-	test_assert();
+	test_exception_ex();
+	//test_assert();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

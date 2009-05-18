@@ -1062,4 +1062,61 @@ exception_t::~exception_t()
         if(_exp_body) _exp_body->_release_reference();
 }
 
+//ref_cnt_impl_t
+ref_cnt_impl_t::ref_cnt_impl_t() throw() : _ref_cnt(0), _p_cs(0){}
+
+ref_cnt_impl_t::ref_cnt_impl_t(critical_section_t *cs) throw() : _ref_cnt(0), _p_cs(cs){}
+
+void ref_cnt_impl_t::set_lock(critical_section_t *cs) throw()
+{
+        _p_cs=cs;
+}
+
+void *ref_cnt_impl_t::lookup(uint32 iid) throw()
+{
+        switch(iid)
+        {
+        case IID_self:
+        case IID_lookup:
+                return this;
+
+        case IID_ref_cnt:
+                return static_cast<ref_cnt_it *>(this);
+
+        default:
+                return 0;
+        }
+
+        return 0;
+}
+
+void ref_cnt_impl_t::add_reference()
+{
+        if(_p_cs)//thread-safe
+        {
+             _p_cs->lock();
+             ++_ref_cnt;
+             _p_cs->unlock();
+        }
+        else
+             ++_ref_cnt;
+}
+
+void ref_cnt_impl_t::release_reference()
+{
+        if(_p_cs) //thread-safe
+        {
+                bool del_flag=false;
+
+                _p_cs->lock();
+
+                del_flag =(--_ref_cnt == 0);
+
+                _p_cs->unlock();
+
+                if(del_flag) delete this;
+        }
+        else
+                if(--_ref_cnt == 0) delete this;
+}
 
