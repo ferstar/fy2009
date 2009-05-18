@@ -1280,6 +1280,108 @@ private:
         critical_section_t _cs;
 };
 
+/*[tip] clone interface,which implies deep-copy
+ *[desc] clone a new object from original object, this new object is a deep copy of original object,
+ * it is completely independent from original one. clone is an opposite mechanism from ref_cnt_it.
+ *
+ *[history] 
+ * Initialize: 2006-6-19
+ */
+class clone_it : public lookup_it
+{
+public:
+        //deep copy a new object from this object(origin),any member variable must recursively do deep copy.
+        //prototype_flag is true means only new a dest object with initial state and don't need to copy
+        //current object's state to dest object
+        virtual sp_lookup_t clone(bool prototype_flag=false)=0;
+};
+
+typedef smart_pointer_lu_tt<clone_it> sp_clone_t;
+
+/*[tip] prototype manager, singleton
+ *[desc] it's often useful to activate/deactivate object from stream media without precreating relavent object
+ *
+ *[history] 
+ * Initialize: 2008-5-26
+ */
+const uint32 MAX_PROTOTYPE_ID=65535;
+
+//state enum
+const uint8 PTM_STATE_NULL=0;
+const uint8 PTM_STATE_OPENING=1;
+const uint8 PTM_STATE_OPEN=2;
+
+//return value
+const int PTM_RET_SUCCESS=0;
+const int PTM_RET_WRONGSTATE=1;
+const int PTM_RET_WRONGPARAM=2;
+const int PTM_RET_IDOVERFLOW=3;
+const int PTM_RET_EXISTED=4;
+const int PTM_RET_FAILCLONE=5;
+
+class prototype_manager_t
+{
+public:
+        static prototype_manager_t *instance() throw();
+
+        //it must be called before calling registering
+        int begin_register() throw();
+
+        //register prototype object pt,which must realize clone_i interface, ref_cnt_i interface is optional
+        int reg_prototype(uint32 ptid, clone_it *pt);
+
+        //it must be called after completing registering and before calling get_object
+        int end_register() throw();
+
+        //to keep it as efficient as possible, after end_register, _pt_vec will be read-only,
+        //then successive get_object will not need to lock
+        sp_clone_t get_prototype(uint32 ptid);
+private:
+        //to keep prototype service is as efficient as possible, prototype object will be hold in vector
+        //and suffix is prototype id
+        typedef std::vector<sp_clone_t> pt_vec_t;
+private:
+        prototype_manager_t() throw();
+private:
+        static prototype_manager_t *_s_inst;//singleton instance
+        static critical_section_t _s_cs;
+
+        pt_vec_t _pt_vec; //protottype object vector
+        int8 _state;
+        uint32 _capacity;//current used max prototype id
+};
+
+/*[tip]heart_beat interface 
+ *[desc] it implements a kind of asychronous mechanism which decouple system's static view(data structure)
+ *       from dynamic view(thread mode).
+ *[history] 
+ * Initialize: 2007-4-9
+ */
+//return of heart_beat
+//done nothing
+int8 const RET_HB_IDLE=0;
+
+//completed something
+int8 const RET_HB_BUSY=1;
+
+//interrupted by slice check
+int8 const RET_HB_INT=2;
+
+class heart_beat_it : public lookup_it
+{
+public:
+        //called by thread loop
+        virtual int8 heart_beat()=0;
+
+        //expected max slice(user tick-count) for heart_beat once call
+        virtual void set_max_slice(uint32 max_slice)=0;
+        virtual uint32 get_max_slice() const throw() =0;
+
+        //indicate callee expected called frequency: 0 means expected to be called as frequent as possible,
+        //otherwise, means expected interval user tick-count between two calling
+        virtual uint32 get_expected_interval() const throw() =0;
+};
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_BASE_DREAMFREELANCER_20080322_H__

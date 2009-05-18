@@ -1120,3 +1120,98 @@ void ref_cnt_impl_t::release_reference()
                 if(--_ref_cnt == 0) delete this;
 }
 
+//prototype_manager_t
+prototype_manager_t *prototype_manager_t::_s_inst=0;//initialize static member
+critical_section_t prototype_manager_t::_s_cs=critical_section_t();
+
+prototype_manager_t *prototype_manager_t::instance() throw()
+{
+        FY_TRY
+
+        if(_s_inst)
+        {
+                return _s_inst;
+        }
+        _s_cs.lock();
+        if(_s_inst)
+        {
+                _s_cs.unlock();
+                return _s_inst;
+        }
+        prototype_manager_t *tmp_inst=new prototype_manager_t();
+        //initializing sequence
+        _s_inst = tmp_inst; //it must be last statement to makse sure thread-safe,2007-3-5
+        _s_cs.unlock();
+
+        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+
+        return _s_inst;
+}
+
+prototype_manager_t::prototype_manager_t() throw()
+{
+        _state=PTM_STATE_NULL;
+        _capacity=0;
+}
+
+int prototype_manager_t::begin_register() throw()
+{
+        smart_lock_t slock(&_s_cs);
+
+        if(_state != PTM_STATE_NULL) return PTM_RET_WRONGSTATE; //has finished or in progress registeration
+
+        _state = PTM_STATE_OPENING;
+
+        return PTM_RET_SUCCESS;
+}
+
+int prototype_manager_t::reg_prototype(uint32 ptid, clone_it *pt)
+{
+        smart_lock_t slock(&_s_cs);
+
+        if(PTM_STATE_OPENING != _state) return PTM_RET_WRONGSTATE; //not in opening state
+        if(!pt) return PTM_RET_WRONGPARAM;
+
+        if(ptid > MAX_PROTOTYPE_ID) return PTM_RET_IDOVERFLOW;
+
+        if(ptid > _capacity)
+        {
+                _capacity = ptid + 10;
+                //new item will implicitly be intialized with zero
+                _pt_vec.resize(_capacity);
+        }
+        if(!_pt_vec[ptid].is_null()) return PTM_RET_EXISTED;
+
+        sp_lookup_t sp_cln=pt->clone(true);//clone a prototype to make prototype lifecycle independent from para pt
+        if(sp_cln.is_null()) return PTM_RET_FAILCLONE;
+
+        _pt_vec[ptid]=SP_LU_CAST(clone_it, IID_clone, sp_cln);
+
+        return PTM_RET_SUCCESS;
+}
+
+int prototype_manager_t::end_register() throw()
+{
+        smart_lock_t slock(&_s_cs);
+
+        if(PTM_STATE_OPENING != _state) return PTM_RET_WRONGSTATE; //not in opening state
+
+        _state = PTM_STATE_OPEN;
+
+        return PTM_RET_SUCCESS;
+}
+
+sp_clone_t prototype_manager_t::get_prototype(uint32 ptid)
+{
+        if(PTM_STATE_OPEN != _state) return sp_clone_t();
+
+        if(ptid >= _capacity) return sp_clone_t();
+
+        if(_pt_vec[ptid].is_null()) return sp_clone_t();
+
+        sp_lookup_t sp_cln=_pt_vec[ptid]->clone(true);//clone a prototype object
+        if(sp_cln.is_null()) return sp_clone_t();
+
+        return SP_LU_CAST(clone_it, IID_clone, sp_cln);
+}
+
