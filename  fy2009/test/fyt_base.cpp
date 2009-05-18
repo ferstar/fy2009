@@ -418,9 +418,13 @@ void test_string_builder_performance()
         double f64=-314159265358979323.84626;
 
         int8 hello[]="hello everyone!";
-
+#ifdef LINUX
 	struct timeval tv1,tv2;
 	::gettimeofday(&tv1, 0);
+#elif defined(WIN32)
+	long tc1, tc2;
+	tc1=::GetTickCount();
+#endif
 	for(int i=0;i<10000;++i)
 	{
 
@@ -446,8 +450,13 @@ void test_string_builder_performance()
 		const char *rst_str=(ss.str()).c_str();
 */
 	}
+#ifdef LINUX
 	::gettimeofday(&tv2,0);
-	printf("string builder takes time:%lu\n",timeval_util_t::diff_of_timeval_tc(tv1,tv2));
+	printf("string builder takes time(LINUX):%lu\n",timeval_util_t::diff_of_timeval_tc(tv1,tv2));
+#elif defined(WIN32)
+	tc2=::GetTickCount();
+	printf("string builder takes time(WIN32):%lu\n",tc2-tc1);
+#endif
 }
 
 //pass test 2009-5-13
@@ -603,7 +612,7 @@ int main(int argc, char **argv)
 	//test_string_builder_performance();
 	//test_internal_fy_trace_ex();
 	//test_exception();
-	test_exception_ex();
+	//test_exception_ex();
 	//test_assert();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
