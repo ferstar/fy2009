@@ -334,7 +334,7 @@ user_clock_t *user_clock_t::instance() throw()
         _s_inst = tmp_inst; //it must be last statement to makse sure thread-safe,2007-3-5
         _s_cs.unlock();
 
-	__INTERNAL_FY_EXCEPTION_TERMINATOR()
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
         return _s_inst;
 }
@@ -439,7 +439,7 @@ void *user_clock_t::_thd_f(void *arg) throw()
 			}//if(!bCheckPoint)
 	}//while(true)
 
-	__INTERNAL_FY_EXCEPTION_TERMINATOR()
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
 	pClk->_running_flag=false;
 
@@ -461,7 +461,7 @@ void user_clock_t::_start() throw()
 	_cs.lock();     
 	_cs.unlock();  
 
-	__INTERNAL_FY_EXCEPTION_TERMINATOR() 
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;) 
 }                               
                                 
 void user_clock_t::_stop() throw()
@@ -473,7 +473,7 @@ void user_clock_t::_stop() throw()
 	pthread_join(_thd,0);   
 	_thd=0;
 
-	__INTERNAL_FY_EXCEPTION_TERMINATOR()         
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;)         
 }                       
                         
 user_clock_t::user_clock_t() throw() 
@@ -492,7 +492,7 @@ user_clock_t::user_clock_t() throw()
 	_stop_flag=false;
 	_running_flag=false;
 
-	__INTERNAL_FY_EXCEPTION_TERMINATOR()
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 }
 
 user_clock_t::~user_clock_t() throw()
@@ -531,7 +531,7 @@ uint32 user_clock_t::get_localtime(struct tm *lt) throw()
 			}
 	}
 
-	__INTERNAL_FY_EXCEPTION_TERMINATOR()
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
 	return _local_time.tv_usec/1000;
 }
@@ -943,7 +943,7 @@ __exception_body_t::__exception_body_t(const int8 *src_file, int32 line_num,
         _ref_cnt=0;
         _exp_vec.push_back(_exp_row_t(src_file, line_num, object_id, function_name, spot, desc));
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 }
 
 void __exception_body_t::push_back(const int8 *src_file, int32 line_num,
@@ -953,7 +953,7 @@ void __exception_body_t::push_back(const int8 *src_file, int32 line_num,
 
         _exp_vec.push_back(_exp_row_t(src_file, line_num, object_id, function_name, spot, desc));
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 }
 
 void __exception_body_t::to_string(bb_t& bb, bool verbose_flag) const throw()
@@ -990,7 +990,7 @@ void __exception_body_t::to_string(bb_t& bb, bool verbose_flag) const throw()
 
         sb_desc.build(bb);
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 }
 
 bool __exception_body_t::iterate(int32 step_index, bb_t& source_file_ref, int32& line_num_ref,
@@ -1010,7 +1010,7 @@ bool __exception_body_t::iterate(int32 step_index, bb_t& source_file_ref, int32&
 
         return true;
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
         return false;
 }
@@ -1034,7 +1034,7 @@ exception_t::exception_t() throw()
         _exp_body=new __exception_body_t();
         _exp_body->_add_reference();
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR();
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 }
 
 exception_t::exception_t(const int8 *src_file, int32 line_num, const int8 *object_id, const int8 *function_name,
@@ -1047,7 +1047,7 @@ exception_t::exception_t(const int8 *src_file, int32 line_num, const int8 *objec
        _exp_body=new __exception_body_t(src_file, line_num, object_id, function_name, spot, desc);
        _exp_body->_add_reference();
 
-       __INTERNAL_FY_EXCEPTION_TERMINATOR();
+       __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 }
 
 exception_t::exception_t(const exception_t& e) throw()
@@ -1143,7 +1143,7 @@ prototype_manager_t *prototype_manager_t::instance() throw()
         _s_inst = tmp_inst; //it must be last statement to makse sure thread-safe,2007-3-5
         _s_cs.unlock();
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
         return _s_inst;
 }

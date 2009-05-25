@@ -932,7 +932,7 @@ protected:
 #define OID_DEF_IMP(class_name) FY_TRY\
  string_builder_t sb;\
  sb<<(class_name)<<"_"<<(void*)this;\
- sb.build(_object_id); __INTERNAL_FY_EXCEPTION_TERMINATOR()
+ sb.build(_object_id); __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
 /*[tip]default implementation of object_id_it
  */
