@@ -15,7 +15,8 @@ PATH_OUT=../lib
 
 PATH_OBJ=./objs
 
-OBJS=$(PATH_OBJ)/fy_base.o 
+OBJS=$(PATH_OBJ)/fy_base.o \
+     $(PATH_OBJ)/fy_stream.o 
 
 all:chk_lib_path chk_obj_path $(PATH_OUT)/fy_util.a
 
@@ -39,4 +40,6 @@ $(PATH_OUT)/fy_util.a:$(OBJS)
 
 $(PATH_OBJ)/fy_base.o:fy_base.cpp
 	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_base.cpp
+$(PATH_OBJ)/fy_stream.o:fy_stream.cpp
+	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_stream.cpp
 

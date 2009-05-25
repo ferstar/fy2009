@@ -12,6 +12,9 @@
 #ifndef __FENGYI2009_PRIMITIVES_DREAMFREELANCER_20090513_H__
 #define __FENGYI2009_PRIMITIVES_DREAMFREELANCER_20090513_H__
 
+#include <string>
+#include <vector>
+
 //macros about fy2009 namespace declaration and using
 
 #define DECL_FY_NAME_SPACE_BEGIN namespace fy2009{
@@ -35,6 +38,22 @@ typedef unsigned short uint16; //size is 16 bits
 
 typedef long int32; //size is 32 bits 
 typedef unsigned long uint32; //size is 32 bits
+
+/*[tip] typedef std::string
+ *[desc] in almost any occuasion, std::string can replace plain c string, meanwhile, you still can use pain c function 
+ * if you like just by extracting plain c string from std::string by calling c_str()
+ */
+typedef std::string string_t;
+
+/*[tip] int8 vector type.
+ *[desc] communication application often needs a buffer to serialize/deserialize data, but plain c array isn't flexible
+ * to be used as function output parameter, so c style api function always asks for caller to pre-allocate a big enough buffer
+ * ,unfortunately, caller often can't predicate how many bytes are proper. stl vector is a better alternative, both caller and
+ * callee can adjust its size as needed by calling reserve(), you also can use it just like a c array.
+ *[memo]
+ * only push_back() or resize() can change its size(), operator[] doesn't and also doesn't check memroy boundary
+ */
+typedef std::vector<int8> int8v_t;
 
 DECL_FY_NAME_SPACE_END
 
