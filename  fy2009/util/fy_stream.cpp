@@ -495,7 +495,8 @@ stream_adaptor_t& stream_adaptor_t::operator >>(string_t& str)
         *this>>len;
         if(!len)
         {
-                str.clear();
+		string_t str_tmp;
+                str.swap(str_tmp); //clear isn't supported by VC
                 return *this;
         }
         int8 *buf=new int8[len];
