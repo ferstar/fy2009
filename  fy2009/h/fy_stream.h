@@ -579,7 +579,7 @@ private:
         critical_section_t _cs_r; //read lock
         critical_section_t _cs_w; //write lock
 };
-//
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_STREAM_DREAMFREELANCER_20090520_H__
