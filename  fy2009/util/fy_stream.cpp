@@ -495,7 +495,7 @@ stream_adaptor_t& stream_adaptor_t::operator >>(string_t& str)
         *this>>len;
         if(!len)
         {
-		string_t str_tmp;
+                string_t str_tmp;
                 str.swap(str_tmp); //clear isn't supported by VC
                 return *this;
         }
@@ -508,7 +508,7 @@ stream_adaptor_t& stream_adaptor_t::operator >>(string_t& str)
         str.assign(buf,len);
         delete [] buf;
 
-        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(string_t&)", "sadstr-2", "pass",)
+        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(string_t&)", "sadstr-2", "pass",;)
 
         return *this;
 }
@@ -529,7 +529,7 @@ stream_adaptor_t& stream_adaptor_t::operator >>(int8v_t& i8v)
                           "fail to read all or part data from stream");
         }
 
-        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(int8v_t&)", "sadi8v-2", "pass",)
+        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(int8v_t&)", "sadi8v-2", "pass",;)
 
         return *this;
 }
@@ -550,7 +550,7 @@ stream_adaptor_t& stream_adaptor_t::operator >>(bb_t& bb)
                           "fail to read all or part data from stream");
         }
 
-        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(bb_t&)", "sadbb-2", "pass",)
+        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(bb_t&)", "sadbb-2", "pass",;)
 
         bb.set_filled_len(len);
 
@@ -597,7 +597,7 @@ stream_adaptor_t& stream_adaptor_t::operator >>(raw_buf_t& raw_buf)
                         "fail to read all or part data from stream");
         }
 
-        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(raw_buf_t&)", "sadrbuf-4", "pass",)
+        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(raw_buf_t&)", "sadrbuf-4", "pass",;)
 
         return *this;
 }
@@ -613,11 +613,12 @@ stream_adaptor_t& stream_adaptor_t::operator >>(raw_str_t& raw_str)
         raw_str._data_size=raw_buf._data_size;
         raw_str._raw_buf[raw_str._data_size]=0;
 
-        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(raw_str_t&)", "sadrstr", "pass",)
+        __INTERNAL_FY_CATCH_N_THROW_AGAIN(get_object_id(), "operator >>(raw_str_t&)", "sadrstr", "pass",;)
 
         return *this;
 }
 
+#ifdef POSIX
 
 //memory_stream_t::iovec_box_t
 memory_stream_t::iovec_box_t::iovec_box_t()
@@ -657,6 +658,8 @@ void memory_stream_t::iovec_box_t::_set_ref_mstm(ref_cnt_it *ref_mstm)
         _ref_mstm=ref_mstm;
         if(_ref_mstm) _ref_mstm->add_reference();
 }
+
+#endif //POSIX
 
 //memory_stream_t
 sp_mstream_t memory_stream_t::s_create(bool rcts_flag)
@@ -728,6 +731,8 @@ uint32 memory_stream_t::copy_to(int8v_t& i8v)
         return _len_written;
 }
 
+#ifdef POSIX
+
 uint32 memory_stream_t::get_iovec(iovec_box_t& iov_box, bool detach_flag)
 {
         if(!_len_written)
@@ -771,6 +776,8 @@ uint32 memory_stream_t::get_iovec(iovec_box_t& iov_box, bool detach_flag)
 
         return _len_written;
 }
+
+#endif //POSIX
 
 void memory_stream_t::prealloc_buffer(uint32 siz)
 {
@@ -1213,7 +1220,7 @@ uint32 fast_memory_stream_t::seek(int8 option,int32 offset)
         }
         return _pos;
 }
-
+/*
 //oneway_pipe_t
 sp_owp_t oneway_pipe_t::s_create(uint32 pipe_size, bool rcts_flag)
 {
@@ -1485,3 +1492,4 @@ void oneway_pipe_t::rollback_r()
         _r_pos=_r_pos_c;
 }
 
+*/

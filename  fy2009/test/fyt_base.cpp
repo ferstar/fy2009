@@ -9,6 +9,12 @@
  * initialize: 2009-4-29
  * ====================================================================
  */     
+#ifdef LINUX
+#define FY_TEST_BASE
+#endif
+
+#ifdef FY_TEST_BASE
+
 #include "fyt.h"
 
 USING_FY_NAME_SPACE
@@ -619,3 +625,5 @@ int main(int argc, char **argv)
 	
 	return 0;	
 }
+
+#endif //FY_TEST_BASE

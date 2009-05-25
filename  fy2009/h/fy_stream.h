@@ -13,7 +13,10 @@
 #define __FENGYI2009_STREAM_DREAMFREELANCER_20090520_H__ 
 
 #include "fy_base.h"
+
+#ifdef LINUX
 #include <sys/uio.h>
+#endif //LINUX
 
 DECL_FY_NAME_SPACE_BEGIN
 
@@ -79,6 +82,8 @@ typedef smart_pointer_lu_tt<random_stream_it> sp_rstream_t;
  *[history] 
  * Initialize: 2008-10-28
  */
+ #ifdef POSIX
+
 class iovec_it : public lookup_it
 {
 public:
@@ -95,6 +100,8 @@ public:
 };
 
 typedef smart_pointer_lu_tt<iovec_it> sp_iovec_t;
+
+#endif //POSIX
 
 /*[tip] adaptor to stream_it
  *[desc] change access interface of stream_it,always use it as stack object but never heap object
@@ -327,6 +334,9 @@ public:
         //para rcts_flag(ref_cnt thread-safe flag) indicate whether its ref_cnt_it should be thread-safe
         static sp_mstream_t s_create(bool rcts_flag=false);
 public:
+
+#ifdef POSIX
+
         //wrapp this object's memory buffers to struct iovec for socket fucntion writev to avoid extra data copy,2008-3-25
         class iovec_box_t
         {
@@ -346,6 +356,9 @@ public:
                 uint32 _vec_size;
                 ref_cnt_it *_ref_mstm; //referred memory_stream_t object
         };
+
+#endif //POSIX
+
 public:
         virtual ~memory_stream_t();
 
@@ -356,9 +369,13 @@ public:
         uint32 copy_to(bb_t& bb);//2008-4-14
         uint32 copy_to(int8v_t& i8v);
 
+#ifdef POSIX
+
         //map memory blocks to struct iovec for writev() socket function
         //return total bytes,if detach_flag is true, memory blocks will be detached from memory stream object,
         uint32 get_iovec(iovec_box_t& iov_box, bool detach_flag=false);
+
+#endif //POSIX
 
         //explicitly pre-alloc buffer for stream for better performance
         void prealloc_buffer(uint32 siz);
@@ -509,6 +526,7 @@ protected:
  *[history] 
  * Initialize: 2007-3-27
  */
+ /*
 class oneway_pipe_sink_it : public lookup_it
 {
 public:
@@ -579,7 +597,7 @@ private:
         critical_section_t _cs_r; //read lock
         critical_section_t _cs_w; //write lock
 };
-
+*/
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_STREAM_DREAMFREELANCER_20090520_H__

@@ -87,6 +87,10 @@ LIB32=link.exe -lib
 
 SOURCE=..\..\util\fy_base.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=..\..\util\fy_stream.cpp
+# End Source File
 # End Group
 # Begin Group "Header Files"
 

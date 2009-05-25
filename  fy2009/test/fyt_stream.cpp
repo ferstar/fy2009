@@ -8,11 +8,26 @@
  * [History]
  * initialize: 2009-5-21
  * ====================================================================
- */     
+ */
+#ifdef LINUX
+#define FY_TEST_STREAM
+#endif //LINUX
+
+#ifdef FY_TEST_STREAM
+
 #include "fyt.h"
 #include "fy_stream.h"
+
+#ifdef LINUX
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#elif defined(WIN32)
+
+#include <winsock.h>
+
+#endif //LINUX
 
 USING_FY_NAME_SPACE
 
@@ -127,3 +142,5 @@ int main(int argc, char **argv)
 	
 	return 0;	
 }
+
+#endif //FY_TEST_STREAM
