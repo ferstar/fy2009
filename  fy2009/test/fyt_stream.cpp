@@ -124,6 +124,6 @@ int main(int argc, char **argv)
 	test_stream_adaptor();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
-//	
+	
 	return 0;	
 }
