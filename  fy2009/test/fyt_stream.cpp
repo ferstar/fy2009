@@ -129,6 +129,489 @@ void test_stream_adaptor()
         //<-
 }
 
+//test memory_stream_t
+void test_memory_stream_self_allocated()
+{
+        //test auto-allocated memory block,2006-6-30
+        sp_mstream_t sp_mstm=memory_stream_t::s_create();
+
+        //object_id_it
+        //printf("********test object_id_it*********\n");
+        printf("object_id=%s\n",sp_mstm->get_object_id());
+
+        //stream_it
+        //printf("********test stream_it*************\n");//array version,pass test 2006-7-19
+        char c='K';
+        stream_it *pStm=(stream_it*)(random_stream_it*)sp_mstm;
+        uint32 w_len=pStm->write((int8*)&c,sizeof(char));
+        printf("wrote a char,len:%d\n",w_len);
+        int16 i=8888;
+        w_len=pStm->write((int8*)&i,sizeof(int16));
+        printf("wrote a int16,len:%d\n",w_len);
+        int32 l=1048576;
+        w_len=pStm->write((int8*)&l,sizeof(int32));
+        printf("wrote a int32,len:%d\n",w_len);
+        //random_stream_it
+        printf("*********test random_stream_it*********\n");
+        random_stream_it *p_rstm=dynamic_cast<random_stream_it *>(pStm);
+
+        printf("******test seek from begin*********\n"); //array version,pass test 2006-7-19
+        for(int i=-2;i<16;i++)
+        {
+                uint32 pos=p_rstm->seek(STM_SEEK_BEGIN,i);
+                printf("seek to %d from begin,pos:%d\n",i,pos);
+                pos=p_rstm->seek(STM_SEEK_CUR,0);
+                printf("current position is:%d\n",pos);
+        }
+
+        printf("*******test seek to end**************\n");//array version,pass test 2006-7-19
+        p_rstm->seek(STM_SEEK_BEGIN,3);
+        for(i=-2;i<16;i++)
+        {
+                uint32 pos=p_rstm->seek(STM_SEEK_END,i);
+                printf("seek to %d to end,pos:%d\n",i,pos);
+                pos=p_rstm->seek(STM_SEEK_CUR,0);
+                printf("current position is:%d\n",pos);
+        }
+
+
+        printf("*********test seek to cur***************\n");//array version,pass test 2006-7-19
+        for(i=-8;i<9;i++)
+        {
+                uint32 origin_pos=7;//0,1,2,3,6,7
+                p_rstm->seek(STM_SEEK_BEGIN,origin_pos);
+                printf("-----origin position:%d--------\n",origin_pos);
+                uint32 pos=p_rstm->seek(STM_SEEK_CUR,i);
+                printf("seek to %d to cur,pos:%d\n",i,pos);
+                pos=p_rstm->seek(STM_SEEK_CUR,0);
+                printf("current position is:%d\n",pos);
+        }
+
+        printf("*******test read sequentially***********\n");//array version,pass test 2006-7-19
+        {
+                p_rstm->seek(STM_SEEK_BEGIN,0);
+                char cr=0;
+                uint32 r_len=pStm->read((int8*)&cr,sizeof(char));
+                printf("read a char:%c,len:%d\n",cr,r_len);
+
+                int16 ir=0;
+                r_len=pStm->read((int8*)&ir,sizeof(int16));
+                printf("read a int16:%d,len:%d\n",ir,r_len);
+
+                int32 lr=0;
+                r_len=pStm->read((int8*)&lr,sizeof(int32));
+                printf("read a int32:%d,len:%d\n",lr,r_len);
+
+                char cc=0;
+                r_len=pStm->read((int8*)&cc,sizeof(char));
+                printf("try to read a char:%c over end,len:%d\n",cc,r_len);
+        }
+
+        printf("***********test random read***************\n");//array version,pass test 2006-7-19
+        {
+                uint32 pos=p_rstm->seek(STM_SEEK_BEGIN,1);//read int16
+                int16 ir=0;
+                uint32 r_len=pStm->read((int8*)&ir,sizeof(int16));
+                printf("read an int16:%d from pos:%d,len:%d\n",ir,pos,r_len);
+
+                pos=p_rstm->seek(STM_SEEK_CUR,-3);//to begin
+                char c=0;
+                r_len=pStm->read((int8*)&c,sizeof(char));
+                printf("read a char:%c from pos:%d,len:%d\n",c,pos,r_len);
+
+                pos=p_rstm->seek(STM_SEEK_END,4);//read int32
+                int32 lr=0;
+                r_len=pStm->read((int8*)&lr,sizeof(int32));
+                printf("read a int32:%d from pos:%d,len:%d\n",lr,pos,r_len);
+        }
+
+        printf("***********test copy_to bb_t********************\n");//array version,pass test 2008-4-14
+        {
+                bb_t bb;
+                uint32 buf_len=sp_mstm->copy_to(bb);
+                printf("copy stream to a buf,len:%d,bb.get_filled_len:%d\n",buf_len,bb.get_filled_len());
+                printf("a char in buffer is:%c\n",*bb.get_buf());
+
+                int16 s=0;
+                memcpy((char*)&s,bb.get_buf()+sizeof(char),sizeof(int16));
+                printf("an int16 in buffer is:%d\n",s);
+
+                int32 l=0;
+                memcpy((char*)&l,bb.get_buf()+sizeof(char)+sizeof(int16),sizeof(int32));
+                printf("an int32 in buffer is:%d\n",l);
+
+
+                printf("------test stream is still ok or not------\n");
+                uint32 pos=p_rstm->seek(STM_SEEK_END,4);
+                p_rstm->read((int8*)&l,sizeof(int32));
+                printf("read int32:%d from pos:%d\n",l,pos);
+        }
+
+        printf("***********test copy_to int8v_t********************\n");//array version,pass test 2006-7-19
+        {
+                int8v_t i8v;
+                uint32 buf_len=sp_mstm->copy_to(i8v);
+                printf("copy stream to a buf,len:%d,i8v.size:%d\n",buf_len,i8v.size());
+                printf("a char in buffer is:%c\n",i8v[0]);
+
+                int16 s=0;
+                memcpy((char*)&s,&i8v[0]+sizeof(char),sizeof(int16));
+                printf("an int16 in buffer is:%d\n",s);
+
+                int32 l=0;
+                memcpy((char*)&l,&i8v[0]+sizeof(char)+sizeof(int16),sizeof(int32));
+                printf("an int32 in buffer is:%d\n",l);
+
+
+                printf("------test stream is still ok or not------\n");
+                uint32 pos=p_rstm->seek(STM_SEEK_END,4);
+                p_rstm->read((int8*)&l,sizeof(int32));
+                printf("read int32:%d from pos:%d\n",l,pos);
+        }
+
+        printf("***********test jump read/write***********\n");//pass test,2006-7-20
+        {
+                sp_mstream_t sp_stm=memory_stream_t::s_create();
+                uint32 w_len=sp_stm->write(&c,sizeof(char));
+                 printf("wrote a char,len:%d\n",w_len);
+                //jump int16
+                w_len=sp_stm->write(0,sizeof(int16));
+                printf("write jump an int16,len:%d\n",w_len);
+                w_len=sp_stm->write((int8*)&l,sizeof(int32));
+                printf("wrote an int32,len:%d\n",w_len);
+
+                //read
+                sp_stm->seek(STM_SEEK_BEGIN,0);
+                char cr=0;
+                uint32 r_len=sp_stm->read((int8*)&cr,sizeof(char));
+                printf("read a char:%c,len:%d\n",cr,r_len);
+
+                int16 ir=0;
+                r_len=sp_stm->read((int8*)&ir,sizeof(int16));
+                printf("read a int16:%d,len:%d\n",ir,r_len);
+
+                int32 lr=0;
+                r_len=sp_stm->read((int8*)&lr,sizeof(int32));
+                printf("read a int32:%d,len:%d\n",lr,r_len);
+
+                char cc=0;
+                r_len=sp_stm->read((int8*)&cc,sizeof(char));
+                printf("try to read a char:%c over end,len:%d\n",cc,r_len);
+        }
+
+        printf("*********test get_iovec**************\n");//2008-3-25
+        {
+                sp_mstream_t sp_mstm_iov=memory_stream_t::s_create();
+                sp_mstm_iov->set_min_memory_blk_size(200);
+                int8 str[]="asfasdfasfasdfasdfasdfasfas";
+                printf("piece str len:%d\n",sizeof(str));
+
+                uint32 len_written=0;
+                for(int i=0;i<55;++i) len_written+=sp_mstm_iov->write(str,sizeof(str));
+                printf("total written bytes:%d\n",len_written);
+
+                int8v_t i8v_iov;
+                uint32 copy_len=sp_mstm_iov->copy_to(i8v_iov);
+                printf("copy_len:%d\n",copy_len);
+
+                uint32 total_size=sp_mstm_iov->seek(STM_SEEK_END,0);
+                printf("total_size:%d\n",total_size);
+
+                memory_stream_t::iovec_box_t iov_box;
+                uint32 bytes_len=sp_mstm_iov->get_iovec(iov_box,false);//true);
+                printf("all bytes in iovec:%d\n",bytes_len);
+                for(int i=0;i<iov_box.get_vec_size();++i)
+                {
+                        printf("iovec[%d].iov_len=%d\n",i,iov_box.get_iovec()[i].iov_len);
+                }
+                uint32 pos=sp_mstm_iov->seek(STM_SEEK_END,0);
+                printf("end pos after get_iov:%d\n",pos);
+                sp_mstm_iov->write(str,sizeof(str));
+                pos=sp_mstm_iov->seek(STM_SEEK_END,0);
+                printf("end pos after << string:%d\n",pos);
+        }
+}
+
+//test fast_memory_stream_t,2006-7-12
+//new revision pass test,2008-3-25
+void test_fast_memory_stream_t()
+{
+        uint32 buf_len=8;//6,7,8,12
+        printf("attach a buf to fast_memory_stream_t:size:%d\n",buf_len);
+        int8 out_buf[buf_len];
+        sp_fmstream_t sp_mstm=fast_memory_stream_t::s_create(out_buf,buf_len);
+        //object_id_it
+        //printf("********test object_id_it*********\n");
+        printf("fast_memory_stream_t object_id=%s\n",sp_mstm->get_object_id());
+
+        //stream_it
+        //printf("********test stream_it*************\n");//pass test 2006-7-12
+        char c='K';
+        stream_it *pStm=(stream_it *)(fast_memory_stream_t*)sp_mstm;
+        uint32 w_len=pStm->write((int8*)&c,sizeof(char));
+        printf("wrote a char,len:%d\n",w_len);
+        int16 i=8888;
+        w_len=pStm->write((int8*)&i,sizeof(int16));
+        printf("wrote a int16,len:%d\n",w_len);
+        int32 l=1048576;
+        w_len=pStm->write((int8*)&l,sizeof(int32));
+        printf("wrote a int32,len:%d\n",w_len);
+        //random_stream_it
+        printf("*********test random_stream_it*********\n");
+        random_stream_it *p_rstm=dynamic_cast<random_stream_it *>(pStm);
+
+        printf("******test seek from begin*********\n"); //pass test 2006-7-12
+        for(int i=-2;i<16;i++)
+        {
+                uint32 pos=p_rstm->seek(STM_SEEK_BEGIN,i);
+                printf("seek to %d from begin,pos:%d\n",i,pos);
+                pos=p_rstm->seek(STM_SEEK_CUR,0);
+                printf("current position is:%d\n",pos);
+        }
+
+        printf("*******test seek to end**************\n");//pass test 2006-7-12
+        p_rstm->seek(STM_SEEK_BEGIN,3);
+        for(i=-2;i<16;i++)
+        {
+                uint32 pos=p_rstm->seek(STM_SEEK_END,i);
+                printf("seek to %d to end,pos:%d\n",i,pos);
+                pos=p_rstm->seek(STM_SEEK_CUR,0);
+                printf("current position is:%d\n",pos);
+        }
+
+
+        printf("*********test seek to cur***************\n");//pass test 2006-7-12
+        for(i=-8;i<9;i++)
+        {
+                uint32 origin_pos=7;//0,1,2,3,6,7
+                p_rstm->seek(STM_SEEK_BEGIN,origin_pos);
+                printf("-----origin position:%d--------\n",origin_pos);
+                uint32 pos=p_rstm->seek(STM_SEEK_CUR,i);
+                printf("seek to %d to cur,pos:%d\n",i,pos);
+                pos=p_rstm->seek(STM_SEEK_CUR,0);
+                printf("current position is:%d\n",pos);
+        }
+
+        printf("*******test read sequentially***********\n");//pass test 2006-7-12
+        {
+                p_rstm->seek(STM_SEEK_BEGIN,0);
+                char cr=0;
+                uint32 r_len=pStm->read((int8*)&cr,sizeof(char));
+                printf("read a char:%c,len:%d\n",cr,r_len);
+
+                int16 ir=0;
+                r_len=pStm->read((int8*)&ir,sizeof(int16));
+                printf("read a int16:%d,len:%d\n",ir,r_len);
+
+                int32 lr=0;
+                r_len=pStm->read((int8*)&lr,sizeof(int32));
+                printf("read a int32:%d,len:%d\n",lr,r_len);
+
+                char cc=0;
+                r_len=pStm->read((int8*)&cc,sizeof(char));
+                printf("try to read a char:%c over end,len:%d\n",cc,r_len);
+        }
+
+        printf("***********test random read***************\n");//pass test 2006-7-12
+        {
+                uint32 pos=p_rstm->seek(STM_SEEK_BEGIN,1);//read int16
+                int16 ir=0;
+                uint32 r_len=pStm->read((int8*)&ir,sizeof(int16));
+                printf("read an int16:%d from pos:%d,len:%d\n",ir,pos,r_len);
+
+                pos=p_rstm->seek(STM_SEEK_CUR,-3);//to begin
+                char c=0;
+                r_len=pStm->read((int8*)&c,sizeof(char));
+                printf("read a char:%c from pos:%d,len:%d\n",c,pos,r_len);
+
+                pos=p_rstm->seek(STM_SEEK_END,4);//read int32
+                int32 lr=0;
+                r_len=pStm->read((int8*)&lr,sizeof(int32));
+                printf("read a int32:%d from pos:%d,len:%d\n",lr,pos,r_len);
+        }
+
+        printf("***********test detach********************\n");//pass test 2006-7-12
+        {
+                int8* buf=0;
+                uint32 filled_len=0;
+                uint32 buf_size=sp_mstm->detach(&buf,&filled_len);
+                printf("detach buf from stream,buf size:%d,filled_len=%d\n",buf_size,filled_len);
+                char c=0;
+                memcpy((char*)&c,buf,sizeof(char));
+                printf("a char in buffer is:%c\n",c);
+
+                int16 s=0;
+                memcpy((char*)&s,buf+sizeof(char),sizeof(int16));
+                printf("an int16 in buffer is:%d\n",s);
+
+                int32 l=0;
+                memcpy((char*)&l,buf+sizeof(char)+sizeof(int16),sizeof(int32));
+                printf("an int32 in buffer is:%d\n",l);
+        }
+        printf("***********test jump read/write***********\n");//pass test,2006-7-20
+        {
+                char buf[32];
+                sp_fmstream_t sp_stm=fast_memory_stream_t::s_create(buf,32);
+                uint32 w_len=sp_stm->write(&c,sizeof(char));
+                 printf("wrote a char,len:%d\n",w_len);
+                //jump int16
+                w_len=sp_stm->write(0,sizeof(int16));
+                printf("write jump an int16,len:%d\n",w_len);
+                w_len=sp_stm->write((int8*)&l,sizeof(int32));
+                printf("wrote an int32,len:%d\n",w_len);
+
+                //read
+                sp_stm->seek(STM_SEEK_BEGIN,0);
+                char cr=0;
+                uint32 r_len=sp_stm->read((int8*)&cr,sizeof(char));
+                printf("read a char:%c,len:%d\n",cr,r_len);
+
+                int16 ir=0;
+                r_len=sp_stm->read((int8*)&ir,sizeof(int16));
+                printf("read a int16:%d,len:%d\n",ir,r_len);
+
+                int32 lr=0;
+                r_len=sp_stm->read((int8*)&lr,sizeof(int32));
+                printf("read a int32:%d,len:%d\n",lr,r_len);
+
+                char cc=0;
+                r_len=sp_stm->read((int8*)&cc,sizeof(char));
+                printf("try to read a char:%c over end,len:%d\n",cc,r_len);
+        }
+}
+
+//stream performance benchmark test
+void test_memory_stream_performance(void)
+{
+        uint32 len=10485760;
+        int8* buf=new int8[len];
+        int8 c='K';
+        struct timeval tv1,tv2;
+        printf("********benchmark base overhead**********\n");
+        uint32 block_size=1;//1,2,4,8,32
+        uint32 blk_cnt=len/block_size;
+        char blk[block_size];
+        uint32 cur_pos=0;
+        gettimeofday(&tv1,0);
+        for(uint32 i=0;i<blk_cnt;i++){}
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+        //test results:2006-7-13
+        //block_size=1:avg=21
+        //block_size=2:avg=10
+        //block_size=4:avg=5
+        //block_size=8:avg=2
+        //block_size=32:avg=0
+        printf("benchmark base overhead,len=%d,blocksize=%d,tc=%d\n",
+                len,block_size,tc);
+
+        printf("***************performance base-line******************\n");
+        {
+        uint32 block_size=1;//1,2,4,8,32,128,1024,65536
+        uint32 blk_cnt=len/block_size;
+        char blk[block_size];
+        uint32 cur_pos=0;
+        gettimeofday(&tv1,0);
+        for(uint32 i=0;i<blk_cnt;i++)
+        {
+                memcpy(buf+cur_pos,blk,block_size);
+                cur_pos+=block_size;
+        }
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+        //test results:2006-7-10,adjust 2006-7-13,considering base overhead
+        //test 4 times,block_size=1:651,650,650,651,avg=651,net=651-21=630,bw(bandwidth)=127MB(baund rate)
+        //             block_size=2:343,340,341,341,avg=341,net=341-10=331
+        //             block_size=4:180,180,180,180,avg=180,net=180-5=175
+        //             block_size=8:102,102,102,103,avg=102,net=102-2=100
+        //             block_size=32:44,44,44,44,   avg=44 ,net=44
+        //             block_size=128:32,32,32,32,  avg=32 ,net=32
+        //             block_size=1024:30,30,30,30, avg=30 ,net=30
+        //             block_size=65536:29,29,29,29,avg=29 ,net=29,bw=2.76GB
+        printf("[benchmark]:duration of copy to buffer one block by one block,len=%d,blocksize=%d,tc=%d\n",
+                len,block_size,tc);
+        }
+
+        printf("*************memory_stream_t performance*************\n");
+        {
+        sp_mstream_t sp_stm=memory_stream_t::s_create();
+        uint32 block_size=1;//1,2,4,8,32,128,1024,65536
+        uint32 blk_cnt=len/block_size;
+        char blk[block_size];
+        //sp_stm->prealloc_buffer(10485760-1024);
+        gettimeofday(&tv1,0);
+        for(uint32 i=0;i<blk_cnt;i++)
+        {
+                sp_stm->write(blk,block_size);
+        }
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+        uint32 wrote_len=sp_stm->seek(STM_SEEK_END,0);
+        //test results:2006-7-11,adjust 2006-7-13,considering base overhead--implement based on std::list
+        //test 4 times,block_size=1:1923,1917,1919,1922,avg=1920,net=1920-21=1899,pc(performance coeffient)=630/1899=0.33
+        //             block_size=2:994,995,993,995,avg=994,net=994-10=984, pc=331/984=0.34
+        //             block_size=4:503,505,504,506,avg=505,net=505-5 =500, pc=175/500=0.35
+        //             block_size=8:266,264,264,264,avg=265,net=265-2 =263, pc=100/263=0.38
+        //             block_size=32:84,84,84,84,   avg=84, net=84, pc=44/84=0.52
+        //             block_size=128:42,42,42,42,  avg=42, net=42, pc=32/42=0.76
+        //             block_size=1024:31,31,31,31, avg=31, net=31, pc=30/31=0.97
+        //             block_size=65536:29,29,29,29,avg=29, net=29  pc=29/29=1.0
+        //test results:2006-7-19,implement based on char array
+        //test 4 times,block_size=1:996,998,998,996,avg=997, net=997-21=976,pc=630/976=0.65,bw=82MB
+        //no pre-alloc_buffer,block_size=1:1002,998,1003,998,avg=1000,net=1000-21=979,pc=630/979=0.64
+        printf("write to attached stream one block by one block,len=%d,block_size=%d,tc=%d\n",
+                wrote_len,block_size,tc);
+        //88
+        bb_t bb;
+        uint32 buf_len=sp_stm->copy_to(bb);
+        printf("=====copy_to,buf_len=%d\n",buf_len);
+        }
+
+        printf("*************fast_memory_stream_t performance*************\n");
+        {
+        sp_fmstream_t sp_fstm=fast_memory_stream_t::s_create(buf,len);
+        uint32 block_size=1;//,32,128,1024
+        uint32 blk_cnt=len/block_size;
+        char blk[block_size];
+        gettimeofday(&tv1,0);
+        for(uint32 i=0;i<blk_cnt;i++)
+        {
+                sp_fstm->write(blk,block_size);
+        }
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+        uint32 wrote_len=sp_fstm->seek(STM_SEEK_END,0);
+        //test results:2006-7-12,adjust 2006-7-13,considering base overhead
+        //test 4 times,block_size=1:833,830,828,828,avg=830,net=830-21=809,pc(performance coeffient)=630/809=0.78,bw=99MB
+        //             block_size=32:50,50,50,50,   avg=50, net=50, pc=44/50=0.88
+        //             block_size=128:33,33,33,33,  avg=33, net=33, pc=32/33=0.97
+        //             block_size=1024:30,30,30,30, avg=30, net=30, pc=30/30=1.00
+        printf("write to simple stream one block by one block,len=%d,block_size=%d,tc=%d\n",
+                wrote_len,block_size,tc);
+        }
+
+        printf("**********push to std::deque**********\n");
+        {
+        typedef std::deque<char> cq_t;
+        cq_t cq;
+        uint32 block_size=1;
+        uint32 blk_cnt=len/block_size;
+        char blk;
+        gettimeofday(&tv1,0);
+        for(uint32 i=0;i<blk_cnt;i++)
+        {
+                cq.push_back(blk);
+        }
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+        uint32 wrote_len=cq.size();
+        //as block_size=1, deque has best performance, even much better than benchmark memcpy,2008-4-21
+        printf("push to a deque one block by one block,len=%d,block_size=%d,tc=%d\n",
+                wrote_len,block_size,tc);
+        }
+        if(buf) delete [] buf;
+}
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -136,7 +619,10 @@ int main(int argc, char **argv)
 	FY_TRY
 
 	//test_ns();
-	test_stream_adaptor();
+	//test_stream_adaptor();
+	//test_memory_stream_self_allocated();
+	//test_fast_memory_stream_t();
+	test_memory_stream_performance();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
