@@ -153,10 +153,10 @@ void test_memory_stream_self_allocated()
         printf("wrote a int32,len:%d\n",w_len);
         //random_stream_it
         printf("*********test random_stream_it*********\n");
-        random_stream_it *p_rstm=dynamic_cast<random_stream_it *>(pStm);
+        random_stream_it *p_rstm=(random_stream_it *)(pStm->lookup(IID_random_stream));
 
         printf("******test seek from begin*********\n"); //array version,pass test 2006-7-19
-        for(int i=-2;i<16;i++)
+        for(i=-2;i<16;i++)
         {
                 uint32 pos=p_rstm->seek(STM_SEEK_BEGIN,i);
                 printf("seek to %d from begin,pos:%d\n",i,pos);
@@ -298,7 +298,7 @@ void test_memory_stream_self_allocated()
                 r_len=sp_stm->read((int8*)&cc,sizeof(char));
                 printf("try to read a char:%c over end,len:%d\n",cc,r_len);
         }
-
+#ifdef LINUX
         printf("*********test get_iovec**************\n");//2008-3-25
         {
                 sp_mstream_t sp_mstm_iov=memory_stream_t::s_create();
@@ -330,13 +330,15 @@ void test_memory_stream_self_allocated()
                 pos=sp_mstm_iov->seek(STM_SEEK_END,0);
                 printf("end pos after << string:%d\n",pos);
         }
+#endif //LINUX
 }
 
 //test fast_memory_stream_t,2006-7-12
 //new revision pass test,2008-3-25
 void test_fast_memory_stream_t()
 {
-        uint32 buf_len=8;//6,7,8,12
+		int i=0;
+        const uint32 buf_len=8;//6,7,8,12
         printf("attach a buf to fast_memory_stream_t:size:%d\n",buf_len);
         int8 out_buf[buf_len];
         sp_fmstream_t sp_mstm=fast_memory_stream_t::s_create(out_buf,buf_len);
@@ -350,18 +352,18 @@ void test_fast_memory_stream_t()
         stream_it *pStm=(stream_it *)(fast_memory_stream_t*)sp_mstm;
         uint32 w_len=pStm->write((int8*)&c,sizeof(char));
         printf("wrote a char,len:%d\n",w_len);
-        int16 i=8888;
-        w_len=pStm->write((int8*)&i,sizeof(int16));
+        int16 i16=8888;
+        w_len=pStm->write((int8*)&i16,sizeof(int16));
         printf("wrote a int16,len:%d\n",w_len);
         int32 l=1048576;
         w_len=pStm->write((int8*)&l,sizeof(int32));
         printf("wrote a int32,len:%d\n",w_len);
         //random_stream_it
         printf("*********test random_stream_it*********\n");
-        random_stream_it *p_rstm=dynamic_cast<random_stream_it *>(pStm);
+        random_stream_it *p_rstm=(random_stream_it *)(pStm->lookup(IID_random_stream));
 
         printf("******test seek from begin*********\n"); //pass test 2006-7-12
-        for(int i=-2;i<16;i++)
+        for(i=-2;i<16;i++)
         {
                 uint32 pos=p_rstm->seek(STM_SEEK_BEGIN,i);
                 printf("seek to %d from begin,pos:%d\n",i,pos);
@@ -483,19 +485,30 @@ void test_fast_memory_stream_t()
 //stream performance benchmark test
 void test_memory_stream_performance(void)
 {
+		int i=0;
         uint32 len=10485760;
         int8* buf=new int8[len];
         int8 c='K';
         struct timeval tv1,tv2;
+		long tc1,tc2;
         printf("********benchmark base overhead**********\n");
-        uint32 block_size=1;//1,2,4,8,32
+        const uint32 block_size=1;//1,2,4,8,32
         uint32 blk_cnt=len/block_size;
         char blk[block_size];
         uint32 cur_pos=0;
+#ifdef LINUX
         gettimeofday(&tv1,0);
-        for(uint32 i=0;i<blk_cnt;i++){}
+#elif defined(WIN32)
+		tc1=::GetTickCount();
+#endif
+        for(i=0;i<blk_cnt;i++){}
+#ifdef LINUX
         gettimeofday(&tv2,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+#elif defined(WIN32)
+		tc2=::GetTickCount();
+		int32 tc=tc2 - tc1;
+#endif
         //test results:2006-7-13
         //block_size=1:avg=21
         //block_size=2:avg=10
@@ -507,18 +520,26 @@ void test_memory_stream_performance(void)
 
         printf("***************performance base-line******************\n");
         {
-        uint32 block_size=1;//1,2,4,8,32,128,1024,65536
+        const uint32 block_size=1;//1,2,4,8,32,128,1024,65536
         uint32 blk_cnt=len/block_size;
         char blk[block_size];
         uint32 cur_pos=0;
+#ifdef LINUX
         gettimeofday(&tv1,0);
+#elif defined(WIN32)
+		tc1=::GetTickCount();
+#endif
         for(uint32 i=0;i<blk_cnt;i++)
         {
                 memcpy(buf+cur_pos,blk,block_size);
                 cur_pos+=block_size;
         }
+#ifdef LINUX
         gettimeofday(&tv2,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+#elif defined(WIN32)
+		int32 tc=::GetTickCount() - tc1;
+#endif
         //test results:2006-7-10,adjust 2006-7-13,considering base overhead
         //test 4 times,block_size=1:651,650,650,651,avg=651,net=651-21=630,bw(bandwidth)=127MB(baund rate)
         //             block_size=2:343,340,341,341,avg=341,net=341-10=331
@@ -535,18 +556,26 @@ void test_memory_stream_performance(void)
         printf("*************memory_stream_t performance*************\n");
         {
         sp_mstream_t sp_stm=memory_stream_t::s_create();
-        uint32 block_size=1;//1,2,4,8,32,128,1024,65536
+        const uint32 block_size=1;//1,2,4,8,32,128,1024,65536
         uint32 blk_cnt=len/block_size;
         char blk[block_size];
         //sp_stm->prealloc_buffer(10485760-1024);
+#ifdef LINUX
         gettimeofday(&tv1,0);
-        for(uint32 i=0;i<blk_cnt;i++)
+#elif defined(WIN32)
+		tc1=::GetTickCount();
+#endif
+        for(i=0;i<blk_cnt;i++)
         {
                 sp_stm->write(blk,block_size);
         }
+#ifdef LINUX
         gettimeofday(&tv2,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
-        uint32 wrote_len=sp_stm->seek(STM_SEEK_END,0);
+#elif defined(WIN32)
+		int32 tc=::GetTickCount() - tc1;
+#endif
+		uint32 wrote_len=sp_stm->seek(STM_SEEK_END,0);
         //test results:2006-7-11,adjust 2006-7-13,considering base overhead--implement based on std::list
         //test 4 times,block_size=1:1923,1917,1919,1922,avg=1920,net=1920-21=1899,pc(performance coeffient)=630/1899=0.33
         //             block_size=2:994,995,993,995,avg=994,net=994-10=984, pc=331/984=0.34
@@ -570,17 +599,25 @@ void test_memory_stream_performance(void)
         printf("*************fast_memory_stream_t performance*************\n");
         {
         sp_fmstream_t sp_fstm=fast_memory_stream_t::s_create(buf,len);
-        uint32 block_size=1;//,32,128,1024
+        const uint32 block_size=1;//,32,128,1024
         uint32 blk_cnt=len/block_size;
         char blk[block_size];
+#ifdef LINUX
         gettimeofday(&tv1,0);
-        for(uint32 i=0;i<blk_cnt;i++)
+#elif defined(WIN32)
+		tc1=::GetTickCount();
+#endif
+        for(i=0;i<blk_cnt;i++)
         {
                 sp_fstm->write(blk,block_size);
         }
+#ifdef LINUX
         gettimeofday(&tv2,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
-        uint32 wrote_len=sp_fstm->seek(STM_SEEK_END,0);
+#elif defined(WIN32)
+		int32 tc=::GetTickCount() - tc1;
+#endif
+		uint32 wrote_len=sp_fstm->seek(STM_SEEK_END,0);
         //test results:2006-7-12,adjust 2006-7-13,considering base overhead
         //test 4 times,block_size=1:833,830,828,828,avg=830,net=830-21=809,pc(performance coeffient)=630/809=0.78,bw=99MB
         //             block_size=32:50,50,50,50,   avg=50, net=50, pc=44/50=0.88
@@ -597,14 +634,22 @@ void test_memory_stream_performance(void)
         uint32 block_size=1;
         uint32 blk_cnt=len/block_size;
         char blk;
+#ifdef LINUX
         gettimeofday(&tv1,0);
-        for(uint32 i=0;i<blk_cnt;i++)
+#elif defined(WIN32)
+		tc1=::GetTickCount();
+#endif
+        for(i=0;i<blk_cnt;i++)
         {
                 cq.push_back(blk);
         }
+#ifdef LINUX
         gettimeofday(&tv2,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
-        uint32 wrote_len=cq.size();
+#elif defined(WIN32)
+		int32 tc=::GetTickCount() - tc1;
+#endif
+		uint32 wrote_len=cq.size();
         //as block_size=1, deque has best performance, even much better than benchmark memcpy,2008-4-21
         printf("push to a deque one block by one block,len=%d,block_size=%d,tc=%d\n",
                 wrote_len,block_size,tc);
@@ -620,9 +665,9 @@ int main(int argc, char **argv)
 
 	//test_ns();
 	//test_stream_adaptor();
-	//test_memory_stream_self_allocated();
+	test_memory_stream_self_allocated();
 	//test_fast_memory_stream_t();
-	test_memory_stream_performance();
+	//test_memory_stream_performance();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
