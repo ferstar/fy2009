@@ -657,6 +657,140 @@ void test_memory_stream_performance(void)
         if(buf) delete [] buf;
 }
 
+void test_stream_adaptor_perormance(void)
+{
+        uint32 loops=10485760;
+#ifdef LINUX
+        struct timeval tv1,tv2;
+#elif defined(WIN32)
+	long tc1,tc2;
+#endif
+        int8 i8='K';
+        int16 i16=1024;
+        int32 i32=1048576;
+        char str_hello[33];
+        memset(str_hello,'K',32);
+        uint32 len_str=32;
+        str_hello[32]=0;
+
+        printf("********benchmark base overhead**********\n");
+#ifdef LINUX
+        gettimeofday(&tv1,0);
+#elif defined(WIN32)
+	tc1= ::GetTickCount();
+#endif
+        for(uint32 i=0;i<loops;i++){}
+#ifdef LINUX
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+#elif defined(WIN32)
+	int32 tc=::GetTickCount() - tc1;
+#endif
+        //test results:2006-7-25
+        //loops=10485760,tc=21
+        printf("benchmark base overhead,loops=%d,tc=%d\n",
+                loops,tc);
+        //*************memory_stream_t performance*************
+        {
+        sp_mstream_t sp_stm=memory_stream_t::s_create();
+#ifdef LINUX
+        gettimeofday(&tv1,0);
+#elif defined(WIN32)
+	tc1=::GetTickCount();
+#endif
+        for(uint32 i=0;i<loops;i++)
+        {
+                //write int8
+                if(sp_stm->write(&i8,sizeof(int8))!= sizeof(int8))
+                {
+                        printf("write int8 failure\n");
+                        break;
+                }
+/*
+                //write int32
+                if(sp_stm->write((int8*)&i32,sizeof(int32)) != sizeof(int32))
+                {
+                        printf("write int32 failure\n");
+                        break;
+                }
+
+                //write string
+                if(sp_stm->write((int8*)&len_str,sizeof(uint32)) != sizeof(uint32))
+                {
+                        printf("write uint32 failure\n");
+                        break;
+                }
+                if(sp_stm->write((int8*)str_hello,len_str) != len_str)
+                {
+                        printf("write string failure\n");
+                        break;
+                }
+*/
+        }
+#ifdef LINUX
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+#elif defined(WIN32)
+	int32 tc = ::GetTickCount() - tc1;
+#endif
+        uint32 wrote_len=sp_stm->seek(STM_SEEK_END,0);
+        //test results:2006-7-25
+        //i8:989,986,995,994,avg=991,net=991-21=970
+        //i32:1057,1060,1060,1062,avg=1060,net=1060-21=1039
+        //str(len=32):2809,2806,2802,2803,avg=2805,net=2805-21=2784
+        //****test for revision,2008-3-25*****
+        //i8:987,987,1004,989,avg=992,net=avg-24=968
+        //i32:1064,1063,1061,1065,avg=1063,net=avg-24=1039
+        //str(len=32):2831,2830,2831,2830,avg=2831,net=avg-24=2807
+        printf("write to memory stream directly,len=%d,loops=%d,tc=%d\n",
+                wrote_len,loops,tc);
+       }
+
+        //***************stream_adaptor_t performance***************
+        {
+        sp_mstream_t sp_stm=memory_stream_t::s_create();
+        stream_adaptor_t adp((stream_it *)(memory_stream_t*)sp_stm,STM_ADP_OPT_STANDALONE);
+        //adp.set_nbo();
+        //adp.set_byte_order(BO_UNKNOWN);//BO_LITTLE_ENDIAN);
+#ifdef LINUX
+        gettimeofday(&tv1,0);
+#elif defined(WIN32)
+	tc1=::GetTickCount();
+#endif
+        for(uint32 i=0;i<loops;i++)
+        {
+                adp<<i8;
+                //adp<<i32;
+                //adp<<str_hello;
+        }
+#ifdef LINUX
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+#elif defined(WIN32)
+	int32 tc=::GetTickCount() - tc1;
+#endif
+        uint32 wrote_len=sp_stm->seek(STM_SEEK_END,0);
+        //test results:2006-7-25
+        //i8:1093,1097,1096,1093,avg=1095,net=1095-21=1074,pdp(performance decrease percentage=(1074-970)/970=0.107,bw=74MB
+        //i32:1156,1158,1155,1156,avg=1156,net=1156-21=1135,pdp=(1135-1039)/1039=0.092,bw=282MB
+        //str(len=32):3194,3195,3191,3191,avg=3193,net=3193-21=3172,pdp=(3172-2784)/2784=0.139
+        //===add network byte order feature====
+        //disable nbo flag: about 1% performance descrease than adaptor without this feature,this descrease can be ignored
+        //--2006-7-25
+        //i32:1169,1167,1167,1168,avg=1168,net=1168-21=1147,pdp=(1147-1039)/1039=0.104
+        //enabled nbo flag:incomparison with host byte order,pc of network byte order stream i/o is just 0.765,isn't good enough
+        //,except for necessary,host byte order is preferred--2006-7-25
+        //i32:1506,1502,1502,1504,avg=1504,net=1504-21=1483,pc=1135/1483=0.765//note,here is pc,but not pdp
+        //****test for revision,2008-3-25*****
+        //i8:1133,1140,1127,1168,avg=1142,net=avg-24=1118,pc=(1118-970)/970=0.152
+        //i32:1356,1493,1374,1345,avg=1392,net=avg-24=1368,pdp=(1368-1039)/1039=0.317
+        //str(len=32):3426,3437,3422,3437,avg=3427,net=avg-24=3403,pc=(3403-2807)/2807=0.212
+        printf("write to stream by adaptor,len=%d,loops=%d,tc=%d\n",
+                wrote_len,loops,tc);
+
+        }
+}
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -665,9 +799,10 @@ int main(int argc, char **argv)
 
 	//test_ns();
 	//test_stream_adaptor();
-	test_memory_stream_self_allocated();
+	//test_memory_stream_self_allocated();
 	//test_fast_memory_stream_t();
 	//test_memory_stream_performance();
+	test_stream_adaptor_perormance();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

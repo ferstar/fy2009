@@ -1220,7 +1220,7 @@ uint32 fast_memory_stream_t::seek(int8 option,int32 offset)
         }
         return _pos;
 }
-/*
+
 //oneway_pipe_t
 sp_owp_t oneway_pipe_t::s_create(uint32 pipe_size, bool rcts_flag)
 {
@@ -1492,4 +1492,3 @@ void oneway_pipe_t::rollback_r()
         _r_pos=_r_pos_c;
 }
 
-*/
