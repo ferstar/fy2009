@@ -489,12 +489,14 @@ void test_memory_stream_performance(void)
         uint32 len=10485760;
         int8* buf=new int8[len];
         int8 c='K';
+#ifdef LINUX
         struct timeval tv1,tv2;
+#elif defined(WIN32)
 		long tc1,tc2;
+#endif
         printf("********benchmark base overhead**********\n");
         const uint32 block_size=1;//1,2,4,8,32
         uint32 blk_cnt=len/block_size;
-        char blk[block_size];
         uint32 cur_pos=0;
 #ifdef LINUX
         gettimeofday(&tv1,0);
@@ -663,7 +665,7 @@ void test_stream_adaptor_perormance(void)
 #ifdef LINUX
         struct timeval tv1,tv2;
 #elif defined(WIN32)
-	long tc1,tc2;
+	long tc1;
 #endif
         int8 i8='K';
         int16 i16=1024;
@@ -803,7 +805,7 @@ public:
         }
         ~ITC_Area(){ if(buf) delete [] buf; }
 public:
-        static const int BUF_SIZE=1048576;
+        static int BUF_SIZE;
         char *buf;
         int io_pos;
         critical_section_t cs;
@@ -817,6 +819,7 @@ public:
 #endif
         bool no_data;
 };
+int ITC_Area::BUF_SIZE=1048576;
 
 class ITC_Area_Nolock
 {
@@ -829,7 +832,7 @@ public:
         }
         ~ITC_Area_Nolock(){ if(buf) delete [] buf; }
 public:
-        static const int BUF_SIZE=1048576;
+        static int BUF_SIZE;
         char *buf;
         int i_pos;
         int o_pos;
@@ -843,6 +846,7 @@ public:
 #endif
         bool no_data;
 };
+int ITC_Area_Nolock::BUF_SIZE=1048576;
 
 #ifdef POSIX
 
@@ -850,7 +854,7 @@ void *tf_itc(void *para)
 
 #elif defined(WIN32)
 
-DWORD tf_itc(void *para)
+DWORD WINAPI tf_itc(void *para)
 
 #endif
 {
@@ -911,7 +915,15 @@ long g_tce;
 event_slot_t es_r;
 event_slot_t es_w;
 
+#ifdef LINUX
+
 void *tf_itc_nlp(void *para)
+
+#elif defined(WIN32)
+
+DWORD WINAPI tf_itc_nlp(void *para)
+
+#endif
 {
         oneway_pipe_t *nlp=(oneway_pipe_t *)para;
         sp_owp_t sp_nlp(nlp,true);
@@ -1006,10 +1018,8 @@ void test_itc_with_nlpipe_performance()
         pthread_join(thd,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(itca->tvs,itca->tve);
 #elif defined(WIN32)
-	int32 tc=::GetTickCount() - itca->tcs;
+	int32 tc=itca->tce - itca->tcs;
 #endif
-        //results:2006-8-17
-        //avg=11328,net=avg-4=11324,bw=370KB
         printf("tc=%d\n",tc);
         delete itca;
         }
