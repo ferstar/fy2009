@@ -963,7 +963,7 @@ DWORD WINAPI tf_itc_nlp(void *para)
 
 void test_itc_with_nlpipe_performance()
 {
-        uint32 len=524288;
+        uint32 len=1048576;
 #ifdef POSIX
         struct timeval tv1,tv2;
 #elif defined(WIN32)
@@ -1018,6 +1018,7 @@ void test_itc_with_nlpipe_performance()
         pthread_join(thd,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(itca->tvs,itca->tve);
 #elif defined(WIN32)
+	WaitForSingleObject(thd,INFINITE);
 	int32 tc=itca->tce - itca->tcs;
 #endif
         printf("tc=%d\n",tc);
@@ -1061,6 +1062,7 @@ void test_itc_with_nlpipe_performance()
         pthread_join(thd,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(g_tvs,g_tve);
 #elif defined(WIN32)
+	WaitForSingleObject(thd,INFINITE);
 	int32 tc=g_tce - g_tcs;
 #endif
         //results:2006-8-17
