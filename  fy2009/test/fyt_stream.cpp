@@ -791,6 +791,274 @@ void test_stream_adaptor_perormance(void)
         }
 }
 
+//test oneway_pipe_t
+//test interthread communication performance
+class ITC_Area
+{
+public:
+        ITC_Area()
+        {
+                io_pos=-1;
+                buf=new char[BUF_SIZE];
+        }
+        ~ITC_Area(){ if(buf) delete [] buf; }
+public:
+        static const int BUF_SIZE=1048576;
+        char *buf;
+        int io_pos;
+        critical_section_t cs;
+        critical_section_t cs_ready;
+#ifdef LINUX
+        struct timeval tvs;
+        struct timeval tve;
+#elif defined(WIN32)
+	long tcs;
+	long tce;
+#endif
+        bool no_data;
+};
+
+class ITC_Area_Nolock
+{
+public:
+        ITC_Area_Nolock()
+        {
+                i_pos=o_pos-1;
+                buf=new char[BUF_SIZE];
+		no_data=false;
+        }
+        ~ITC_Area_Nolock(){ if(buf) delete [] buf; }
+public:
+        static const int BUF_SIZE=1048576;
+        char *buf;
+        int i_pos;
+        int o_pos;
+        critical_section_t cs_ready;
+#ifdef LINUX
+        struct timeval tvs;
+        struct timeval tve;
+#elif defined(WIN32)
+	long tcs;
+	long tce;
+#endif
+        bool no_data;
+};
+
+#ifdef POSIX
+
+void *tf_itc(void *para)
+
+#elif defined(WIN32)
+
+DWORD tf_itc(void *para)
+
+#endif
+{
+        ITC_Area *itc_a=(ITC_Area *)para;
+        itc_a->cs_ready.unlock();
+        char *tmp=new char[1048576];//for len=10
+        uint32 total_size=0;
+        while(true)
+        {
+                itc_a->cs.lock();
+                while(itc_a->io_pos>=0)
+                {
+                        //read byte one by one
+                        //->
+                        uint32 read_len=1;
+                        char c=itc_a->buf[itc_a->io_pos--];//read a char
+                        //<-
+                /*
+                        //read bytes as many as possible
+                        //->
+                        read_len=(itc_a->io_pos+1>1048576?1048576:itc_a->io_pos+1);
+                        memcpy(tmp,itc_a->buf+itc_a->io_pos,read_len);
+                        itc_a->io_pos-=read_len;
+                        //<-
+                */
+                        total_size+=read_len;
+                }
+                itc_a->cs.unlock();
+                if(itc_a->no_data)
+                {
+#ifdef POSIX
+                        gettimeofday(&(itc_a->tve),0);
+#elif defined(WIN32)
+			itc_a->tce=::GetTickCount();
+#endif
+                        printf("read total_size in tf_itc:%d\n",total_size);
+                        break;
+                }
+        }
+        if(tmp) delete [] tmp;
+
+        return 0;
+}
+
+critical_section_t g_cs_thd_ready;
+#ifdef POSIX
+
+struct timeval g_tvs;
+struct timeval g_tve;
+
+#elif defined(WIN32)
+
+long g_tcs;
+long g_tce;
+
+#endif
+
+event_slot_t es_r;
+event_slot_t es_w;
+
+void *tf_itc_nlp(void *para)
+{
+        oneway_pipe_t *nlp=(oneway_pipe_t *)para;
+        sp_owp_t sp_nlp(nlp,true);
+
+        sp_nlp->register_read();
+        g_cs_thd_ready.unlock();
+        uint32 total_size=0;
+        const int32 R_BUF_SIZE=1024;
+        int8 buf[R_BUF_SIZE];
+        while(true)
+        {
+                uint32 read_len=sp_nlp->read(buf,R_BUF_SIZE);
+                while(read_len)
+                {
+                        total_size+=read_len;
+                        read_len=sp_nlp->read(buf,R_BUF_SIZE);
+                }
+                if(!sp_nlp->is_write_registered())
+                {
+#ifdef POSIX
+                        gettimeofday(&(g_tve),0);
+#elif defined(WIN32)
+			g_tce = ::GetTickCount();
+#endif
+                        sp_nlp->unregister_read();
+                        printf("read total size in tf_itc_nlp:%d\n",total_size);
+                        break;
+                }
+                //printf("total_size=%d\n",total_size);
+                es_w.signal(0);
+                event_slot_t::slot_vec_t ev;
+                es_r.wait(ev);
+
+        }
+        return 0;
+}
+
+void test_itc_with_nlpipe_performance()
+{
+        uint32 len=524288;
+#ifdef POSIX
+        struct timeval tv1,tv2;
+#elif defined(WIN32)
+	long tc1, tc2;
+#endif
+        printf("*********base over head**************\n");
+        {
+#ifdef POSIX
+        gettimeofday(&tv1,0);
+#elif defined(WIN32)
+	tc1=::GetTickCount();
+#endif
+        for(uint32 i=0;i<len;i++){}
+#ifdef POSIX
+        gettimeofday(&tv2,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
+#elif defined(WIN32)
+	int32 tc=::GetTickCount()-tc1;
+#endif
+        printf("tc=:%d\n",tc);
+        }
+
+        printf("***********itc with lock***********\n");
+        {
+        ITC_Area *itca=new ITC_Area();
+#ifdef POSIX
+        pthread_t thd;
+#elif defined(WIN32)
+	HANDLE thd;
+#endif
+        itca->no_data=false;
+        itca->cs_ready.lock();
+#ifdef POSIX
+        pthread_create(&thd,0,tf_itc,(void *)itca);
+#elif defined(WIN32)
+	thd=::CreateThread(0,0,tf_itc, (void*)itca, 0,0);
+#endif
+        itca->cs_ready.lock();
+#ifdef POSIX
+        gettimeofday(&(itca->tvs),0);
+#elif defined(WIN32)
+	itca->tcs=::GetTickCount();
+#endif
+        for(uint32 i=0;i<len;i++)
+        {
+                itca->cs.lock();
+                itca->buf[++(itca->io_pos)]='K';
+               itca->cs.unlock();
+        }
+        itca->no_data=true;
+#ifdef POSIX
+        pthread_join(thd,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(itca->tvs,itca->tve);
+#elif defined(WIN32)
+	int32 tc=::GetTickCount() - itca->tcs;
+#endif
+        //results:2006-8-17
+        //avg=11328,net=avg-4=11324,bw=370KB
+        printf("tc=%d\n",tc);
+        delete itca;
+        }
+
+        printf("***************itc with nolock_pipe_t***********\n");
+        {
+        sp_owp_t sp_nlp=oneway_pipe_t::s_create(524287);
+        sp_nlp->register_write();
+        char buf[]={'K'};
+#ifdef POSIX
+        pthread_t thd;
+#elif defined(WIN32)
+	HANDLE thd;
+#endif
+        g_cs_thd_ready.lock();
+#ifdef POSIX
+        pthread_create(&thd,0,tf_itc_nlp,(void *)(oneway_pipe_t*)sp_nlp);
+#elif defined(WIN32)
+	thd=::CreateThread(0,0, tf_itc_nlp, (void*)(oneway_pipe_t*)sp_nlp,0,0);
+#endif
+        g_cs_thd_ready.lock();
+#ifdef POSIX
+        gettimeofday(&(g_tvs),0);
+#elif defined(WIN32)
+	g_tcs=::GetTickCount();
+#endif
+        for(uint32 i=0;i<len;i++)
+        {
+                while(sp_nlp->write(buf,1) == 0)
+                {
+                        es_r.signal(0);
+                        event_slot_t::slot_vec_t ev;
+                        es_w.wait(ev);
+                }
+        }
+        sp_nlp->unregister_write();
+        es_r.signal(1);
+#ifdef POSIX
+        pthread_join(thd,0);
+        int32 tc=timeval_util_t::diff_of_timeval_tc(g_tvs,g_tve);
+#elif defined(WIN32)
+	int32 tc=g_tce - g_tcs;
+#endif
+        //results:2006-8-17
+        //avg=344,net=avg-4=340,pip=(11324-340)/340=32.3,bw=12.3MB
+        printf("tc=%d\n",tc);
+        }
+}
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -802,7 +1070,9 @@ int main(int argc, char **argv)
 	//test_memory_stream_self_allocated();
 	//test_fast_memory_stream_t();
 	//test_memory_stream_performance();
-	test_stream_adaptor_perormance();
+	//test_stream_adaptor_perormance();
+	//test_itc_performance();
+	test_itc_with_nlpipe_performance();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
