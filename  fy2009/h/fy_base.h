@@ -379,7 +379,7 @@ private:
 #ifdef POSIX
 
         pthread_cond_t  _cnd;
-        bool _signalled;
+        volatile bool _signalled;
 
 #elif defined(WIN32)
 
