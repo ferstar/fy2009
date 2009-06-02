@@ -1071,6 +1071,30 @@ void test_itc_with_nlpipe_performance()
         }
 }
 
+#include "fy_trace.h"
+
+void test_trace_provider()
+{
+        trace_provider_t *trace_prvd=trace_provider_t::instance();
+        trace_prvd->open();
+
+        trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer();
+        uint8 level=0;
+
+        for(uint8 level=0; level<35; ++level)
+        {
+                tracer->prepare_trace_prefix(level,__FILE__,__LINE__)<<"hello, from trace provider test \r\n";
+                tracer->write_trace(level);
+#ifdef POSIX
+                usleep(10000);
+#elif defined(WIN32)
+		Sleep(10);
+#endif
+        }
+        trace_prvd->unregister_tracer();
+        trace_prvd->close();
+}
+
 int main(int argc, char **argv)
 {
 	char *g_buf=0;
@@ -1084,7 +1108,8 @@ int main(int argc, char **argv)
 	//test_memory_stream_performance();
 	//test_stream_adaptor_perormance();
 	//test_itc_performance();
-	test_itc_with_nlpipe_performance();
+	//test_itc_with_nlpipe_performance();
+	test_trace_provider();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
