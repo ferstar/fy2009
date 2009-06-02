@@ -186,7 +186,7 @@ public:
                 piece_q_t _q;
 
                 //max queued trace piece count , if it's reached, sequential trace will be abandoned
-                //and call __INTERNAL_CCP_TRACE to write a basic log
+                //and call __INTERNAL_FY_TRACE to write a basic log
                 uint32 _max_q_size;
 
                 //if it has been registered, it will be signalled with slot index= _esi_notfull after trace reading thread
@@ -273,6 +273,188 @@ private:
         _stream_vec_t _stm_slot[ MAX_TRACE_LEVEL_COUNT ];
         bool _enable_flag[ MAX_TRACE_LEVEL_COUNT ];
 };
+
+/*[tip]trace to file 
+ *[desc] in general, server traces to some files, in terms of trace level, trace will respectively be written to erro, warning,
+ *   infoi and infod trace files,which name include executable file name, process id and date, each type file will be splitted
+ *   to specified count files, old file may be overwritten on wrapping occurs. By specifying max trace file count and max trace file *   for each file to limit max disk space usage to eliminate the possibility of using disk space up.
+ *[memo]
+ *1.after register, it's only be called by trace thread, so thread-safe isn't necessary for it
+ *[history] 
+ * Initialize: 2008-4-28
+ */
+const uint32 MAX_EXE_CMDLINE_SIZE=256;
+
+class trace_file_t : public trace_stream_it,
+                     public ref_cnt_impl_t //it must be thread-safe
+{
+public:
+        static sp_trace_stream_t s_create(uint8 trace_level, uint32 max_file_cnt_per_day=10, uint32 max_size_per_file=1048576);
+public:
+        ~trace_file_t();
+
+        //trace_stream_it
+        uint32 write(const int8* buf, uint32 len, bool trace_start);
+
+        //lookup_it
+        void *lookup(uint32 iid) throw();
+private:
+        static void _s_lazy_init();
+private:
+        trace_file_t(uint8 trace_level, uint32 max_file_cnt_per_day, uint32 max_size_per_file);
+        void _check_file(uint32 want_size);
+private:
+        static critical_section_t _s_cs;
+        static uint32 _s_pid; //process id
+        static int8 _s_exe_name[MAX_EXE_CMDLINE_SIZE]; //executable file name
+private:
+        uint8 _trace_level;
+        FILE *_fp;
+        uint32 _max_file_cnt_per_day;
+        uint32 _max_size_per_file;
+        uint32 _cur_file_idx;
+        int32 _tm_mday;//current log file related day of month
+        uint32 _filled_size;
+        critical_section_t _cs;
+};
+
+/*[tip]
+ *[desc] some maros about trace service
+ *[history] 
+ * Initialize: 2008-4-29
+ */
+//macro to output trace info
+#define __INTERNAL_FY_TRACE_SERVICE(level,desc) trace_provider_t* prvd=trace_provider_t::instance();\
+ if(prvd->get_enable_flag(level)){\
+ trace_provider_t::tracer_t *tcer=prvd->get_thd_tracer();\
+ if(tcer){\
+        tcer->prepare_trace_prefix(level, __FILE__, __LINE__)<<desc<<"\r\n";\
+        tcer->write_trace(level);}}
+
+//macro to output error level trace, it's enabled by default
+//--X version is used within member functions of class which realizes object_id_it
+#if defined(FY_TRACE_DISABLE_ERROR)
+
+#       define FY_ERROR(desc)
+#       define FY_XERROR(desc)
+
+#else
+
+#       define FY_ERROR(desc)  do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_ERROR, desc) }while(0)
+#       define FY_XERROR(desc) do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_ERROR, get_object_id()<<": "<<desc) }while(0)
+
+#endif
+
+//macro to output warning level trace, it's enabled by default
+//--X version is used within member functions of class which realizes object_id_it
+#if defined(FY_TRACE_DISABLE_WARNING)
+
+#       define FY_WARNING(desc)
+#       define FY_XWARNING(desc)
+
+#else
+
+#       define FY_WARNING(desc)  do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_WARNI, desc) }while(0)
+#       define FY_XWARNING(desc) do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_WARNI, get_object_id()<<": "<<desc) }while(0)
+
+#endif
+
+//macro to output infoi level trace, it's enabled by default
+//--X version is used within member functions of class which realizes object_id_it
+#if defined(FY_TRACE_DISABLE_INFOI)
+
+#       define FY_INFOI(desc)
+#       define FY_XINFOI(desc)
+
+#else
+
+#       define FY_INFOI(desc)  do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_INFOI, desc) }while(0)
+#       define FY_XINFOI(desc) do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_INFOI, get_object_id()<<": "<<desc) }while(0)
+
+#endif
+
+//macro to output infod level trace, it's enabled by default
+//--X version is used within member functions of class which realizes object_id_it
+#if defined(FY_TRACE_DISABLE_INFOD)
+
+#       define FY_INFOD(desc)
+#       define FY_XINFOD(desc)
+
+#else
+
+#       define FY_INFOD(desc)  do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_INFOD, desc) }while(0)
+#       define FY_XINFOD(desc) do{ __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_INFOD, get_object_id()<<": "<<desc) }while(0)
+
+#endif
+
+//macro to output function call track trace, it's disabled by default
+//--X version is used within member functions of class which realizes object_id_it
+#if defined(FY_TRACE_ENABLE_FUNC)
+
+class __func_tracker_t
+{
+public:
+        __func_tracker_t() {}
+
+        ~__func_tracker_t()
+        {
+                __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_FUNC, "Leave: "<<bb_func_desc)
+        }
+public:
+        bb_t bb_func_desc;
+};
+
+#       define FY_FUNC(desc) __func_tracker_t __func_tracker_20090119_klv; do{\
+  string_builder_t sb; sb<<desc; sb.build(__func_tracker_20090119_klv.bb_func_desc);\
+  __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_FUNC, "Enter: "<<__func_tracker_20090119_klv.bb_func_desc) }while(0)
+
+#       define FY_XFUNC(desc) __func_tracker_t __func_tracker_20090119_klv; do{\
+  string_builder_t sb; sb<<get_object_id()<<": "<<desc; sb.build(__func_tracker_20090119_klv.bb_func_desc);\
+  __INTERNAL_FY_TRACE_SERVICE(TRACE_LEVEL_FUNC, "Enter: "<<__func_tracker_20090119_klv.bb_func_desc) }while(0)
+
+#else
+
+#       define FY_FUNC(desc)
+#       define FY_XFUNC(desc)
+
+#endif
+
+/*[tip]exception terminator 
+ *[desc] catch exception and call FY_ERROR to log it to trace service
+ *[history] 
+ * Initialize: 2008-6-13
+ */
+#define FY_EXCEPTION_TERMINATOR(ctx_desc,final_logic) }catch(exception_t& e){\
+         bb_t bb;\
+         e.to_string(bb);\
+         int8 *str=bb.get_buf();\
+         if(str) { FY_ERROR(ctx_desc<<str);}\
+         final_logic;\
+       }catch(std::exception& e){\
+         FY_ERROR(ctx_desc<<e.what());\
+         final_logic;\
+       }catch(...){\
+         FY_ERROR(ctx_desc<<"unknown exception");\
+         final_logic; }
+
+/*[tip]exception terminator extend
+ *[desc] catch exception and call FY_XERROR to log it to trace service, which is
+ * used within member function of class which realizes object_id_it
+ *[history] 
+ * Initialize: 2008-6-13
+ */
+#define FY_EXCEPTION_XTERMINATOR(final_logic) }catch(exception_t& e){\
+         bb_t bb;\
+         e.to_string(bb);\
+         char *str=bb.get_buf();\
+         if(str) FY_XERROR(str);\
+         final_logic;\
+       }catch(std::exception& e){\
+         FY_XERROR(e.what());\
+         final_logic;\
+       }catch(...){\
+         FY_XERROR("unknown exception");\
+         final_logic; }
 
 DECL_FY_NAME_SPACE_END
 

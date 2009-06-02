@@ -726,3 +726,180 @@ bool trace_provider_t::get_enable_flag(uint8 trace_level)
         return _enable_flag[ trace_level ];
 }
 
+//trace_file_t
+critical_section_t trace_file_t::_s_cs = critical_section_t();
+uint32 trace_file_t::_s_pid=0;
+int8 trace_file_t::_s_exe_name[MAX_EXE_CMDLINE_SIZE]={0};
+
+void trace_file_t::_s_lazy_init()
+{
+        if(_s_pid) return; //has initialized
+
+        smart_lock_t slock(&_s_cs);
+
+        uint32 pid=(uint32)::getpid();
+
+        //get execute file name
+        int8 pid_file_path[32];
+        snprintf(pid_file_path, 32, "/proc/%d/cmdline", pid);
+        FILE *fp=fopen(pid_file_path,"rb");
+
+        int16 ret=fread(_s_exe_name, 1, MAX_EXE_CMDLINE_SIZE, fp);
+        if(ret>=MAX_EXE_CMDLINE_SIZE)
+        {
+                __INTERNAL_FY_TRACE("current process related command line is too long too exceed MAX_EXE_CMDLINE_SIZE\n");
+                return;
+        }
+        _s_exe_name[ret]='\0';
+        for(int16 i=ret; i>=0; i--)
+        {
+                if(_s_exe_name[i]=='/')
+                {
+                        memmove(_s_exe_name, _s_exe_name+i+1, ret - i - 1);
+                        break;
+                }
+        }
+        _s_pid=pid; //it must be last statement
+}
+
+sp_trace_stream_t trace_file_t::s_create(uint8 trace_level, uint32 max_file_cnt_per_day, uint32 max_size_per_file)
+{
+        _s_lazy_init();//initialize _pid and _exe_name
+
+        trace_file_t *p=new trace_file_t(trace_level, max_file_cnt_per_day, max_size_per_file);
+
+        return sp_trace_stream_t(p, true);
+}
+
+trace_file_t::trace_file_t(uint8 trace_level, uint32 max_file_cnt_per_day, uint32 max_size_per_file)
+        : _cs(true),ref_cnt_impl_t(&_cs)
+{
+        _trace_level=trace_level;
+        _fp=0;
+        _max_file_cnt_per_day = max_file_cnt_per_day;
+        _max_size_per_file = max_size_per_file;
+        _cur_file_idx=0;
+        _tm_mday=0;
+        _filled_size=0;
+}
+
+trace_file_t::~trace_file_t()
+{
+        if(_fp) ::fclose(_fp);
+}
+
+uint32 trace_file_t::write(const int8* buf, uint32 len, bool trace_start)
+{
+        //splitting trace file is only allowed as trace_start is true to avoid split one ppiece of trace to two files
+        if(trace_start) _check_file(len);
+
+        uint32 ret=fwrite(buf, 1, len, _fp);
+        if(ret != len)
+        {
+                __INTERNAL_FY_TRACE_EX("fwrite trace file(level="<<_trace_level<<") entirely or partially fail\r\n");
+                return ret;
+        }
+        _filled_size += ret;
+
+        return ret;
+}
+
+//lookup_it
+void *trace_file_t::lookup(uint32 iid) throw()
+{
+        switch(iid)
+        {
+        case IID_self:
+               return this;
+
+        case IID_trace_stream:
+               return static_cast<trace_stream_it *>(this);
+
+        default:
+               return ref_cnt_impl_t::lookup(iid);
+        }
+}
+
+void trace_file_t::_check_file(uint32 want_size)
+{
+        //get timestamp
+        user_clock_t *clk=user_clock_t::instance();
+        struct tm ts;
+        uint32 tc=clk->get_localtime(&ts);
+
+        //check day change or not
+        if(ts.tm_mday != _tm_mday)//create different log files for every day
+        {
+                _tm_mday=ts.tm_mday;
+                if(_fp) fclose(_fp);
+                _fp=0;
+                _cur_file_idx=0;
+                _filled_size=0;
+
+                int8 msg[64];
+                sprintf(msg, "current log date(level=%d):%04d-%02d-%02d\r\n",
+                                _trace_level, ts.tm_year+1900, ts.tm_mon+1, ts.tm_mday);
+
+                __INTERNAL_FY_TRACE(msg);
+        }
+
+        //check if trace file reached max size
+        if(_filled_size + want_size > _max_size_per_file)
+        {
+                if(_fp) fclose(_fp);
+                _fp=0;
+                _filled_size=0;
+
+                if(_cur_file_idx == _max_file_cnt_per_day - 1)
+                {
+                        _cur_file_idx=0;
+                        __INTERNAL_FY_TRACE_EX("trace file(level="<<_trace_level<<") has wrapped\r\n");
+                }
+                else
+                {
+                        ++_cur_file_idx;
+                        __INTERNAL_FY_TRACE_EX("trace file(level="<<_trace_level<<") has changed index to "<<_cur_file_idx\
+                                                <<"\r\n");
+                }
+        }
+
+        //create and open file
+        if(!_fp)
+        {
+                int8 fm[256];
+                int8 level_tok[16];
+                switch(_trace_level)
+                {
+                case TRACE_LEVEL_ERROR:
+                        sprintf(level_tok, "%s", "e");
+                        break;
+
+                case TRACE_LEVEL_WARNI:
+                        sprintf(level_tok, "%s", "w");
+                        break;
+
+                case TRACE_LEVEL_INFOI:
+                        sprintf(level_tok, "%s", "i");
+                        break;
+
+                case TRACE_LEVEL_INFOD:
+                        sprintf(level_tok, "%s", "d");
+                        break;
+
+                case TRACE_LEVEL_FUNC:
+                        sprintf(level_tok, "%s", "f");
+                        break;
+
+                default:
+                        sprintf(level_tok, "x%d", _trace_level);
+                        break;
+                }
+
+                sprintf(fm, "%s_%d_%04d%02d%02d_%s_%d.log",(int8*)trace_file_t::_s_exe_name,
+                        trace_file_t::_s_pid,
+                        ts.tm_year+1900, ts.tm_mon+1, ts.tm_mday, level_tok, _cur_file_idx);
+
+                _fp=::fopen(fm,"w");
+        }
+}
+
