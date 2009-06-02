@@ -501,7 +501,6 @@ void trace_provider_t::open()
                 _s_cs_rtf_read.unlock();
                 _r_thd=tmp_thd;//announce trace provider has been opened
         }
-        _s_cs.unlock();
 }
 
 void trace_provider_t::close()
@@ -555,7 +554,7 @@ trace_provider_t::tracer_t *trace_provider_t::register_tracer(uint32 pipe_size,
         //otherwise, be appended to the tail of _vec_tracer
         bool insert_flag=false;
 
-        smart_lock_t slock(&_s_cs);
+		smart_lock_t slock(&_s_cs);
 
         //only this function can set a null _vec_tracer[] to nonzero,but forbidden to set a nonzero _vec_tracer[]
         //to zero,so lock isn't needed
