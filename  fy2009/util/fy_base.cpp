@@ -33,8 +33,9 @@ critical_section_t::critical_section_t(bool recursive_flag) throw()
 
 #elif defined(WIN32)
 
-	InitializeCriticalSection(&_cs);
-
+	//change criticalsection to mutex due to the former isn't recursive,2009-6-2
+	_mtx = ::CreateMutex(NULL, FALSE, NULL);
+	
 #endif //POSIX
 }
 
@@ -46,7 +47,7 @@ critical_section_t::~critical_section_t() throw()
 
 #elif defined(WIN32)
 
-	DeleteCriticalSection(&_cs);
+	::CloseHandle(_mtx);
 
 #endif //POSIX
 }
@@ -59,7 +60,7 @@ void critical_section_t::lock() throw()
 
 #elif defined(WIN32)
 
-	EnterCriticalSection(&_cs);
+	::WaitForSingleObject(_mtx, INFINITE);
 
 #endif	
 }
@@ -72,7 +73,7 @@ void critical_section_t::unlock() throw()
 
 #elif defined(WIN32)
 
-	LeaveCriticalSection(&_cs);
+	::ReleaseMutex(_mtx);
 
 #endif
 }
@@ -85,8 +86,7 @@ bool critical_section_t::try_lock() throw()
 
 #elif defined(WIN32)
 
-	return TryEnterCriticalSection(&_cs)!=0;
-
+	return ::WaitForSingleObject(_mtx,0) == WAIT_OBJECT_0; 
 #endif
 }
 

@@ -310,8 +310,9 @@ private:
         pthread_mutex_t _mtx;
 
 #elif defined(WIN32)
-
-	CRITICAL_SECTION _cs;
+	//because criticalsection isn't recursive, but mutex is, change
+	//criticalsection to mutex, 2009-6-2
+	HANDLE _mtx;
 
 #endif //POSIX
 };

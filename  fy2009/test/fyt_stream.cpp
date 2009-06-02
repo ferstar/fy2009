@@ -1107,9 +1107,8 @@ int main(int argc, char **argv)
 	//test_fast_memory_stream_t();
 	//test_memory_stream_performance();
 	//test_stream_adaptor_perormance();
-	//test_itc_performance();
 	//test_itc_with_nlpipe_performance();
-	test_trace_provider();
+	//test_trace_provider();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	
