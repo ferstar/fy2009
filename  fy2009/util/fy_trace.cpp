@@ -31,7 +31,12 @@ sp_trace_stream_t trace_provider_t::_std_trace_stream_t::s_create()
 
 uint32 trace_provider_t::_std_trace_stream_t::write(const int8* buf, uint32 len, bool trace_start)
 {
+#ifdef POSIX
         return ::write(STDOUT_FILENO, buf, len);
+#elif defined(WIN32)
+		printf("%s",buf);
+		return len;
+#endif
 }
 
 //lookup_it
@@ -263,7 +268,7 @@ trace_provider_t *trace_provider_t::instance()
                 tmp_inst->_stm_slot[i].push_back(trace_provider_t::_std_trace_stream_t::s_create());
         }
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
         _s_inst=tmp_inst; //it must be last statement to make sure thread safe,2007-3-5
 
@@ -271,7 +276,15 @@ trace_provider_t *trace_provider_t::instance()
 }
 
 //poll to read trace from pipes and write it to trace file
+#ifdef POSIX
+
 void *trace_provider_t::_thd_r_f(void *arg)
+
+#elif defined(WIN32)
+
+DWORD WINAPI trace_provider_t::_thd_r_f(LPVOID arg)
+
+#endif
 {
         FY_TRY
 
@@ -322,7 +335,7 @@ void *trace_provider_t::_thd_r_f(void *arg)
                 sp_pipe->unregister_read();
         }
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 
         return 0;
 }
@@ -398,7 +411,7 @@ int16 trace_provider_t::_poll_once()
                 struct tm ts;
                 uint32 tc=clk->get_localtime(&ts);
                 int8 tmp_buf[128];
-                snprintf(tmp_buf, 128, "<ts=%04d-%02d-%02d %02d:%02d:%02d.%03d><tid=%d>",
+                sprintf(tmp_buf, "<ts=%04d-%02d-%02d %02d:%02d:%02d.%03d><tid=%d>",
                         ts.tm_year+1900,ts.tm_mon+1,ts.tm_mday,
                         ts.tm_hour,ts.tm_min,ts.tm_sec,tc,(uint32)(pipe->get_w_thd()));
 
@@ -636,19 +649,21 @@ void trace_provider_t::unregister_tracer()
                 break;
         }
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR()
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;)
 }
 
 trace_provider_t::tracer_t *trace_provider_t::get_thd_tracer()
 {
 #ifdef POSIX
         void *ret=pthread_getspecific(_tls_key);
+		uint32 tmp_thd=(uint32)pthread_self();
 #elif defined(WIN32)
 	void *ret=::TlsGetValue(_tls_key);
+	uint32 tmp_thd=(uint32)::GetCurrentThread();
 #endif
         if(ret) return (tracer_t *)ret;
 
-        __INTERNAL_FY_TRACE_EX("trace_provider_t::get_thd_tracer,error, thread(tid="<<(uint32)pthread_self() \
+        __INTERNAL_FY_TRACE_EX("trace_provider_t::get_thd_tracer,error, thread(tid="<<tmp_thd \
                 <<") hasn't register for tracer\n");
 
         return 0;

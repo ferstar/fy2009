@@ -93,7 +93,11 @@ const uint8 REG_TRACE_STM_OPT_ALL = REG_TRACE_STM_OPT_EQ | REG_TRACE_STM_OPT_LT 
  */
 class trace_provider_t
 {
+#ifdef POSIX
 private:
+#elif defined(WIN32)
+public:
+#endif
         //a piece of trace info
         //it isn't responsible for lifecycle of m_piece
         class _piece_t
@@ -231,8 +235,12 @@ private:
         typedef std::vector<sp_trace_stream_t> _stream_vec_t;
 private:
         //thread function,to read trace from pipes and write them to trace file
-        static void *_thd_r_f(void *);
-        trace_provider_t(); //forbiden caller create this object directly
+#ifdef POSIX
+        static void *_thd_r_f(void * arg);
+#elif defined(WIN32)
+		static DWORD WINAPI _thd_r_f(LPVOID arg);
+#endif
+		trace_provider_t(); //forbiden caller create this object directly
         void _start();//start read thread
         //poll read one trip and return readed pieces of trace info,or return 0 if no data,or return -1 if no pipe
         int16 _poll_once();

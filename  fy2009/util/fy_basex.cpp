@@ -16,6 +16,7 @@ USING_FY_NAME_SPACE
 //variant_t
 void variant_t::_reset()
 {
+		uint16 i;
         if(_vt & VT_ARRAY) //array
         {
                 switch(_vt & VT_TYPE)
@@ -33,7 +34,7 @@ void variant_t::_reset()
                         break;
 
                 case VT_LOOKUP:
-                        for(uint16 i=0;i<_size;i++)
+                        for(i=0;i<_size;i++)
                         {
                                 if(!_val.objs[i]) continue;
 
@@ -466,7 +467,7 @@ lookup_it **variant_t::get_objs(uint16 *psize) const
 uint32 variant_t::calc_persist_size() const
 {
         uint32 psize=sizeof(_vt);
-
+		uint16 i;
         if(_vt & VT_ARRAY)
         {
                 psize+=sizeof(_size);
@@ -485,7 +486,7 @@ uint32 variant_t::calc_persist_size() const
                         break;
 
                 case VT_LOOKUP:
-                        for(uint16 i=0;i<_size;i++)
+                        for(i=0;i<_size;i++)
                         {
                                 persist_it *per_obj=(persist_it*)(_val.objs[i]->lookup(IID_persist));
                                 psize += persist_helper_t::get_persist_size(per_obj);
@@ -535,6 +536,7 @@ uint32 variant_t::calc_persist_size() const
 
 void variant_t::save_to(stream_adaptor_t& stm_adp)
 {
+		uint16 i;
        stm_adp<<_vt;
         if(_vt & VT_ARRAY)
         {
@@ -542,21 +544,21 @@ void variant_t::save_to(stream_adaptor_t& stm_adp)
                 switch(_vt & VT_TYPE)
                 {
                 case VT_I8:
-                        for(uint16 i=0;i<_size;i++) stm_adp<<_val.pi8[i];
+                        for(i=0;i<_size;i++) stm_adp<<_val.pi8[i];
                         break;
 
                 case VT_I16:
-                        for(uint16 i=0;i<_size;i++) stm_adp<<_val.pi16[i];
+                        for(i=0;i<_size;i++) stm_adp<<_val.pi16[i];
                         break;
 
                 case VT_I32:
-                        for(uint16 i=0;i<_size;i++) stm_adp<<_val.pi32[i];
+                        for(i=0;i<_size;i++) stm_adp<<_val.pi32[i];
                         break;
 
                 case VT_LOOKUP:
                         {
                                 persist_it *per_obj=0;
-                                for(uint16 i=0;i<_size;i++)
+                                for(i=0;i<_size;i++)
                                 {
                                         per_obj=(persist_it*)(_val.objs[i]->lookup(IID_persist));
                                         persist_helper_t::save_to(per_obj, stm_adp);
@@ -607,6 +609,7 @@ void variant_t::load_from(stream_adaptor_t& stm_adp)
 {
        _reset();
 
+		uint16 i;
         stm_adp>>_vt;
         if(_vt & VT_ARRAY)
         {
@@ -615,23 +618,23 @@ void variant_t::load_from(stream_adaptor_t& stm_adp)
                 {
                 case VT_I8:
                         _val.pi8=new int8[_size];
-                        for(uint16 i=0;i<_size;++i) stm_adp>>(_val.pi8[i]);
+                        for(i=0;i<_size;++i) stm_adp>>(_val.pi8[i]);
                         break;
 
                 case VT_I16:
                         _val.pi16=new int16[_size];
-                        for(uint16 i=0;i<_size;++i) stm_adp>>(_val.pi16[i]);
+                        for(i=0;i<_size;++i) stm_adp>>(_val.pi16[i]);
                         break;
 
                 case VT_I32:
                         _val.pi32=new int32[_size];
-                        for(uint16 i=0;i<_size;++i) stm_adp>>(_val.pi32[i]);
+                        for(i=0;i<_size;++i) stm_adp>>(_val.pi32[i]);
                         break;
 
                 case VT_LOOKUP:
                         {
                                 _val.objs=new lookup_it*[_size];
-                                for(uint16 i=0;i<_size;++i)
+                                for(i=0;i<_size;++i)
                                 {
                                         sp_persist_t sp_pst=persist_helper_t::load_from(stm_adp);
                                         _val.objs[i]=(lookup_it*)(sp_pst.detach());
