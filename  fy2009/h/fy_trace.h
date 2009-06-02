@@ -305,7 +305,11 @@ private:
         void _check_file(uint32 want_size);
 private:
         static critical_section_t _s_cs;
+#ifdef POSIX
         static uint32 _s_pid; //process id
+#elif defined(WIN32)
+		static DWORD _s_pid;
+#endif
         static int8 _s_exe_name[MAX_EXE_CMDLINE_SIZE]; //executable file name
 private:
         uint8 _trace_level;

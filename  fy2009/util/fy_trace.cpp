@@ -736,12 +736,14 @@ void trace_file_t::_s_lazy_init()
         if(_s_pid) return; //has initialized
 
         smart_lock_t slock(&_s_cs);
-
+#ifdef POSIX
         uint32 pid=(uint32)::getpid();
-
+#elif defined(WIN32)
+		DWORD pid=::GetCurrentProcessId();
+#endif
         //get execute file name
         int8 pid_file_path[32];
-        snprintf(pid_file_path, 32, "/proc/%d/cmdline", pid);
+        sprintf(pid_file_path, "/proc/%d/cmdline", pid);
         FILE *fp=fopen(pid_file_path,"rb");
 
         int16 ret=fread(_s_exe_name, 1, MAX_EXE_CMDLINE_SIZE, fp);
