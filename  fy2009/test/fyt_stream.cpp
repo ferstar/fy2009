@@ -1080,7 +1080,7 @@ void test_trace_provider()
         trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer();
         uint8 level=0;
         for(level=0; level<35; ++level)
-        {
+        { 
                 tracer->prepare_trace_prefix(level,__FILE__,__LINE__)<<"hello, from trace provider test \r\n";
 				tracer->write_trace(level);
 #ifdef POSIX
