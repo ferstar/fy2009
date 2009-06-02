@@ -6,27 +6,11 @@
 --------------------Configuration: fy2009_util_windows - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP8A5.tmp" with contents
-[
-/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /Fp"Debug/fy2009_util_windows.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"F:\fy2009\util\fy_trace.cpp"
-]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP8A5.tmp" 
-Creating command line "link.exe -lib /nologo /out:"Debug\fy_util.lib "  .\Debug\fy_base.obj .\Debug\fy_basex.obj .\Debug\fy_stream.obj .\Debug\fy_trace.obj "
-<h3>Output Window</h3>
-Compiling...
-fy_trace.cpp
-f:\fy2009\util\fy_trace.cpp(443) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\deque(191) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
-        d:\program files\microsoft visual studio\vc98\include\deque(188) : while compiling class-template member function '__thiscall std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >(const std::allocator<fy2009::trace_provider_t::_piece_t> &)'
-d:\program files\microsoft visual studio\vc98\include\vector(39) : warning C4786: 'std::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\vector(60) : warning C4786: 'std::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >::~vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >' : identifier was truncated to '255' characters in the debug information
-Creating library...
 
 
 
 <h3>Results</h3>
-fy_util.lib - 0 error(s), 4 warning(s)
+fy_util.lib - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>

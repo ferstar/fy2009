@@ -411,7 +411,7 @@ int16 trace_provider_t::_poll_once()
                 struct tm ts;
                 uint32 tc=clk->get_localtime(&ts);
                 int8 tmp_buf[128];
-                sprintf(tmp_buf, "<ts=%04d-%02d-%02d %02d:%02d:%02d.%03d><tid=%d>",
+                sprintf(tmp_buf, "<ts=%04d-%02d-%02d %02d:%02d:%02d.%03d><tid=%lu>",
                         ts.tm_year,ts.tm_mon,ts.tm_mday,
                         ts.tm_hour,ts.tm_min,ts.tm_sec,tc,(uint32)(pipe->get_w_thd()));
 
@@ -897,7 +897,7 @@ void trace_file_t::_check_file(uint32 want_size)
                         break;
                 }
 
-                sprintf(fm, "%s_%d_%04d%02d%02d_%s_%d.log",(int8*)trace_file_t::_s_exe_name,
+                sprintf(fm, "%s_%lu_%04d%02d%02d_%s_%d.log",(int8*)trace_file_t::_s_exe_name,
                         trace_file_t::_s_pid,
                         ts.tm_year, ts.tm_mon, ts.tm_mday, level_tok, _cur_file_idx);
 
