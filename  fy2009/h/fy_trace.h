@@ -322,6 +322,34 @@ private:
         critical_section_t _cs;
 };
 
+#ifdef WIN32
+
+/*[tip]trace to DebugView for windows
+ *[desc]
+ *[history]
+ * Initialize: 2009-6-3
+ */
+class trace_debugview_t : public trace_stream_it,
+                          public ref_cnt_impl_t //it must be thread-safe
+{
+public:
+        static sp_trace_stream_t s_create();
+public:
+        ~trace_file_t(){}
+
+        //trace_stream_it
+        uint32 write(const int8* buf, uint32 len, bool trace_start);
+
+        //lookup_it
+        void *lookup(uint32 iid) throw();
+private:
+        trace_file_t(){}
+private:
+        static critical_section_t _s_cs;
+};
+
+#endif //WIN32
+
 /*[tip]
  *[desc] some maros about trace service
  *[history] 

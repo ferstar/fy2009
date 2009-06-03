@@ -904,3 +904,40 @@ void trace_file_t::_check_file(uint32 want_size)
         }
 }
 
+#ifdef WIN32
+
+//trace_debugview_t
+critical_section_t trace_debugview_t::_s_cs = critical_section_t();
+
+sp_trace_stream_t trace_debugview_t::s_create()
+{
+        trace_debugview_t *p=new trace_debugview_t();
+
+        return sp_trace_stream_t(p, true);
+}
+
+uint32 trace_debugview_t::write(const int8* buf, uint32 len, bool trace_start)
+{
+	::OutputDebugString(buf);
+
+        return len;
+}
+
+//lookup_it
+void *trace_debugview_t::lookup(uint32 iid) throw()
+{
+        switch(iid)
+        {
+        case IID_self:
+               return this;
+
+        case IID_trace_stream:
+               return static_cast<trace_stream_it *>(this);
+
+        default:
+               return ref_cnt_impl_t::lookup(iid);
+        }
+}
+
+#endif //WIN32
+
