@@ -335,7 +335,7 @@ class trace_debugview_t : public trace_stream_it,
 public:
         static sp_trace_stream_t s_create();
 public:
-        ~trace_file_t(){}
+        ~trace_debugview_t(){}
 
         //trace_stream_it
         uint32 write(const int8* buf, uint32 len, bool trace_start);
@@ -343,7 +343,7 @@ public:
         //lookup_it
         void *lookup(uint32 iid) throw();
 private:
-        trace_file_t(){}
+        trace_debugview_t(){}
 private:
         static critical_section_t _s_cs;
 };

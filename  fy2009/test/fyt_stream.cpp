@@ -967,7 +967,7 @@ void test_itc_with_nlpipe_performance()
 #ifdef POSIX
         struct timeval tv1,tv2;
 #elif defined(WIN32)
-	long tc1, tc2;
+	long tc1;
 #endif
         printf("*********base over head**************\n");
         {
@@ -1075,7 +1075,7 @@ void test_itc_with_nlpipe_performance()
 
 void test_trace_provider()
 {
-	int trace_to_flag=1;//0:stdout; 1: to file; 2: to debugview(windows)
+	int trace_to_flag=2;//0:stdout; 1: to file; 2: to debugview(windows)
         trace_provider_t *trace_prvd=trace_provider_t::instance();
 	uint8 i;
 	switch(trace_to_flag)
@@ -1098,9 +1098,9 @@ void test_trace_provider()
 #ifdef WIN32
 		{
 			trace_prvd->register_trace_stream(0, sp_trace_stream_t(), REG_TRACE_STM_OPT_ALL);
+                sp_trace_stream_t sp_trace_debugview=trace_debugview_t::s_create();
         		for(i=0; i<MAX_TRACE_LEVEL_COUNT; ++i)
         		{
-                		sp_trace_stream_t sp_trace_debugview=trace_debugview_t::s_create(i);
                 		trace_prvd->register_trace_stream(i, sp_trace_debugview, REG_TRACE_STM_OPT_EQ);
         		}
 		}

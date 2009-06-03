@@ -741,6 +741,7 @@ void trace_file_t::_s_lazy_init()
 		DWORD pid=::GetCurrentProcessId();
 #endif
         //get execute file name
+#ifdef LINUX
         int8 pid_file_path[32];
         sprintf(pid_file_path, "/proc/%d/cmdline", pid);
         FILE *fp=fopen(pid_file_path,"rb");
@@ -751,12 +752,21 @@ void trace_file_t::_s_lazy_init()
                 __INTERNAL_FY_TRACE("current process related command line is too long too exceed MAX_EXE_CMDLINE_SIZE\n");
                 return;
         }
+#elif defined(WIN32)
+
+		int16 ret=::GetModuleFileName(NULL, _s_exe_name, MAX_EXE_CMDLINE_SIZE);
+#endif
         _s_exe_name[ret]='\0';
+
         for(int16 i=ret; i>=0; i--)
         {
+#ifdef POSIX
                 if(_s_exe_name[i]=='/')
+#elif defined(WIN32)
+				if(_s_exe_name[i] == '\\')
+#endif
                 {
-                        memmove(_s_exe_name, _s_exe_name+i+1, ret - i - 1);
+                        memmove(_s_exe_name, _s_exe_name+i+1, ret - i);
                         break;
                 }
         }
