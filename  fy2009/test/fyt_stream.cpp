@@ -1075,7 +1075,7 @@ void test_itc_with_nlpipe_performance()
 
 void test_trace_provider()
 {
-	int trace_to_flag=2;//0:stdout; 1: to file; 2: to debugview(windows)
+	int trace_to_flag=1;//0:stdout; 1: to file; 2: to debugview(windows)
         trace_provider_t *trace_prvd=trace_provider_t::instance();
 	uint8 i;
 	switch(trace_to_flag)
@@ -1113,6 +1113,11 @@ void test_trace_provider()
         trace_prvd->open();
         trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer();
         uint8 level=0;
+#ifdef POSIX
+	usleep(100000);
+#elif defined(WIN32)
+	Sleep(100);
+#endif
         for(level=0; level<35; ++level)
         { 
                 tracer->prepare_trace_prefix(level,__FILE__,__LINE__)<<"hello, from trace provider test \r\n";
