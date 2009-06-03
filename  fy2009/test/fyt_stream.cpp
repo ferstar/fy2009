@@ -1075,7 +1075,41 @@ void test_itc_with_nlpipe_performance()
 
 void test_trace_provider()
 {
+	int trace_to_flag=1;//0:stdout; 1: to file; 2: to debugview(windows)
         trace_provider_t *trace_prvd=trace_provider_t::instance();
+	uint8 i;
+	switch(trace_to_flag)
+	{
+	case 0: //stdout(default)
+		break;
+	case 1: //to file
+		{
+        		trace_prvd->register_trace_stream(0, sp_trace_stream_t(), REG_TRACE_STM_OPT_ALL);
+
+        		for(i=0; i<MAX_TRACE_LEVEL_COUNT; ++i)
+        		{
+                		sp_trace_stream_t sp_trace_file=trace_file_t::s_create(i);
+                		trace_prvd->register_trace_stream(i, sp_trace_file, REG_TRACE_STM_OPT_EQ);
+        		}
+		}
+		break;
+
+	case 2: //to debugview(windows)
+#ifdef WIN32
+		{
+			trace_prvd->register_trace_stream(0, sp_trace_stream_t(), REG_TRACE_STM_OPT_ALL);
+        		for(i=0; i<MAX_TRACE_LEVEL_COUNT; ++i)
+        		{
+                		sp_trace_stream_t sp_trace_debugview=trace_debugview_t::s_create(i);
+                		trace_prvd->register_trace_stream(i, sp_trace_debugview, REG_TRACE_STM_OPT_EQ);
+        		}
+		}
+#endif
+		break;
+
+	default: //equal zero
+		break;
+	}
         trace_prvd->open();
         trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer();
         uint8 level=0;
