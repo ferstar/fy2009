@@ -133,11 +133,10 @@ private:
 class dyna_prop_it : public lookup_it
 {
 public:
-        virtual uint16 set_dprop(uint16 prop_id, uint32 fingerprint, const variant_t& prop)=0;
-	
-	//if fingerprint isn't zero, dynamic property specified by prop_id must have same fingerprint, otherwise, throw exception,
-	//, if p_fingerprint isn't null, it will return practical fingerprint set by set_dprop
-        virtual variant_t get_dprop(uint16 prop_id, uint32 fingerprint=0, uint32 *p_fingerprint=0)=0;
+	//add pin parameter for each dyna property to avoid possible prop_id definition conflict in cocurrent development
+	//2009-6-5
+        virtual uint16 set_dprop(uint16 prop_id, uint32 pin, const variant_t& prop)=0;
+        virtual variant_t get_dprop(uint16 prop_id, uint32 pin)=0;
         virtual uint16 get_dprop_count()=0;
 };
 
