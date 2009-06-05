@@ -127,7 +127,7 @@ public:
                 uint32 write(const int8* buf, uint32 len, bool trace_flag);
 
                 //lookup_it
-                void *lookup(uint32 iid) throw();
+                void *lookup(uint32 iid, uint32 pin) throw();
         private:
                 _std_trace_stream_t() : _cs(true), ref_cnt_impl_t(&_cs){} //forbiden ctor is called directly
                 critical_section_t _cs;
@@ -164,7 +164,7 @@ public:
                 void on_destroy(const int8 *buf, uint32 buf_len);
 
                 //lookup_it
-                void *lookup(uint32 iid) throw();
+                void *lookup(uint32 iid, uint32 pin) throw();
 
         private:
                 //build current content in _sb into para piece, piece.m_piece isn't null on success,
@@ -297,7 +297,7 @@ public:
         uint32 write(const int8* buf, uint32 len, bool trace_start);
 
         //lookup_it
-        void *lookup(uint32 iid) throw();
+        void *lookup(uint32 iid, uint32 pin) throw();
 private:
         static void _s_lazy_init();
 private:
@@ -341,7 +341,7 @@ public:
         uint32 write(const int8* buf, uint32 len, bool trace_start);
 
         //lookup_it
-        void *lookup(uint32 iid) throw();
+        void *lookup(uint32 iid, uint32 pin) throw();
 private:
         trace_debugview_t(){}
 private:

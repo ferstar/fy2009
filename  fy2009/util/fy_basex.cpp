@@ -38,7 +38,7 @@ void variant_t::_reset()
                         {
                                 if(!_val.objs[i]) continue;
 
-                                ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.objs[i]->lookup(IID_ref_cnt));
+                                ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.objs[i]->lookup(IID_ref_cnt, PIN_ref_cnt));
                                 if(ref_obj) ref_obj->release_reference();
                         }
                         delete [] (_val.objs);
@@ -50,7 +50,7 @@ void variant_t::_reset()
         }
         else if(_vt == VT_LOOKUP && _val.obj)
         {
-                ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt));
+                ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt, PIN_ref_cnt));
                 if(ref_obj) ref_obj->release_reference();
         }
         _vt=VT_NULL;
@@ -92,7 +92,7 @@ void variant_t::_copy(const variant_t& v, bool shallow_copy_obj)
                                 {
                                         if(!_val.objs[i]) continue;
 
-                                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.objs[i]->lookup(IID_ref_cnt));
+                                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.objs[i]->lookup(IID_ref_cnt, PIN_ref_cnt));
                                         if(ref_obj) ref_obj->add_reference();
                                 }
                         }
@@ -102,7 +102,7 @@ void variant_t::_copy(const variant_t& v, bool shallow_copy_obj)
                                 {
                                         if(!_val.objs[i]) continue;
 
-                                        clone_it *p_cln=(clone_it *)(v._val.objs[i]->lookup(IID_clone));
+                                        clone_it *p_cln=(clone_it *)(v._val.objs[i]->lookup(IID_clone, PIN_clone));
                                         if(p_cln)
                                         {
                                                 p_cln->clone((void **)&(_val.objs[i]));
@@ -113,7 +113,7 @@ void variant_t::_copy(const variant_t& v, bool shallow_copy_obj)
                                                 for(uint16 k=i-1;k<=0;k--)//free above cloned object
                                                 {
                                                         if(!_val.objs[k]) continue;
-                                                        ref_obj=(ref_cnt_it*)(_val.objs[k]->lookup(IID_ref_cnt));
+                                                        ref_obj=(ref_cnt_it*)(_val.objs[k]->lookup(IID_ref_cnt,PIN_ref_cnt));
                                                         if(ref_obj) ref_obj->release_reference();
                                                 }
                                                 _vt=VT_NULL;
@@ -151,7 +151,7 @@ void variant_t::_copy(const variant_t& v, bool shallow_copy_obj)
                                 _val.obj=v._val.obj;
                                 if(_val.obj)
                                 {
-                                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt));
+                                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt,PIN_ref_cnt));
                                         if(ref_obj) ref_obj->add_reference();
                                 }
                                 else
@@ -159,7 +159,7 @@ void variant_t::_copy(const variant_t& v, bool shallow_copy_obj)
                         }
                         else //deep copy
                         {
-                                clone_it *p_cln=(clone_it *)(v._val.obj->lookup(IID_clone));
+                                clone_it *p_cln=(clone_it *)(v._val.obj->lookup(IID_clone,PIN_clone));
                                 if(p_cln)
                                 {
                                         p_cln->clone((void **)&(_val.obj));
@@ -213,7 +213,7 @@ variant_t::variant_t(lookup_it *obj, bool attach_opt)
                 //shallow copy
                 if(!attach_opt)
                 {
-                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt));
+                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt,PIN_ref_cnt));
                         if(ref_obj) ref_obj->add_reference();
                 }
         }
@@ -408,7 +408,7 @@ void variant_t::set_obj(lookup_it *obj, bool attach_opt)
                 _val.obj=obj;
                 if(!attach_opt)
                 {
-                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt));
+                        ref_cnt_it *ref_obj=(ref_cnt_it*)(_val.obj->lookup(IID_ref_cnt,PIN_ref_cnt));
                         if(ref_obj) ref_obj->add_reference();
                 }
         }
@@ -441,7 +441,7 @@ void variant_t::set_objs(lookup_it **objs, uint16 size, bool attach_opt)
                         ref_cnt_it *ref_obj=0;
                         for(uint16 i=0;i<_size;i++)
                         {
-                                ref_obj=(ref_cnt_it*)(objs[i]->lookup(IID_ref_cnt));
+                                ref_obj=(ref_cnt_it*)(objs[i]->lookup(IID_ref_cnt,PIN_ref_cnt));
                                 if(ref_obj) ref_obj->add_reference();
                         }
                         memcpy(_val.objs, objs, _size*sizeof(lookup_it*));
@@ -488,7 +488,7 @@ uint32 variant_t::calc_persist_size() const
                 case VT_LOOKUP:
                         for(i=0;i<_size;i++)
                         {
-                                persist_it *per_obj=(persist_it*)(_val.objs[i]->lookup(IID_persist));
+                                persist_it *per_obj=(persist_it*)(_val.objs[i]->lookup(IID_persist, PIN_persist));
                                 psize += persist_helper_t::get_persist_size(per_obj);
                         }
                         break;
@@ -520,7 +520,7 @@ uint32 variant_t::calc_persist_size() const
 
                 case VT_LOOKUP:
                         {
-                                persist_it *per_obj=(persist_it*)(_val.obj->lookup(IID_persist));
+                                persist_it *per_obj=(persist_it*)(_val.obj->lookup(IID_persist,PIN_persist));
                                 psize += persist_helper_t::get_persist_size(per_obj);
                         }
                         break;
@@ -560,7 +560,7 @@ void variant_t::save_to(stream_adaptor_t& stm_adp)
                                 persist_it *per_obj=0;
                                 for(i=0;i<_size;i++)
                                 {
-                                        per_obj=(persist_it*)(_val.objs[i]->lookup(IID_persist));
+                                        per_obj=(persist_it*)(_val.objs[i]->lookup(IID_persist,PIN_persist));
                                         persist_helper_t::save_to(per_obj, stm_adp);
                                }
                         }
@@ -592,7 +592,7 @@ void variant_t::save_to(stream_adaptor_t& stm_adp)
 
                 case VT_LOOKUP:
                         {
-                                persist_it *per_obj=(persist_it*)(_val.obj->lookup(IID_persist));
+                                persist_it *per_obj=(persist_it*)(_val.obj->lookup(IID_persist,PIN_persist));
                                 persist_helper_t::save_to(per_obj, stm_adp);
                         }
                         break;

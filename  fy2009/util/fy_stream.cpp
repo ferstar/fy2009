@@ -785,25 +785,29 @@ void memory_stream_t::prealloc_buffer(uint32 siz)
 }
 
 //lookup_it
-void *memory_stream_t::lookup(uint32 iid) throw()
+void *memory_stream_t::lookup(uint32 iid,uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
+		if(pin != PIN_self) return 0;
         case IID_lookup:
+		if(pin != PIN_lookup) return 0;
                 return this;
 
         case IID_stream:
+		if(pin != PIN_stream) return 0;
                 return static_cast<stream_it *>(this);
 
         case IID_random_stream:
+		if(pin != PIN_random_stream) return 0;
                 return static_cast<random_stream_it *>(this);
 
         case IID_object_id:
-                return object_id_impl_t::lookup(iid);
+                return object_id_impl_t::lookup(iid, pin);
 
         default:
-                return ref_cnt_impl_t::lookup(iid);
+                return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
 
@@ -1124,25 +1128,29 @@ uint32 fast_memory_stream_t::detach(int8** ppBuf,uint32 *pFilledLen) throw()
 }
 
 //lookup_it
-void *fast_memory_stream_t::lookup(uint32 iid) throw()
+void *fast_memory_stream_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
+		if(pin != PIN_self) return 0;
         case IID_lookup:
+		if(pin != PIN_lookup) return 0;
                 return this;
 
         case IID_stream:
+		if(pin != PIN_stream) return 0;
                 return static_cast<stream_it *>(this);
 
         case IID_random_stream:
+		if(pin != PIN_random_stream) return 0;
                 return static_cast<random_stream_it *>(this);
 
         case IID_object_id:
-                return object_id_impl_t::lookup(iid);
+                return object_id_impl_t::lookup(iid, pin);
 
         default:
-                return ref_cnt_impl_t::lookup(iid);
+                return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
 
@@ -1269,19 +1277,21 @@ oneway_pipe_t::~oneway_pipe_t()
 
 
 //lookup_it
-void *oneway_pipe_t::lookup(uint32 iid) throw()
+void *oneway_pipe_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
+		if(pin != PIN_self) return 0;
         case IID_lookup:
+		if(pin != PIN_lookup) return 0;
                 return this;
 
         case IID_object_id:
-                return object_id_impl_t::lookup(iid);
+                return object_id_impl_t::lookup(iid, pin);
 
         default:
-                return ref_cnt_impl_t::lookup(iid);
+                return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
 

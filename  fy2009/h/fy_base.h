@@ -594,8 +594,12 @@ public:
 class lookup_it
 {
 public:
-        //any discoverable interface MUST be identified by an unique id
-        virtual void *lookup(uint32 iid) throw()=0;
+        //any discoverable interface MUST be identified by an unique id,
+	//to minimize possible interface iid definition conflict by concurrent development,
+	//add a pin to ensure found interface is extact one you want, pin should be as random as possible,
+	//but it's not necessary to ensure it's unique, in fact you can get it by truncating the beginning 
+	//4 bytes from the results of uuid_gen limux command or its windows equivalent, 2009-6-5 
+        virtual void *lookup(uint32 iid, uint32 pin) throw()=0;
 };
 
 /*[tip]interface to support tracibility
@@ -943,15 +947,18 @@ public:
         virtual ~object_id_impl_t(){}
 
         //lookup_it
-        void *lookup(uint32 iid) throw()
+        void *lookup(uint32 iid, uint32 pin) throw()
 	{
         	switch(iid)
         	{
         	case IID_self:
+			if(pin != PIN_self) return 0;
         	case IID_lookup:
+			if(pin != PIN_lookup) return 0;
                 	return this;
 
         	case IID_object_id:
+			if(pin != PIN_object_id) return 0;
                 	return static_cast<object_id_it *>(this);
 
         	default:
@@ -1012,7 +1019,7 @@ public:
         bool is_thread_safe() const throw() { return _p_cs!=0; }
 
         //lookup_i
-        void *lookup(uint32 iid) throw();
+        void *lookup(uint32 iid, uint32 pin) throw();
 
         //ref_cnt_i
         void add_reference();
@@ -1119,7 +1126,7 @@ public:
                 _p=p;
                 if(_p)
                 {
-                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt);
+                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt, PIN_ref_cnt);
                         if(shallow_copy_opt && _pr) _pr->add_reference();
                 }
                 else
@@ -1142,7 +1149,7 @@ public:
                 if(_p)
                 {
                         if(sp._p)
-                                return _p->lookup(IID_self) == sp._p->lookup(IID_self);
+                                return _p->lookup(IID_self, PIN_self) == sp._p->lookup(IID_self, PIN_self);
                         else
                                 return false;
                 }
@@ -1155,7 +1162,7 @@ public:
                 if(_p)
                 {
                         if(raw_obj)
-                                return _p->lookup(IID_self) == raw_obj->lookup(IID_self);
+                                return _p->lookup(IID_self, PIN_self) == raw_obj->lookup(IID_self, PIN_self);
                         else
                                 return false;
                 }
@@ -1178,7 +1185,7 @@ public:
                 if(_pr) _pr->release_reference();//release old raw pointer
                 _p=p;
                 if(_p)
-                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt);
+                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt, IID_ref_cnt);
                 else
                         _pr=0;
         }
@@ -1196,7 +1203,7 @@ public:
                 _p=p;
                 if(_p)
                 {
-                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt);
+                        _pr=(ref_cnt_it *)_p->lookup(IID_ref_cnt, PIN_ref_cnt);
                         if(_pr) _pr->add_reference();
                 }
                 else
@@ -1229,8 +1236,8 @@ typedef smart_pointer_lu_tt<lookup_it> sp_lookup_t;
  *[history] 
  * Initialize: 2007-3-21
  */
-#define SP_LU_CAST(dest_type, dest_type_id, src_sp) (smart_pointer_lu_tt< dest_type >(\
-                   (dest_type*)src_sp->lookup(dest_type_id),true))
+#define SP_LU_CAST(dest_type, dest_type_id, dest_pin, src_sp) (smart_pointer_lu_tt< dest_type >(\
+                   (dest_type*)src_sp->lookup(dest_type_id, dest_pin),true))
 
 /*[tip]ref_cnt_it adaptor
  *[desc] adapt ref_cnt_it mechansim to any type without it

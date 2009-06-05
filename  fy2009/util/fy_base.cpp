@@ -1070,15 +1070,18 @@ void ref_cnt_impl_t::set_lock(critical_section_t *cs) throw()
         _p_cs=cs;
 }
 
-void *ref_cnt_impl_t::lookup(uint32 iid) throw()
+void *ref_cnt_impl_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
+		if(pin != PIN_self) return 0;
         case IID_lookup:
+		if(pin != PIN_lookup) return 0;
                 return this;
 
         case IID_ref_cnt:
+		if(pin != PIN_ref_cnt) return 0;
                 return static_cast<ref_cnt_it *>(this);
 
         default:
@@ -1183,7 +1186,7 @@ int prototype_manager_t::reg_prototype(uint32 ptid, clone_it *pt)
         sp_lookup_t sp_cln=pt->clone(true);//clone a prototype to make prototype lifecycle independent from para pt
         if(sp_cln.is_null()) return PTM_RET_FAILCLONE;
 
-        _pt_vec[ptid]=SP_LU_CAST(clone_it, IID_clone, sp_cln);
+        _pt_vec[ptid]=SP_LU_CAST(clone_it, IID_clone, PIN_clone, sp_cln);
 
         return PTM_RET_SUCCESS;
 }
@@ -1210,6 +1213,6 @@ sp_clone_t prototype_manager_t::get_prototype(uint32 ptid)
         sp_lookup_t sp_cln=_pt_vec[ptid]->clone(true);//clone a prototype object
         if(sp_cln.is_null()) return sp_clone_t();
 
-        return SP_LU_CAST(clone_it, IID_clone, sp_cln);
+        return SP_LU_CAST(clone_it, IID_clone, PIN_clone, sp_cln);
 }
 

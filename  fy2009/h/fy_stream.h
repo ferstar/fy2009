@@ -381,7 +381,7 @@ public:
         void prealloc_buffer(uint32 siz);
 
         //lookup_it
-        void *lookup(uint32 iid) throw();
+        void *lookup(uint32 iid, uint32 pin) throw();
 
         //stream_it
         //buf is null but len isn't zero,will cause current position to jump,2006-7-20
@@ -476,7 +476,7 @@ public:
         inline uint32 get_filled_len() const throw() { return _filled_len; }
 
         //lookup_it
-        void *lookup(uint32 iid) throw();
+        void *lookup(uint32 iid, uint32 pin) throw();
 
         //stream_it
         uint32 read(int8* buf, uint32 len);
@@ -577,7 +577,7 @@ public:
         inline void register_sink(oneway_pipe_sink_it *sink){ _sp_sink.copy_from(sink); }
 
         //lookup_it
-        void *lookup(uint32 iid) throw();
+        void *lookup(uint32 iid, uint32 pin) throw();
 protected:
         //to avoid overhead of lock/unlock, buffer size will disallowed changing after construct
         oneway_pipe_t(uint32 buf_size=DEFAULT_NOLOCK_PIPE_SIZE);

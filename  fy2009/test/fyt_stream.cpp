@@ -153,7 +153,7 @@ void test_memory_stream_self_allocated()
         printf("wrote a int32,len:%d\n",w_len);
         //random_stream_it
         printf("*********test random_stream_it*********\n");
-        random_stream_it *p_rstm=(random_stream_it *)(pStm->lookup(IID_random_stream));
+        random_stream_it *p_rstm=(random_stream_it *)(pStm->lookup(IID_random_stream, PIN_random_stream));
 
         printf("******test seek from begin*********\n"); //array version,pass test 2006-7-19
         for(i=-2;i<16;i++)
@@ -337,7 +337,7 @@ void test_memory_stream_self_allocated()
 //new revision pass test,2008-3-25
 void test_fast_memory_stream_t()
 {
-		int i=0;
+	int i=0;
         const uint32 buf_len=8;//6,7,8,12
         printf("attach a buf to fast_memory_stream_t:size:%d\n",buf_len);
         int8 out_buf[buf_len];
@@ -360,7 +360,7 @@ void test_fast_memory_stream_t()
         printf("wrote a int32,len:%d\n",w_len);
         //random_stream_it
         printf("*********test random_stream_it*********\n");
-        random_stream_it *p_rstm=(random_stream_it *)(pStm->lookup(IID_random_stream));
+        random_stream_it *p_rstm=(random_stream_it *)(pStm->lookup(IID_random_stream, PIN_random_stream));
 
         printf("******test seek from begin*********\n"); //pass test 2006-7-12
         for(i=-2;i<16;i++)
@@ -1140,12 +1140,12 @@ int main(int argc, char **argv)
 
 	//test_ns();
 	//test_stream_adaptor();
-	//test_memory_stream_self_allocated();
+	test_memory_stream_self_allocated();
 	//test_fast_memory_stream_t();
 	//test_memory_stream_performance();
 	//test_stream_adaptor_perormance();
 	//test_itc_with_nlpipe_performance();
-	test_trace_provider();
+	//test_trace_provider();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

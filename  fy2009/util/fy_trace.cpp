@@ -40,18 +40,20 @@ uint32 trace_provider_t::_std_trace_stream_t::write(const int8* buf, uint32 len,
 }
 
 //lookup_it
-void *trace_provider_t::_std_trace_stream_t::lookup(uint32 iid) throw()
+void *trace_provider_t::_std_trace_stream_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
-               return this;
+		if(pin != PIN_self) return 0;		
+               	return this;
 
         case IID_trace_stream:
-               return static_cast<trace_stream_it *>(this);
+		if(pin != PIN_trace_stream) return 0;
+               	return static_cast<trace_stream_it *>(this);
 
         default:
-               return ref_cnt_impl_t::lookup(iid);
+               return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
 
@@ -213,14 +215,16 @@ void trace_provider_t::tracer_t::on_destroy(const int8 *buf, uint32 buf_len)
         }
 }
 
-void *trace_provider_t::tracer_t::lookup(uint32 iid) throw()
+void *trace_provider_t::tracer_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
-               return this;
+		if(pin != PIN_self) return 0;
+               	return this;
 
         case IID_oneway_pipe_sink:
+		if(pin != PIN_oneway_pipe_sink) return 0;
                return static_cast<oneway_pipe_sink_it *>(this);
 
         default:
@@ -816,18 +820,20 @@ uint32 trace_file_t::write(const int8* buf, uint32 len, bool trace_start)
 }
 
 //lookup_it
-void *trace_file_t::lookup(uint32 iid) throw()
+void *trace_file_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
-               return this;
+		if(pin != PIN_self) return 0;
+               	return this;
 
         case IID_trace_stream:
-               return static_cast<trace_stream_it *>(this);
+		if(pin != PIN_trace_stream) return 0;
+               	return static_cast<trace_stream_it *>(this);
 
         default:
-               return ref_cnt_impl_t::lookup(iid);
+               return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
 
@@ -934,18 +940,20 @@ uint32 trace_debugview_t::write(const int8* buf, uint32 len, bool trace_start)
 }
 
 //lookup_it
-void *trace_debugview_t::lookup(uint32 iid) throw()
+void *trace_debugview_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
-               return this;
+		if(pin != PIN_self) return 0;
+               	return this;
 
         case IID_trace_stream:
-               return static_cast<trace_stream_it *>(this);
+		if(pin != PIN_trace_stream) return 0;
+               	return static_cast<trace_stream_it *>(this);
 
         default:
-               return ref_cnt_impl_t::lookup(iid);
+               return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
 
