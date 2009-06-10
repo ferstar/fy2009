@@ -9,6 +9,12 @@
  * initialize: 2009-5-21
  * ====================================================================
  */
+#ifdef LINUX
+#define FY_TEST_MSG
+#endif //LINUX
+
+#ifdef FY_TEST_MSG
+
 #include "fy_msg.h"
 
 USING_FY_NAME_SPACE
@@ -145,5 +151,7 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+
+#endif //FY_TEST_MSG
 
 
