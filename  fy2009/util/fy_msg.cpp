@@ -143,8 +143,11 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 	msg_proxy->add_reference();
         int ret_set=pthread_setspecific(_s_tls_key,(void *)msg_proxy);
         FY_ASSERT(ret_set == 0);
+#ifdef POSIX
 	msg_proxy->_thd=pthread_self();
-
+#elif defined(WIN32)
+	msg_proxy->_thd=GetCurrentThread();
+#endif
         return msg_proxy;
 }
 
@@ -447,8 +450,11 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 	FY_XFUNC("post_msg,msg:"<<msg->get_msg());
 
 	FY_TRY
-
+#ifdef POSIX
 	if(_thd == pthread_self()) //owner thread is destination
+#elif defined(WIN32)
+	if(_thd == GetCurrentThread())
+#endif
 	{
 		if(msg.is_null()) return; 
 
@@ -549,6 +555,4 @@ void *msg_proxy_t::lookup(uint32 iid, uint32 pin) throw()
                 return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
-
-
 

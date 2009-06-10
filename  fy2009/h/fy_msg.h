@@ -248,8 +248,11 @@ private:
 	uint32 _tc_lastpoll[MPXY_LOCAL_MQ_CNT]; //record last poll user tick-count for each _local_mq
 	uint8 _idx_nextpoll;//hold _local_mq suffix from which  next _poll_local_mq will start 
 	uint32 _max_slice; //max slice length expected once heart_beat calling
+#ifdef POSIX
 	pthread_t _thd; //owner thread
-
+#elif defined(WIN32)
+	HANDLE _thd;
+#endif
 	critical_section_t _cs; //lock/unlock post_msg
 
         //signal it with _esi_notfull after reading a message from _mp, notify one of message writer threads to write
