@@ -11,6 +11,7 @@
  */
 #include "fy_msg.h"
 #include "fy_trace.h"
+#include "fy_base.h"
 
 USING_FY_NAME_SPACE
 
@@ -104,7 +105,12 @@ void *msg_t::lookup(uint32 iid, uint32 pin) throw()
 }
 
 //msg_proxy_t
+#ifdef POSIX
 pthread_key_t msg_proxy_t::_s_tls_key=pthread_key_t();
+#elif defined(WIN32)
+DWORD msg_proxy_t::_s_tls_key=0;
+#endif
+
 bool msg_proxy_t::_s_key_created=false;
 critical_section_t msg_proxy_t::_s_cs=critical_section_t(true);
 uint32 msg_proxy_t::_s_local_mq_bound[MPXY_LOCAL_MQ_CNT]={8,64,512,4096,32768};//unit:user tick-count(10ms)
@@ -119,7 +125,12 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 
                 if(!_s_key_created)
                 {
+#ifdef POSIX
                         if(pthread_key_create(&_s_tls_key,0))
+#elif defined(WIN32)
+						_s_tls_key = ::TlsAlloc();
+						if(TLS_OUT_OF_INDEXES == _s_tls_key)
+#endif
                         {
                                 FY_ERROR("msg_proxy_t::s_tls_instance, create TLS key error");
                                 _s_cs.unlock(); 
@@ -131,7 +142,11 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 
                 _s_cs.unlock();
         }
+#ifdef POSIX
         void *ret=pthread_getspecific(_s_tls_key);//read msg_proxy_t pointer from Thread Local Storage
+#elif defined(WIN32)
+		void *ret=::TlsGetValue(_s_tls_key);
+#endif
         if(ret) return (msg_proxy_t *)ret; //current thread ever has one msg proxy instance
         
         msg_proxy_t *msg_proxy=new msg_proxy_t(mp_size, es_notfull, esi_notfull, es_notempty, esi_notempty);
@@ -141,7 +156,11 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 
         //register msg proxy to TLS
 	msg_proxy->add_reference();
+#ifdef POSIX
         int ret_set=pthread_setspecific(_s_tls_key,(void *)msg_proxy);
+#elif defined(WIN32)
+		int ret_set=(::TlsSetValue(_s_tls_key, (void *)msg_proxy)? 0 : -1);
+#endif
         FY_ASSERT(ret_set == 0);
 #ifdef POSIX
 	msg_proxy->_thd=pthread_self();
@@ -154,11 +173,17 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 void msg_proxy_t::s_delete_tls_instance()
 {
         if(!_s_key_created) return;
-
+#ifdef POSIX
         msg_proxy_t *msg_proxy=(msg_proxy_t*)pthread_getspecific(_s_tls_key);
+#elif defined(WIN32)
+		msg_proxy_t *msg_proxy=(msg_proxy_t*)::TlsGetValue(_s_tls_key);
+#endif
         if(msg_proxy) msg_proxy->release_reference();
-
+#ifdef POSIX
         pthread_setspecific(_s_tls_key,0);//reset TLS
+#elif defined(WIN32)
+		::TlsSetValue(_s_tls_key,0);
+#endif
 }
 
 msg_proxy_t::msg_proxy_t(uint32 mp_size, 
@@ -266,7 +291,7 @@ int8 msg_proxy_t::_poll_local_mq(uint32 tc_start, uint8 start_idx, uint8 end_idx
                 if(tc_util_t::is_over_tc_end(tc_start, _max_slice,usr_clk->get_usr_tick())) return RET_HB_INT;
         }
 	
-	FY_CATCH_N_THROW_AGAIN_EX("mpxyplm","cnta",);
+	FY_CATCH_N_THROW_AGAIN_EX("mpxyplm","cnta",;);
 
 	return hb_ret;
 }
@@ -333,7 +358,7 @@ void msg_proxy_t::_lazy_init_object_id() throw()
  	sb<<"msg_proxy_"<<(void*)this<<"_thd"<<(uint32)_thd;
  	sb.build(_object_id);
  
-	__INTERNAL_FY_EXCEPTION_TERMINATOR();
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;);
 }
 
 uint32 const MPXY_MAX_TO_LOCAL_CNT_PER_HB=256;
@@ -440,7 +465,7 @@ int8 msg_proxy_t::heart_beat()
 		}
 	}
 
-	FY_EXCEPTION_XTERMINATOR();
+	FY_EXCEPTION_XTERMINATOR(;);
 
 	return hb_ret;		
 }
@@ -509,7 +534,7 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 		_post_wait_q.push_back(msg);
 	}
 
-	FY_EXCEPTION_XTERMINATOR();		
+	FY_EXCEPTION_XTERMINATOR(;);		
 }
 
 void msg_proxy_t::on_destroy(const int8 *buf, uint32 buf_len)
@@ -526,7 +551,7 @@ void msg_proxy_t::on_destroy(const int8 *buf, uint32 buf_len)
 		raw_msg=0;
 	}
 
-	FY_EXCEPTION_XTERMINATOR();
+	FY_EXCEPTION_XTERMINATOR(;);
 }
 
 //lookup_it
