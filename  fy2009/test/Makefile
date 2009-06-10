@@ -6,9 +6,9 @@ PATH_BIN=bin
 PATH_OBJS=./objs
 
 ###################################################
-all:base stm
+all:base stm msg
  
-clean:clean_base clean_stm
+clean:clean_base clean_stm clean_msg
 ###################################################
 #test base,2006-7-13
 base:fyt_base.cpp
@@ -17,9 +17,16 @@ base:fyt_base.cpp
 #test stream
 stm:fyt_stream.cpp
 	$(CXX) $(DEFAULT_FLAGS) $(INC_FLAG) -DFY_ENABLE_ASSERT -lpthread -g -o $(PATH_BIN)/$@ fyt_stream.cpp $(PATH_LIB)/fy_util.a
+
+#test message
+msg:fyt_msg.cpp
+	$(CXX) $(DEFAULT_FLAGS) $(INC_FLAG) -DFY_ENABLE_ASSERT -lpthread -g -o $(PATH_BIN)/$@ fyt_msg.cpp $(PATH_LIB)/fy_util.a
 ###################################################
 ###################################################
 clean_base:
 	(rm -f $(PATH_BIN)/base)
 clean_stm:
 	(rm -f $(PATH_BIN)/stm)
+clean_msg:
+	(rm -f $(PATH_BIN)/msg)
+

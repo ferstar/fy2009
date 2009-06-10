@@ -274,6 +274,9 @@ public:
         //, zero means not applicable
         virtual uint32 get_persist_id() const throw()=0;
 
+	//add pin to avoid potential persist id definition confilict, 2009-6-10
+	virtual uint32 get_persist_pin() const throw()=0;
+
         //calculate persistent size of this object,allow the size calulated is a little greater than actual
         //persistent size,but disallowed it's smaller, zero means not applicable
         virtual uint32 get_persist_size() const throw()=0;

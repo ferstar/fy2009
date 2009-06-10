@@ -18,7 +18,8 @@ PATH_OBJ=./objs
 OBJS=$(PATH_OBJ)/fy_base.o \
      $(PATH_OBJ)/fy_stream.o \
      $(PATH_OBJ)/fy_basex.o \
-     $(PATH_OBJ)/fy_trace.o 
+     $(PATH_OBJ)/fy_trace.o \
+     $(PATH_OBJ)/fy_msg.o 
 
 all:chk_lib_path chk_obj_path $(PATH_OUT)/fy_util.a
 
@@ -48,4 +49,6 @@ $(PATH_OBJ)/fy_basex.o:fy_basex.cpp
 	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_basex.cpp
 $(PATH_OBJ)/fy_trace.o:fy_trace.cpp
 	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_trace.cpp
+$(PATH_OBJ)/fy_msg.o:fy_msg.cpp
+	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_msg.cpp
 

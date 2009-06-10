@@ -1538,3 +1538,49 @@ void oneway_pipe_t::rollback_r()
         _r_pos=_r_pos_c;
 }
 
+//persist_helper_t
+void persist_helper_t::save_to(persist_it *obj, stream_adaptor_t& stm_adp)
+{
+        uint32 pst_id=0;
+        if(!obj)
+        {
+                stm_adp<<(uint32)pst_id;
+                return;
+        }
+        pst_id=obj->get_persist_id();
+        stm_adp<<pst_id;
+	stm_adp<<obj->get_persist_pin();
+
+        obj->save_to(stm_adp);
+}
+
+sp_persist_t persist_helper_t::load_from(stream_adaptor_t& stm_adp)
+{
+        sp_persist_t pst;
+        uint32 pst_id=0;
+	uint32 pst_pin=0;
+
+        stm_adp>>pst_id;
+        if(!pst_id) return pst;
+
+        prototype_manager_t *ptm=prototype_manager_t::instance();
+        sp_clone_t sp_cln=ptm->get_prototype(pst_id);
+        if(sp_cln.is_null())
+        {
+                __INTERNAL_FY_THROW("persist_helper_t","load_from","phld",
+                        "no registered prototype for:"<<pst_id);
+        }
+
+        pst=SP_LU_CAST(persist_it, IID_persist, PIN_persist, sp_cln);
+	stm_adp>>pst_pin;
+	if(pst_pin != pst->get_persist_pin())
+	{
+		__INTERNAL_FY_THROW("persist_helper_t","load_from","phldpin",
+			"loaded pin:"<<pst_pin<<",expected pin:"<<pst->get_persist_pin());
+	}
+ 
+        pst->load_from(stm_adp);
+          
+        return pst; 
+}
+
