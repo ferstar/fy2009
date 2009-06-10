@@ -72,8 +72,11 @@ DWORD WINAPI tf_msg(void *arg)
 {
         msg_proxy_t *msg_proxy=(msg_proxy_t*)arg;
         msg_proxy->add_reference();
-
+#ifdef LINUX
         sp_msg_t msg=msg_t::s_create((uint32)pthread_self(),0, 0);
+#elif defined(WIN32)
+		sp_msg_t msg=msg_t::s_create((uint32)GetCurrentThread(),0, 0);
+#endif
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));
         msg->set_utc_interval(200);
         msg_proxy->post_msg(msg);
@@ -124,7 +127,11 @@ void test_msg()
                 {
                 case RET_HB_IDLE:
                         printf("heart_beat ret:RET_HB_IDLE\n");
+#ifdef LINUX
                         usleep(500000);
+#elif defined(WIN32)
+						Sleep(500);
+#endif
                         break;
                 case RET_HB_BUSY:
                         printf("heart_beat ret:RET_HB_BUSY\n");

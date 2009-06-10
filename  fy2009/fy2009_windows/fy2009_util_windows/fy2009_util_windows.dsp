@@ -93,6 +93,10 @@ SOURCE=..\..\util\fy_basex.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\util\fy_msg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\util\fy_stream.cpp
 # End Source File
 # Begin Source File

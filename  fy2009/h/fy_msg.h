@@ -192,8 +192,11 @@ public:
 						event_slot_t *es_notempty=0, uint16 esi_notempty=0);
         static void s_delete_tls_instance(); //destroyed instance attached to current thread	
 public:
+#ifdef POSIX
 	inline pthread_t get_owner_thread() const throw() { return _thd; }
-
+#elif defined(WIN32)
+	inline HANDLE get_owner_thread() const throw() { return _thd; }
+#endif
 	//heart_beat_it
 	//periodically try to receive messages
 	//--each call must not last too long
@@ -230,7 +233,11 @@ private:
 	//push msg to proper _local_mq
 	void _push_to_local_mq(sp_msg_t& msg);
 private:
+#ifdef POSIX
 	static pthread_key_t _s_tls_key;
+#elif defined(WIN32)
+	static DWORD _s_tls_key;
+#endif
 	static bool _s_key_created;
 	static critical_section_t _s_cs;
 	//define message interval bound which determine message will be divided into which _local_mq

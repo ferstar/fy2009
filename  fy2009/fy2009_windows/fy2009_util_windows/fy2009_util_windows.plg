@@ -6,11 +6,66 @@
 --------------------Configuration: fy2009_util_windows - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP988.tmp" with contents
+[
+/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /Fp"Debug/fy2009_util_windows.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"F:\fy2009\util\fy_base.cpp"
+"F:\fy2009\util\fy_basex.cpp"
+"F:\fy2009\util\fy_stream.cpp"
+"F:\fy2009\util\fy_trace.cpp"
+"F:\fy2009\util\fy_msg.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSP988.tmp" 
+Creating command line "link.exe -lib /nologo /out:"Debug\fy_util.lib "  .\Debug\fy_base.obj .\Debug\fy_basex.obj .\Debug\fy_stream.obj .\Debug\fy_trace.obj .\Debug\fy_msg.obj "
+<h3>Output Window</h3>
+Compiling...
+fy_base.cpp
+fy_basex.cpp
+f:\fy2009\h\fy_basex.h(30) : warning C4305: 'initializing' : truncation from 'const int' to 'const char'
+f:\fy2009\h\fy_basex.h(30) : warning C4309: 'initializing' : truncation of constant value
+f:\fy2009\h\fy_basex.h(55) : warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+f:\fy2009\util\fy_basex.cpp(108) : warning C4800: 'void ** ' : forcing value to bool 'true' or 'false' (performance warning)
+f:\fy2009\util\fy_basex.cpp(165) : warning C4800: 'void ** ' : forcing value to bool 'true' or 'false' (performance warning)
+fy_stream.cpp
+fy_trace.cpp
+f:\fy2009\util\fy_trace.cpp(447) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
+d:\program files\microsoft visual studio\vc98\include\deque(191) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
+        d:\program files\microsoft visual studio\vc98\include\deque(188) : while compiling class-template member function '__thiscall std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >(const std::allocator<fy2009::trace_provider_t::_piece_t> &)'
+d:\program files\microsoft visual studio\vc98\include\vector(39) : warning C4786: 'std::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >' : identifier was truncated to '255' characters in the debug information
+d:\program files\microsoft visual studio\vc98\include\vector(60) : warning C4786: 'std::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >::~vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >' : identifier was truncated to '255' characters in the debug information
+fy_msg.cpp
+f:\fy2009\h\fy_basex.h(30) : warning C4305: 'initializing' : truncation from 'const int' to 'const char'
+f:\fy2009\h\fy_basex.h(30) : warning C4309: 'initializing' : truncation of constant value
+f:\fy2009\h\fy_basex.h(55) : warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+f:\fy2009\util\fy_msg.cpp(206) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::const_iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> const &,fy2009::smart_pointer_tt<fy2009::msg_t> const *,int>' : identifier was truncated to '255' characters in the debug information
+f:\fy2009\util\fy_msg.cpp(206) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> &,fy2009::smart_pointer_tt<fy2009::msg_t> *,int>' : identifier was truncated to '255' characters in the debug information
+f:\fy2009\util\fy_msg.cpp(234) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(241) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(285) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(290) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(371) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(434) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(460) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(467) : warning C4003: not enough actual parameters for macro 'FY_EXCEPTION_XTERMINATOR'
+f:\fy2009\util\fy_msg.cpp(485) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(513) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+f:\fy2009\util\fy_msg.cpp(522) : error C2039: 'get_usr_tick' : is not a member of 'user_clock_t'
+        f:\fy2009\h\fy_base.h(554) : see declaration of 'user_clock_t'
+Error executing cl.exe.
 
 
 
 <h3>Results</h3>
-fy_util.lib - 0 error(s), 0 warning(s)
+fy_util.lib - 10 error(s), 15 warning(s)
 </pre>
 </body>
 </html>
