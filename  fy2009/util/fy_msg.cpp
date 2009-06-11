@@ -113,7 +113,7 @@ DWORD msg_proxy_t::_s_tls_key=0;
 
 bool msg_proxy_t::_s_key_created=false;
 critical_section_t msg_proxy_t::_s_cs=critical_section_t(true);
-uint32 msg_proxy_t::_s_local_mq_bound[MPXY_LOCAL_MQ_CNT]={8,64,512,4096,32768};//unit:user tick-count(10ms)
+uint32 msg_proxy_t::_s_local_mq_bound[MPXY_LOCAL_MQ_CNT]={8,64,512,4096,32768};//unit:user tick-count
 
 msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 					event_slot_t *es_notfull, uint16 esi_notfull,
@@ -195,7 +195,7 @@ msg_proxy_t::msg_proxy_t(uint32 mp_size,
 
 	_mp->register_sink(this);
 
-	memset(_tc_lastpoll,0,sizeof(uint32)*MPXY_LOCAL_MQ_CNT);
+	memset(_utc_lastpoll,0,sizeof(uint32)*MPXY_LOCAL_MQ_CNT);
 	_idx_nextpoll=0;
 	_max_slice=MPXY_HB_MAX_SLICE;
 
@@ -210,9 +210,9 @@ msg_proxy_t::msg_proxy_t(uint32 mp_size,
 //post_msg may be called within OnMsg, which will cause _local_mq to be destroyed 
 #define SLICE_CHECK_POINT 128
 
-int8 msg_proxy_t::_poll_local_mq(uint32 tc_start, uint8 start_idx, uint8 end_idx)
+int8 msg_proxy_t::_poll_local_mq(uint32 utc_start, uint8 start_idx, uint8 end_idx)
 {
-	FY_XFUNC("_poll_local_mq,tc_start:"<<tc_start<<",start_idx:"<<start_idx<<",end_idx:"<<end_idx);
+	FY_XFUNC("_poll_local_mq,utc_start:"<<utc_start<<",start_idx:"<<start_idx<<",end_idx:"<<end_idx);
 	
 	FY_DECL_EXCEPTION_CTX_EX("_poll_local_mq");
 
@@ -230,22 +230,22 @@ int8 msg_proxy_t::_poll_local_mq(uint32 tc_start, uint8 start_idx, uint8 end_idx
         for(uint8 i=start_idx;i<=end_idx;++i)
         {
                 //always poll _local_mq[0] as often as possible
-                if(i && !tc_util_t::is_over_tc_end(_tc_lastpoll[i],
+                if(i && !tc_util_t::is_over_tc_end(_utc_lastpoll[i],
                                 msg_proxy_t::_s_local_mq_bound[i-1],
-                                usr_clk->get_usr_tick())) continue;
+                                get_tick_count(usr_clk))) continue;
 
                 //poll _local_mq[i]
                 for(mq_t::iterator it=_local_mq[i].begin(); it!=_local_mq[i].end(); )
                 {
 			FY_TRY //2008-12-25, avoid dead-running caused by failed msg
 
-                        uint32 tc_cur=usr_clk->get_usr_tick();
+                        uint32 utc_cur=get_tick_count(usr_clk);
 			sp_msg_t& smt_msg=*it;
-			uint32 tc_interval=smt_msg->get_utc_interval();
-			if(tc_interval) //delay running
+			uint32 utc_interval=smt_msg->get_utc_interval();
+			if(utc_interval) //delay running
                         {
 				//meet running condition
-                                if(tc_util_t::is_over_tc_end(smt_msg->get_utc_posted(), tc_interval, tc_cur))
+                                if(tc_util_t::is_over_tc_end(smt_msg->get_utc_posted(), utc_interval, utc_cur))
                                 {
 					hb_ret=RET_HB_BUSY;
 					sp_msg_rcver_t smt_receiver=smt_msg->get_receiver();
@@ -260,7 +260,7 @@ int8 msg_proxy_t::_poll_local_mq(uint32 tc_start, uint8 start_idx, uint8 end_idx
                                         }
                                         else 
                                         {
-                                                smt_msg->_set_utc_posted(tc_cur); //update posted tc
+                                                smt_msg->_set_utc_posted(utc_cur); //update posted utc
 						//_repeat < 0 means repeat forever
                                                 if(repeat > 0) smt_msg->_repeat=repeat - 1;
                                                 ++it;
@@ -271,7 +271,7 @@ int8 msg_proxy_t::_poll_local_mq(uint32 tc_start, uint8 start_idx, uint8 end_idx
                                         ++it;
                                 }
                         }
-                        else //_tc_interval == 0 means running as soon as possible 
+                        else //_utc_interval == 0 means running as soon as possible 
                         {
 				hb_ret=RET_HB_BUSY;
 				sp_msg_rcver_t smt_receiver=smt_msg->get_receiver();
@@ -283,12 +283,12 @@ int8 msg_proxy_t::_poll_local_mq(uint32 tc_start, uint8 start_idx, uint8 end_idx
 			FY_CATCH_N_THROW_AGAIN_EX("mpxylmf","cnta", _local_mq[i].erase(it); return hb_ret;);
                 }
 
-                _tc_lastpoll[i]=usr_clk->get_usr_tick();
+                _utc_lastpoll[i]=get_tick_count(usr_clk);
 		_idx_nextpoll=i+1;
 		if(_idx_nextpoll == MPXY_LOCAL_MQ_CNT) _idx_nextpoll=0;
 
                 //exceeds max slice
-                if(tc_util_t::is_over_tc_end(tc_start, _max_slice,usr_clk->get_usr_tick())) return RET_HB_INT;
+                if(tc_util_t::is_over_tc_end(utc_start, _max_slice,get_tick_count(usr_clk))) return RET_HB_INT;
         }
 	
 	FY_CATCH_N_THROW_AGAIN_EX("mpxyplm","cnta",;);
@@ -329,12 +329,12 @@ void msg_proxy_t::_push_to_local_mq(sp_msg_t& msg)
 		return;
 	}
 
-	uint32 tc_interval=msg->get_utc_interval();
-        if(tc_interval) //delay msg
+	uint32 utc_interval=msg->get_utc_interval();
+        if(utc_interval) //delay msg
         {
                 for(int i=0; i< MPXY_LOCAL_MQ_CNT - 1 ; ++i)
                 {
-                	if(tc_interval < msg_proxy_t::_s_local_mq_bound[i])
+                	if(utc_interval < msg_proxy_t::_s_local_mq_bound[i])
                         {
                         	_local_mq[i].push_back(msg);
                                 return;
@@ -369,7 +369,7 @@ int8 msg_proxy_t::heart_beat()
 
         user_clock_t *usr_clk=user_clock_t::instance();
         FY_ASSERT(usr_clk);
-        uint32 tc_start=usr_clk->get_usr_tick();
+        uint32 utc_start=get_tick_count(usr_clk);
 	int8 hb_ret=RET_HB_IDLE;
 
 	FY_TRY
@@ -388,11 +388,11 @@ int8 msg_proxy_t::heart_beat()
 	//check and run local message
 	uint8 old_idx_nextpoll=_idx_nextpoll;
 
-	int8 tmp_ret=_poll_local_mq(tc_start, _idx_nextpoll, MPXY_LOCAL_MQ_CNT - 1);
+	int8 tmp_ret=_poll_local_mq(utc_start, _idx_nextpoll, MPXY_LOCAL_MQ_CNT - 1);
 	if(tmp_ret > hb_ret) hb_ret=tmp_ret;
 	if(RET_HB_INT == hb_ret) return hb_ret;
 
-	if(old_idx_nextpoll) tmp_ret=_poll_local_mq(tc_start, 0, old_idx_nextpoll - 1);
+	if(old_idx_nextpoll) tmp_ret=_poll_local_mq(utc_start, 0, old_idx_nextpoll - 1);
 	if(tmp_ret > hb_ret) hb_ret=tmp_ret;
 	if(RET_HB_INT == hb_ret) return hb_ret; 
 
@@ -429,10 +429,10 @@ int8 msg_proxy_t::heart_beat()
 		}
 		else
 		{
-			uint32 tc_interval=smt_msg->get_utc_interval();
-			if(tc_interval)
+			uint32 utc_interval=smt_msg->get_utc_interval();
+			if(utc_interval)
 			{
-				if(tc_util_t::is_over_tc_end(smt_msg->get_utc_posted(), tc_interval, usr_clk->get_usr_tick()))
+				if(tc_util_t::is_over_tc_end(smt_msg->get_utc_posted(), utc_interval, get_tick_count(usr_clk)))
 				{
 					sp_msg_rcver_t smt_receiver=smt_msg->get_receiver();
 					//slice usage is determined by receiver.on_msg
@@ -449,7 +449,7 @@ int8 msg_proxy_t::heart_beat()
 					_push_to_local_mq(smt_msg);
 				}
 			}
-			else //tc_interval == 0
+			else //utc_interval == 0
 			{
 				sp_msg_rcver_t smt_receiver=smt_msg->get_receiver();
 				//slice usage is determined by receiver.on_msg
@@ -458,7 +458,7 @@ int8 msg_proxy_t::heart_beat()
 		}
 		
 		//check time slice
-		if(tc_util_t::is_over_tc_end(tc_start, _max_slice, usr_clk->get_usr_tick()))
+		if(tc_util_t::is_over_tc_end(utc_start, _max_slice, get_tick_count(usr_clk)))
 		{
 			hb_ret=RET_HB_INT; 
 			break;
@@ -483,7 +483,7 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 	{
 		if(msg.is_null()) return; 
 
-		msg->_set_utc_posted(user_clock_t::instance()->get_usr_tick());
+		msg->_set_utc_posted(get_tick_count(user_clock_t::instance()));
 		msg->_flag |= MSG_FLAG_POSTED;
 		_post_owner_q.push_back(msg);
 		
@@ -520,7 +520,7 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 	}
 	//write para msg
 	if(msg.is_null()) return;
-	msg->_set_utc_posted(user_clock_t::instance()->get_usr_tick());
+	msg->_set_utc_posted(get_tick_count(user_clock_t::instance()));
 	msg->_flag |= MSG_FLAG_POSTED;
 	msg_t *raw_msg=(msg_t*)msg;
 	if(_mp->write((const int8*)&raw_msg, sizeof(msg_t*), false) == sizeof(msg_t*))

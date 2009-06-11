@@ -201,6 +201,7 @@ public:
 	//periodically try to receive messages
 	//--each call must not last too long
 	int8 heart_beat();
+	//unit:user tick-count
 	void set_max_slice(uint32 max_slice){ _max_slice = max_slice; }
 	uint32 get_max_slice() const throw() { return _max_slice; }
 
@@ -224,7 +225,7 @@ private:
                     event_slot_t *es_notempty=0, uint16 esi_notempty=0 );
 
 	//check and run local message, it's interruptable  
-	int8 _poll_local_mq(uint32 tc_start, uint8 start_idx, uint8 end_idx);
+	int8 _poll_local_mq(uint32 utc_start, uint8 start_idx, uint8 end_idx);
 
 	//remove local message specified by para rcver and msg from _local_mq
 	//para msg==0 means remove all recer matched msg
@@ -252,9 +253,9 @@ private:
 	//performance, also not directly to _local_mq to avoid post_msg is called from msg_sink_i.on_msg which may destroy
         // _local_mq intergrity
 	mq_t _post_owner_q;  	
-	uint32 _tc_lastpoll[MPXY_LOCAL_MQ_CNT]; //record last poll user tick-count for each _local_mq
+	uint32 _utc_lastpoll[MPXY_LOCAL_MQ_CNT]; //record last poll user tick-count for each _local_mq
 	uint8 _idx_nextpoll;//hold _local_mq suffix from which  next _poll_local_mq will start 
-	uint32 _max_slice; //max slice length expected once heart_beat calling
+	uint32 _max_slice; //max slice length expected once heart_beat calling,unit:user tick-count
 #ifdef POSIX
 	pthread_t _thd; //owner thread
 #elif defined(WIN32)
