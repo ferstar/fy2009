@@ -511,7 +511,7 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 			_mp->rollback_w();
 			if(!msg.is_null())
 			{
-				msg->_set_utc_posted(user_clock_t::instance()->get_usr_tick());
+				msg->_set_utc_posted(get_tick_count(user_clock_t::instance()));
 				msg->_flag |= MSG_FLAG_POSTED;
 			 	_post_wait_q.push_back(msg);
 			}
