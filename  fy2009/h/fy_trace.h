@@ -248,11 +248,7 @@ private:
         static trace_provider_t *_s_inst;
         static critical_section_t _s_cs;
         event_t _e_incoming;//2008-4-14, trace thread will wait on it if all trace pipes are empty
-#ifdef POSIX
-        pthread_key_t _tls_key;
-#elif defined(WIN32)
-	DWORD _tls_key;
-#endif
+        fy_thread_key_t _tls_key;
         tracer_t * _vec_tracer[TRACE_PROVIDER_CAPACITY];
         uint16 _filled_len; //filled length of _vec_tracer
 
@@ -262,11 +258,7 @@ private:
         tracer_t * _dead_vec_tracer[TRACE_PROVIDER_CAPACITY];
 
         bool _stop_flag; //notify read thread to stop
-#ifdef POSIX
-        pthread_t _r_thd;//read thread
-#elif defined(WIN32)
-	HANDLE _r_thd;
-#endif
+        fy_thread_t _r_thd;//read thread
         critical_section_t _s_cs_rtf_read;//when read thread is ready will unlock it
 
         //trace dispatching table,suffix is trace level

@@ -1298,11 +1298,7 @@ void *oneway_pipe_t::lookup(uint32 iid, uint32 pin) throw()
 bool oneway_pipe_t::register_read()
 {
         smart_lock_t slock(&_cs_reg);
-#ifdef POSIX
-        pthread_t thd_self=pthread_self();
-#elif defined(WIN32)
-		HANDLE thd_self=GetCurrentThread();
-#endif
+        fy_thread_t thd_self=fy_thread_self();
         if(_r_thd)
         {
                 if(_r_thd==thd_self)
@@ -1321,21 +1317,13 @@ bool oneway_pipe_t::register_read()
 void oneway_pipe_t::unregister_read()
 {
         smart_lock_t slock(&_cs_reg);
-#ifdef POSIX
-        if(_r_thd==pthread_self()) _r_thd=0;
-#elif defined(WIN32)
-		if(_r_thd == GetCurrentThread()) _r_thd=0;
-#endif
+        if(_r_thd==fy_thread_self()) _r_thd=0;
 }
 
 bool oneway_pipe_t::register_write()
 {
         smart_lock_t slock(&_cs_reg);
-#ifdef POSIX
-        pthread_t thd_self=pthread_self();
-#elif defined(WIN32)
-		HANDLE thd_self=GetCurrentThread();
-#endif
+        fy_thread_t thd_self=fy_thread_self();
         if(_w_thd)
         {
                 if(_w_thd==thd_self)
@@ -1354,11 +1342,7 @@ bool oneway_pipe_t::register_write()
 void oneway_pipe_t::unregister_write()
 {
         smart_lock_t slock(&_cs_reg);
-#ifdef POSIX
-        if(_w_thd==pthread_self()) _w_thd=0;
-#elif defined(WIN32)
-		if(_w_thd==GetCurrentThread()) _w_thd=0;
-#endif
+        if(_w_thd==fy_thread_self()) _w_thd=0;
 }
 
 uint32 oneway_pipe_t::get_w_size() const
@@ -1384,11 +1368,8 @@ uint32 oneway_pipe_t::get_r_size() const
 uint32 oneway_pipe_t::read(int8* buf,uint32 len, bool auto_commit)
 {
         FY_ASSERT(buf && len);
-#ifdef POSIX
-		FY_ASSERT(0==_r_thd ||  _r_thd==pthread_self());
-#elif defined(WIN32)
-		FY_ASSERT(0==_r_thd ||  _r_thd==GetCurrentThread());
-#endif
+	FY_ASSERT(0==_r_thd ||  _r_thd==fy_thread_self());
+
         smart_lock_t slock(_r_thd? 0: &_cs_r);
 
         //keep a snap shot of _w_pos_c to avoid multi-thread conflict
@@ -1432,11 +1413,8 @@ uint32 oneway_pipe_t::read(int8* buf,uint32 len, bool auto_commit)
 uint32 oneway_pipe_t::write(const int8* buf,uint32 len,bool auto_commit)
 {
         FY_ASSERT(buf && len );
-#ifdef POSIX		
-		FY_ASSERT(0 == _w_thd || _w_thd == pthread_self());
-#elif defined(WIN32)
-		FY_ASSERT(0 == _w_thd || _w_thd == GetCurrentThread());
-#endif
+	FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
+
         smart_lock_t slock(_w_thd? 0 : &_cs_w);
 
         //keep a snap shot of _r_pos_c to avoid multi-thread conflict
@@ -1486,11 +1464,8 @@ uint32 oneway_pipe_t::write(const int8* buf,uint32 len,bool auto_commit)
 //only write thread can commit write
 void oneway_pipe_t::commit_w()
 {
-#ifdef POSIX
-        FY_ASSERT(0 == _w_thd || _w_thd == pthread_self());
-#elif defined(WIN32)
-		FY_ASSERT(0 == _w_thd || _w_thd == GetCurrentThread());
-#endif
+        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
+
         smart_lock_t slock(_w_thd? 0 : &_cs_w);
 
         _w_pos_c=_w_pos;
@@ -1499,11 +1474,7 @@ void oneway_pipe_t::commit_w()
 //only write thread can rollback write
 void oneway_pipe_t::rollback_w()
 {
-#ifdef POSIX
-        FY_ASSERT(0 == _w_thd || _w_thd == pthread_self());
-#elif defined(WIN32)
-		FY_ASSERT(0 == _w_thd || _w_thd == GetCurrentThread());
-#endif
+        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
 
         smart_lock_t slock(_w_thd? 0 : &_cs_w);
 
@@ -1513,11 +1484,7 @@ void oneway_pipe_t::rollback_w()
 //only read thread can commit read
 void oneway_pipe_t::commit_r()
 {
-#ifdef POSIX
-        FY_ASSERT(0 == _w_thd || _w_thd == pthread_self());
-#elif defined(WIN32)
-		FY_ASSERT(0 == _w_thd || _w_thd == GetCurrentThread());
-#endif
+        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
 
         smart_lock_t slock(_r_thd? 0 : &_cs_r);
 
@@ -1527,11 +1494,7 @@ void oneway_pipe_t::commit_r()
 //only read thread can rollback read
 void oneway_pipe_t::rollback_r()
 {
-#ifdef POSIX
-        FY_ASSERT(0 == _w_thd || _w_thd == pthread_self());
-#elif defined(WIN32)
-		FY_ASSERT(0 == _w_thd || _w_thd == GetCurrentThread());
-#endif
+        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
 
         smart_lock_t slock(_r_thd? 0 : &_cs_r);
 

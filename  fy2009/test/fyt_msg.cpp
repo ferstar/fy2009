@@ -72,11 +72,7 @@ DWORD WINAPI tf_msg(void *arg)
 {
         msg_proxy_t *msg_proxy=(msg_proxy_t*)arg;
         msg_proxy->add_reference();
-#ifdef LINUX
-        sp_msg_t msg=msg_t::s_create((uint32)pthread_self(),0, 0);
-#elif defined(WIN32)
-		sp_msg_t msg=msg_t::s_create((uint32)GetCurrentThread(),0, 0);
-#endif
+        sp_msg_t msg=msg_t::s_create((uint32)fy_thread_self(),0, 0);
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));
         msg->set_utc_interval(2000/get_tick_count_res(user_clock_t::instance()));
         msg_proxy->post_msg(msg);
@@ -105,11 +101,7 @@ void test_msg()
 
 
 	//test cross-thread message
-#ifdef LINUX
-        pthread_t thd;
-#elif defined(WIN32)
-	HANDLE thd;
-#endif
+        fy_thread_t thd;
         msg_proxy_t *raw_msg_proxy=(msg_proxy_t*)msg_proxy;
         for(int i=0;i<10;++i) 
 	{

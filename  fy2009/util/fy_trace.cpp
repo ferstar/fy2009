@@ -475,12 +475,7 @@ void trace_provider_t::open()
         smart_lock_t slock(&_s_cs);
 
         if(_r_thd) return;
-#ifdef POSIX
-        int32 ret=pthread_key_create(&_tls_key,0);
-#elif defined(WIN32)
-	_tls_key = ::TlsAlloc();
-	int32 ret = (_tls_key == TLS_OUT_OF_INDEXES? -1:0);
-#endif
+        int32 ret=fy_thread_key_create(&_tls_key,0);
         if(ret)
         {
                 __INTERNAL_FY_TRACE("trace_provider_t::open create TLS key error\n");
@@ -488,11 +483,12 @@ void trace_provider_t::open()
         }
         //create read thread
         _s_cs_rtf_read.lock();//wait for read thread unlock it while ready to read
+
+        fy_thread_t tmp_thd=0;
 #ifdef POSIX
-        pthread_t tmp_thd=0;
         if(pthread_create(&tmp_thd,0,_thd_r_f,(void *)this))
 #elif defined(WIN32)
-	HANDLE tmp_thd=::CreateThread(NULL, 0, _thd_r_f, (void*)this, 0, NULL);
+	tmp_thd=::CreateThread(NULL, 0, _thd_r_f, (void*)this, 0, NULL);
 	if(tmp_thd == NULL)
 #endif
         {
@@ -512,19 +508,12 @@ void trace_provider_t::close()
         smart_lock_t slock(&_s_cs);
 
         if(!_r_thd) return;
-#ifdef POSIX
-        pthread_key_delete(_tls_key);//disable later write try
-#elif defined(WIN32)
-	::TlsFree(_tls_key);
-#endif
+
+        fy_thread_key_delete(_tls_key);//disable later write try
         _tls_key=0;
 
         _stop_flag=true;//notify read thread to stop
-#ifdef POSIX
-        pthread_join(_r_thd,0);//wait read thread exit
-#elif defined(WIN32)
-	::WaitForSingleObject(_r_thd,INFINITE);	
-#endif
+        fy_thread_join(_r_thd,0);//wait read thread exit
         _r_thd=0;
 }
 
@@ -537,11 +526,7 @@ trace_provider_t::tracer_t *trace_provider_t::register_tracer(uint32 pipe_size,
         tracer_t *tcer=0;
 
         FY_TRY
-#ifdef POSIX
-        void *ret=pthread_getspecific(_tls_key);//read tracer pointer from Thread Local Storage
-#elif defined(WIN32)
-	void *ret=::TlsGetValue(_tls_key);
-#endif
+        void *ret=fy_thread_getspecific(_tls_key);//read tracer pointer from Thread Local Storage
         if(ret) return (tracer_t *)ret; //current thread register repeatedly
         if(!_r_thd)
         {
@@ -583,15 +568,11 @@ trace_provider_t::tracer_t *trace_provider_t::register_tracer(uint32 pipe_size,
         }
 
         slock.unlock();
-#ifdef POSIX
-        int ret_set_tls=pthread_setspecific(_tls_key,(void *)tcer);//set tracer to Thread Local Storage
-#elif defined(WIN32)
-	int ret_set_tls=(::TlsSetValue(_tls_key, (void *)tcer)? 0 : -1);
-#endif
+        int ret_set_tls=fy_thread_setspecific(_tls_key,(void *)tcer);//set tracer to Thread Local Storage
         if(ret_set_tls)
         {
                 delete tcer;
-                __INTERNAL_FY_TRACE("register_tracer,pthread_setspecific fail\n");
+                __INTERNAL_FY_TRACE("register_tracer,fy_thread_setspecific fail\n");
 
                 return 0;
         }
@@ -605,19 +586,11 @@ void trace_provider_t::unregister_tracer()
 {
         FY_TRY
 
-#ifdef POSIX
-        void *ret=pthread_getspecific(_tls_key);
+        void *ret=fy_thread_getspecific(_tls_key);
         if(!ret) return; //never registered
-        pthread_setspecific(_tls_key,(void *)0);//reset thread local storage
+        fy_thread_setspecific(_tls_key,(void *)0);//reset thread local storage
 
-        pthread_t thd=pthread_self();
-#elif defined(WIN32)
-	void *ret=::TlsGetValue(_tls_key);
-	if(!ret) return; //never registered
-	::TlsSetValue(_tls_key, (void*)0);
-	
-	HANDLE thd=::GetCurrentThread();
-#endif
+        fy_thread_t thd=fy_thread_self();
         smart_lock_t slock(&_s_cs);
 
         for(uint16 i=0;i<_filled_len;i++)
@@ -657,13 +630,8 @@ void trace_provider_t::unregister_tracer()
 
 trace_provider_t::tracer_t *trace_provider_t::get_thd_tracer()
 {
-#ifdef POSIX
-        void *ret=pthread_getspecific(_tls_key);
-		uint32 tmp_thd=(uint32)pthread_self();
-#elif defined(WIN32)
-	void *ret=::TlsGetValue(_tls_key);
-	uint32 tmp_thd=(uint32)::GetCurrentThread();
-#endif
+        void *ret=fy_thread_getspecific(_tls_key);
+	uint32 tmp_thd=(uint32)fy_thread_self();
         if(ret) return (tracer_t *)ret;
 
         __INTERNAL_FY_TRACE_EX("trace_provider_t::get_thd_tracer,error, thread(tid="<<tmp_thd \

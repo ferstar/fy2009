@@ -192,11 +192,8 @@ public:
 						event_slot_t *es_notempty=0, uint16 esi_notempty=0);
         static void s_delete_tls_instance(); //destroyed instance attached to current thread	
 public:
-#ifdef POSIX
-	inline pthread_t get_owner_thread() const throw() { return _thd; }
-#elif defined(WIN32)
-	inline HANDLE get_owner_thread() const throw() { return _thd; }
-#endif
+	inline fy_thread_t get_owner_thread() const throw() { return _thd; }
+
 	//heart_beat_it
 	//periodically try to receive messages
 	//--each call must not last too long
@@ -234,11 +231,7 @@ private:
 	//push msg to proper _local_mq
 	void _push_to_local_mq(sp_msg_t& msg);
 private:
-#ifdef POSIX
-	static pthread_key_t _s_tls_key;
-#elif defined(WIN32)
-	static DWORD _s_tls_key;
-#endif
+	static fy_thread_key_t _s_tls_key;
 	static bool _s_key_created;
 	static critical_section_t _s_cs;
 	//define message interval bound which determine message will be divided into which _local_mq
@@ -256,11 +249,7 @@ private:
 	uint32 _utc_lastpoll[MPXY_LOCAL_MQ_CNT]; //record last poll user tick-count for each _local_mq
 	uint8 _idx_nextpoll;//hold _local_mq suffix from which  next _poll_local_mq will start 
 	uint32 _max_slice; //max slice length expected once heart_beat calling,unit:user tick-count
-#ifdef POSIX
-	pthread_t _thd; //owner thread
-#elif defined(WIN32)
-	HANDLE _thd;
-#endif
+	fy_thread_t _thd; //owner thread
 	critical_section_t _cs; //lock/unlock post_msg
 
         //signal it with _esi_notfull after reading a message from _mp, notify one of message writer threads to write

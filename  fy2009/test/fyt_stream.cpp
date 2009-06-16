@@ -989,11 +989,7 @@ void test_itc_with_nlpipe_performance()
         printf("***********itc with lock***********\n");
         {
         ITC_Area *itca=new ITC_Area();
-#ifdef POSIX
-        pthread_t thd;
-#elif defined(WIN32)
-	HANDLE thd;
-#endif
+        fy_thread_t thd;
         itca->no_data=false;
         itca->cs_ready.lock();
 #ifdef POSIX
@@ -1014,11 +1010,11 @@ void test_itc_with_nlpipe_performance()
                itca->cs.unlock();
         }
         itca->no_data=true;
+
+        fy_thread_join(thd,0);
 #ifdef POSIX
-        pthread_join(thd,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(itca->tvs,itca->tve);
 #elif defined(WIN32)
-	WaitForSingleObject(thd,INFINITE);
 	int32 tc=itca->tce - itca->tcs;
 #endif
         printf("tc=%d\n",tc);
@@ -1030,11 +1026,7 @@ void test_itc_with_nlpipe_performance()
         sp_owp_t sp_nlp=oneway_pipe_t::s_create(524287);
         sp_nlp->register_write();
         char buf[]={'K'};
-#ifdef POSIX
-        pthread_t thd;
-#elif defined(WIN32)
-	HANDLE thd;
-#endif
+        fy_thread_t thd;
         g_cs_thd_ready.lock();
 #ifdef POSIX
         pthread_create(&thd,0,tf_itc_nlp,(void *)(oneway_pipe_t*)sp_nlp);
@@ -1058,11 +1050,11 @@ void test_itc_with_nlpipe_performance()
         }
         sp_nlp->unregister_write();
         es_r.signal(1);
+
+        fy_thread_join(thd,0);
 #ifdef POSIX
-        pthread_join(thd,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(g_tvs,g_tve);
 #elif defined(WIN32)
-	WaitForSingleObject(thd,INFINITE);
 	int32 tc=g_tce - g_tcs;
 #endif
         //results:2006-8-17
@@ -1142,10 +1134,10 @@ int main(int argc, char **argv)
 	//test_stream_adaptor();
 	//test_memory_stream_self_allocated();
 	//test_fast_memory_stream_t();
-	//test_memory_stream_performance();
+	test_memory_stream_performance();
 	//test_stream_adaptor_perormance();
 	//test_itc_with_nlpipe_performance();
-	test_trace_provider();
+	//test_trace_provider();
 
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(if(g_buf){printf("g_buf is deleted\n");delete [] g_buf;g_buf=0;});
 	

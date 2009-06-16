@@ -562,13 +562,8 @@ public:
 
         inline bool is_write_registered() const throw() { return _w_thd!=0; }
         inline bool is_read_registered() const throw() { return _r_thd!=0; }
-#ifdef POSIX
-        inline pthread_t get_r_thd() const throw(){ return _r_thd; }
-        inline pthread_t get_w_thd() const throw(){ return _w_thd; }
-#elif defined(WIN32)
-        inline HANDLE get_r_thd() const throw(){ return _r_thd; }
-        inline HANDLE get_w_thd() const throw(){ return _w_thd; }
-#endif
+        inline fy_thread_t get_r_thd() const throw(){ return _r_thd; }
+        inline fy_thread_t get_w_thd() const throw(){ return _w_thd; }
         uint32 read(int8* buf,uint32 len, bool auto_commit=true);
         uint32 write(const int8* buf,uint32 len, bool auto_commit=true);
         void commit_w();//commit write,uncommited data will cann't be read
@@ -593,13 +588,8 @@ private:
         uint32 _len_buf;
         volatile uint32 _r_pos; //next read position
         volatile uint32 _r_pos_c; //committed read position,2008-4-1
-#ifdef POSIX
-        pthread_t _r_thd; //read thread
-        pthread_t _w_thd; //write thread
-#elif defined(WIN32)
-		HANDLE _r_thd;
-		HANDLE _w_thd;
-#endif
+        fy_thread_t _r_thd; //read thread
+        fy_thread_t _w_thd; //write thread
         volatile uint32 _w_pos; //next write position
         volatile uint32 _w_pos_c;//committed write position
         critical_section_t _cs_reg;//for register read/write

@@ -105,11 +105,7 @@ void *msg_t::lookup(uint32 iid, uint32 pin) throw()
 }
 
 //msg_proxy_t
-#ifdef POSIX
-pthread_key_t msg_proxy_t::_s_tls_key=pthread_key_t();
-#elif defined(WIN32)
-DWORD msg_proxy_t::_s_tls_key=0;
-#endif
+fy_thread_key_t msg_proxy_t::_s_tls_key=fy_thread_key_t();
 
 bool msg_proxy_t::_s_key_created=false;
 critical_section_t msg_proxy_t::_s_cs=critical_section_t(true);
@@ -125,12 +121,7 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 
                 if(!_s_key_created)
                 {
-#ifdef POSIX
-                        if(pthread_key_create(&_s_tls_key,0))
-#elif defined(WIN32)
-						_s_tls_key = ::TlsAlloc();
-						if(TLS_OUT_OF_INDEXES == _s_tls_key)
-#endif
+                        if(fy_thread_key_create(&_s_tls_key,0))
                         {
                                 FY_ERROR("msg_proxy_t::s_tls_instance, create TLS key error");
                                 _s_cs.unlock(); 
@@ -142,11 +133,7 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 
                 _s_cs.unlock();
         }
-#ifdef POSIX
-        void *ret=pthread_getspecific(_s_tls_key);//read msg_proxy_t pointer from Thread Local Storage
-#elif defined(WIN32)
-		void *ret=::TlsGetValue(_s_tls_key);
-#endif
+        void *ret=fy_thread_getspecific(_s_tls_key);//read msg_proxy_t pointer from Thread Local Storage
         if(ret) return (msg_proxy_t *)ret; //current thread ever has one msg proxy instance
         
         msg_proxy_t *msg_proxy=new msg_proxy_t(mp_size, es_notfull, esi_notfull, es_notempty, esi_notempty);
@@ -156,34 +143,20 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 
         //register msg proxy to TLS
 	msg_proxy->add_reference();
-#ifdef POSIX
-        int ret_set=pthread_setspecific(_s_tls_key,(void *)msg_proxy);
-#elif defined(WIN32)
-		int ret_set=(::TlsSetValue(_s_tls_key, (void *)msg_proxy)? 0 : -1);
-#endif
+        int32 ret_set=fy_thread_setspecific(_s_tls_key,(void *)msg_proxy);
         FY_ASSERT(ret_set == 0);
-#ifdef POSIX
-	msg_proxy->_thd=pthread_self();
-#elif defined(WIN32)
-	msg_proxy->_thd=GetCurrentThread();
-#endif
+	msg_proxy->_thd=fy_thread_self();
+
         return msg_proxy;
 }
 
 void msg_proxy_t::s_delete_tls_instance()
 {
         if(!_s_key_created) return;
-#ifdef POSIX
-        msg_proxy_t *msg_proxy=(msg_proxy_t*)pthread_getspecific(_s_tls_key);
-#elif defined(WIN32)
-		msg_proxy_t *msg_proxy=(msg_proxy_t*)::TlsGetValue(_s_tls_key);
-#endif
+
+        msg_proxy_t *msg_proxy=(msg_proxy_t*)fy_thread_getspecific(_s_tls_key);
         if(msg_proxy) msg_proxy->release_reference();
-#ifdef POSIX
-        pthread_setspecific(_s_tls_key,0);//reset TLS
-#elif defined(WIN32)
-		::TlsSetValue(_s_tls_key,0);
-#endif
+        fy_thread_setspecific(_s_tls_key,0);//reset TLS
 }
 
 msg_proxy_t::msg_proxy_t(uint32 mp_size, 
@@ -475,11 +448,7 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 	FY_XFUNC("post_msg,msg:"<<msg->get_msg());
 
 	FY_TRY
-#ifdef POSIX
-	if(_thd == pthread_self()) //owner thread is destination
-#elif defined(WIN32)
-	if(_thd == GetCurrentThread())
-#endif
+	if(_thd == fy_thread_self()) //owner thread is destination
 	{
 		if(msg.is_null()) return; 
 

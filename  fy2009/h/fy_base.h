@@ -36,6 +36,51 @@
 
 DECL_FY_NAME_SPACE_BEGIN
 
+/*[tip] some protable types definition
+ *[desc]
+ *[history]
+ * Initialize: 2009-6-16
+ */
+#ifdef POSIX
+
+typedef pthread_t fy_thread_t;
+#define fy_thread_self pthread_self
+
+typedef pthread_key_t fy_thread_key_t;
+#define fy_thread_key_create pthread_key_create
+#define fy_thread_getspecific pthread_getspecific
+#define fy_thread_setspecific pthread_setspecific
+#define fy_thread_key_delete pthread_key_delete
+#define fy_thread_join pthread_join
+
+#elif defined(WIN32)
+
+typedef HANDLE fy_thread_t;
+#define fy_thread_self GetCurrentThread
+
+typedef DWORD fy_thread_key_t;
+int32 fy_thread_key_create(fy_thread_key_t *p_thd_key, void *ignorance)
+{
+	if(p_thd_key) 
+	{
+		*p_thd_key = ::TlsAlloc();
+		return (TLS_OUT_OF_INDEXES == *p_thd_key);	
+	}
+	return -1;
+}
+#define fy_thread_getspecific ::TlsGetValue 
+int32 fy_thread_setspecific(fy_thread_key_t thd_key, void *arg)
+{
+	return (::TlsSetValue(thd_key, arg)? 0 : -1);
+}
+#define fy_thread_key_delete ::TlsFree
+void fy_thread_join(fy_thread_t thd, void *ignorance)
+{
+	::WaitForSingleObject(thd,INFINITE);
+}
+ 
+#endif //POSIX
+
 /*[tip] buffer type template
  *[desc] 
  * buffer is very often used in communication software, plain c char* isn't good enough to used as out parameter

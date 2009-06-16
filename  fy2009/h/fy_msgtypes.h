@@ -21,14 +21,14 @@ DECL_FY_NAME_SPACE_BEGIN
 uint32 const MSG_NULL=0;
 uint32 const MSG_PIN_NULL=0xbe44fa8f;
 
-uint32 const MSG_USER=1000;
-uint32 const MSG_PIN_USER=0x402f1606;
-
 //remove before pending msg with specific reciever
 //para_0(int32):destination msg type, zero means removing all
 //msgs to para receiver
 uint32 const MSG_REMOVE_MSG=1;
 uint32 const MSG_PIN_REMOVE_MSG=0x7da5a2fa;
+
+uint32 const MSG_USER=1000;
+uint32 const MSG_PIN_USER=0x402f1606;
 
 DECL_FY_NAME_SPACE_END
 
