@@ -20,6 +20,26 @@
 #include <stdio.h>
 USING_FY_NAME_SPACE
 
+extern "C" int32 fy_thread_key_create(fy_thread_key_t *p_thd_key, void *ignorance)
+{
+	if(p_thd_key) 
+	{
+		*p_thd_key = ::TlsAlloc();
+		return (TLS_OUT_OF_INDEXES == *p_thd_key);	
+	}
+	return -1;
+}
+
+extern "C" int32 fy_thread_setspecific(fy_thread_key_t thd_key, void *arg)
+{
+	return (::TlsSetValue(thd_key, arg)? 0 : -1);
+}
+
+extern "C" void fy_thread_join(fy_thread_t thd, void *ignorance)
+{
+	::WaitForSingleObject(thd,INFINITE);
+}
+
 //critical_section_t
 critical_section_t::critical_section_t(bool recursive_flag) throw()
 {

@@ -59,26 +59,18 @@ typedef HANDLE fy_thread_t;
 #define fy_thread_self GetCurrentThread
 
 typedef DWORD fy_thread_key_t;
-int32 fy_thread_key_create(fy_thread_key_t *p_thd_key, void *ignorance)
-{
-	if(p_thd_key) 
-	{
-		*p_thd_key = ::TlsAlloc();
-		return (TLS_OUT_OF_INDEXES == *p_thd_key);	
-	}
-	return -1;
-}
+
 #define fy_thread_getspecific ::TlsGetValue 
-int32 fy_thread_setspecific(fy_thread_key_t thd_key, void *arg)
-{
-	return (::TlsSetValue(thd_key, arg)? 0 : -1);
-}
 #define fy_thread_key_delete ::TlsFree
-void fy_thread_join(fy_thread_t thd, void *ignorance)
-{
-	::WaitForSingleObject(thd,INFINITE);
+
+extern "C" {
+
+int32 fy_thread_key_create(fy_thread_key_t *p_thd_key, void *ignorance);
+int32 fy_thread_setspecific(fy_thread_key_t thd_key, void *arg);
+void fy_thread_join(fy_thread_t thd, void *ignorance);
+
 }
- 
+
 #endif //POSIX
 
 /*[tip] buffer type template
