@@ -23,6 +23,7 @@
 
 #ifdef POSIX
 
+#include <errno.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -53,6 +54,12 @@ typedef pthread_key_t fy_thread_key_t;
 #define fy_thread_key_delete pthread_key_delete
 #define fy_thread_join pthread_join
 
+#if defined(__GETTID_AVAILABLE__) //linux version is above 2.5
+#       define fy_gettid gettid
+#else
+#       define fy_gettid getpid
+#endif
+
 #elif defined(WIN32)
 
 typedef HANDLE fy_thread_t;
@@ -70,6 +77,8 @@ int32 fy_thread_setspecific(fy_thread_key_t thd_key, void *arg);
 void fy_thread_join(fy_thread_t thd, void *ignorance);
 
 }
+
+#define fy_gettid GetCurrentThreadId
 
 #endif //POSIX
 

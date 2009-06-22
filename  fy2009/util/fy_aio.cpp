@@ -24,7 +24,7 @@ sp_aiop_t aio_provider_t::s_create(uint16 max_fd_count, bool rcts_flag)
 	raw_prvd->_epoll_h=::epoll_create(raw_prvd->_max_fd_count);
 	if(raw_prvd->_epoll_h < 0)
 	{
-		CCP_ERROR("aio_provider_t::s_create, epoll_create fails:errno="<<(int32)errno);
+		FY_ERROR("aio_provider_t::s_create, epoll_create fails:errno="<<(int32)errno);
 		delete raw_prvd;
 
 		return sp_aiop_t();
@@ -94,7 +94,7 @@ void aio_provider_t::init_hb_thd()
 
 #if defined(__ENABLE_EPOLL__)
 #else
-	_hb_tid=ccp_gettid();
+	_hb_tid=fy_gettid();
 
         sigaddset(&_sigset, AIO_RTS_NUM);
         sigaddset(&_sigset, SIGIO);
@@ -105,11 +105,11 @@ void aio_provider_t::init_hb_thd()
 
 bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 {
-	CCP_ASSERT(fd != INVALID_FD);
+	FY_ASSERT(fd != INVALID_FD);
 
 	if(fd >= _max_fd_count)
 	{
-		CCP_XERROR("register_fd,too big fd, can't be registered to aio service,fd="<<(uint32)fd\
+		FY_XERROR("register_fd,too big fd, can't be registered to aio service,fd="<<(uint32)fd\
 			<<",_max_fd_count:"<<_max_fd_count);
 
 		return false;
@@ -132,7 +132,7 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 
 	if(!_hb_tid)
 	{
-		CCP_XERROR("register_fd, no valid heart_beat thread ID");
+		FY_XERROR("register_fd, no valid heart_beat thread ID");
 
 		return false;
 	}
@@ -145,7 +145,7 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 	//as socket is half-closed,e.g. ::shutdown() it from this side--2009-1-12
 	if(!_ehs[fd].is_null()) 
 	{
-		CCP_XWARNING("register_fd, duplicate fd has been registered,fd:"<<(uint32)fd);
+		FY_XWARNING("register_fd, duplicate fd has been registered,fd:"<<(uint32)fd);
 
 		return false; 
  	}
@@ -158,12 +158,12 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 //test shows that in real-time signal mode, after this call, there may still be signal is polled 
 void aio_provider_t::unregister_fd(int32 fd)
 {
-	CCP_ASSERT(fd != INVALID_FD);
+	FY_ASSERT(fd != INVALID_FD);
 
 	if(fd>= _max_fd_count) return;
 
 #if defined(__ENABLE_EPOLL__)
-	CCP_ASSERT(_epoll_h);
+	FY_ASSERT(_epoll_h);
 	
 	::epoll_ctl(_epoll_h, EPOLL_CTL_DEL, fd, 0);
 #else
@@ -186,13 +186,13 @@ int8 aio_provider_t::heart_beat()
 	int ep_cnt=0;
 	aio_event_handler_it *raw_eh=0;
 #else
-	CCP_ASSERT(ccp_gettid() == _hb_tid);
+	FY_ASSERT(fy_gettid() == _hb_tid);
 
 	int rts_num=0;
 #endif
 	int8 hb_ret=RET_HB_IDLE;
 
-	CCP_TRY
+	FY_TRY
 
 	while(true)
 	{
@@ -202,7 +202,7 @@ int8 aio_provider_t::heart_beat()
 		if(0 == ep_cnt) return hb_ret; //timeout expire
 		if(ep_cnt < 0)
 		{
-			CCP_XERROR("heart_beat,epoll_wait fail,errno:"<<(int32)errno);
+			FY_XERROR("heart_beat,epoll_wait fail,errno:"<<(int32)errno);
 			
 			return hb_ret;
 		}
@@ -221,13 +221,13 @@ int8 aio_provider_t::heart_beat()
                 case -1:
                         if(errno == EAGAIN || errno == EINTR) return hb_ret;//timeout expire
 
-                        CCP_XERROR("heart_beat,sigtimedwait error,errno="<<(int32)errno);
+                        FY_XERROR("heart_beat,sigtimedwait error,errno="<<(int32)errno);
 
                         return hb_ret;
 
                 case SIGIO: //overflow of rts queue,poll all sockets and reset rts queue
                         {
-                                CCP_XWARNING("heart_beat, system real time signal queue is overflow");
+                                FY_XWARNING("heart_beat, system real time signal queue is overflow");
 
                                 //reset rts queue
                                 signal(AIO_RTS_NUM, SIG_IGN);
@@ -254,7 +254,7 @@ int8 aio_provider_t::heart_beat()
 #endif
 
                	//check time slice
-               	if(datetime_t::is_over_tc_end(tc_start, _max_slice, usr_clk->get_usr_tick()))
+               	if(tc_util_t::is_over_tc_end(tc_start, _max_slice, usr_clk->get_usr_tick()))
                	{
                        	hb_ret=RET_HB_INT;
                        	break;
@@ -262,31 +262,35 @@ int8 aio_provider_t::heart_beat()
 
 	}//while(true)
 
-	CCP_EXP_XTERMINATOR();
+	FY_EXCEPTION_XTERMINATOR();
 	
 	return hb_ret;
 }
 
 //lookup_it
-void *aio_provider_t::lookup(uint32 iid) throw()
+void *aio_provider_t::lookup(uint32 iid, uint32 pin) throw()
 {
         switch(iid)
         {
         case IID_self:
+		if(pin != PIN_self) return 0;
         case IID_lookup:
+		if(pin != PIN_lookup) return 0;
                 return this;
 
 	case IID_aio_sap:
+		if(pin != PIN_aio_sap) return 0;
 		return static_cast<aio_sap_it*>(this);
 
         case IID_heart_beat:
+		if(pin != PIN_heart_beat) return 0;
                 return static_cast<heart_beat_it*>(this);
 
         case IID_object_id:
-                return object_id_impl_t::lookup(iid);
+                return object_id_impl_t::lookup(iid, pin);
 
         default:
-                return ref_cnt_impl_t::lookup(iid);
+                return ref_cnt_impl_t::lookup(iid, pin);
         }
 }
 
@@ -343,14 +347,14 @@ void *aio_stub_t::lookup(uint32 iid, uint32 pin) throw()
         switch(iid)
         {
         case IID_self:
-				if(pin != PIN_self) return 0;
+		if(pin != PIN_self) return 0;
 
         case IID_lookup:
-				if(pin != PIN_lookup) return 0;
+		if(pin != PIN_lookup) return 0;
                 return this;
                      
         case IID_aio_event_handler:
-				if(pin != PIN_aio_event_handler) return 0;
+		if(pin != PIN_aio_event_handler) return 0;
                 return static_cast<aio_event_handler_it*>(this);
         
         case IID_object_id:
@@ -369,7 +373,7 @@ void aio_stub_t::_lazy_init_object_id() throw()
 	sb<<"aio_stub_fd"<<(int32)_fd<<"_"<<(void*)this;
 	sb.build(_object_id); 
 
-	__INTERNAL_FY_EXP_TERMINATOR();
+	__INTERNAL_FY_EXCEPTION_TERMINATOR();
 }
 
 void aio_stub_t::_send_aio_events_as_msg(fyfd_t fd, uint32 aio_events)
@@ -642,6 +646,6 @@ void aio_proxy_t::_lazy_init_object_id() throw()
         sb<<"aio_proxy_thd"<<(uint32)_thd<<"_"<<(void*)this;
         sb.build(_object_id);
 
-        __INTERNAL_FP_EXCEPTION_TERMINATOR();
+        __INTERNAL_FY_EXCEPTION_TERMINATOR();
 }
 

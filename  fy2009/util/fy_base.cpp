@@ -20,6 +20,8 @@
 #include <stdio.h>
 USING_FY_NAME_SPACE
 
+#ifdef WIN32
+
 extern "C" int32 fy_thread_key_create(fy_thread_key_t *p_thd_key, void *ignorance)
 {
 	if(p_thd_key) 
@@ -39,6 +41,8 @@ extern "C" void fy_thread_join(fy_thread_t thd, void *ignorance)
 {
 	::WaitForSingleObject(thd,INFINITE);
 }
+
+#endif //WIN32
 
 //critical_section_t
 critical_section_t::critical_section_t(bool recursive_flag) throw()
