@@ -156,7 +156,7 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 }
 
 //test shows that in real-time signal mode, after this call, there may still be signal is polled 
-void aio_provider_t::unregister_fd(int32 fd)
+void aio_provider_t::unregister_fd(fyfd_t fd)
 {
 	FY_ASSERT(fd != INVALID_FD);
 
