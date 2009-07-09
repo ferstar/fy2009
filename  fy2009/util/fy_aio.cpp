@@ -59,10 +59,10 @@ aio_provider_t::aio_provider_t(uint16 max_fd_count) : _cs(true)
 #if defined(__ENABLE_EPOLL__)
 	_epoll_h=0;
 
-	_epoll_wait_timeout=_max_slice * uclk->get_resolution();	
+	_epoll_wait_timeout=_max_slice * get_tick_count_res(uclk);	
 #else
 	_hb_tid=0;
-	uint32 ms_slice=_max_slice * uclk->get_resolution();
+	uint32 ms_slice=_max_slice * get_tick_count_res(uclk);
 	_sigtimedwait_timeout.tv_sec=ms_slice/1000;		
 	_sigtimedwait_timeout.tv_nsec=(ms_slice%1000) * 1000000;
 
@@ -70,7 +70,7 @@ aio_provider_t::aio_provider_t(uint16 max_fd_count) : _cs(true)
 #endif
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
-	_iocp_wait_timeout=_max_slice * uclk->get_resolution();
+	_iocp_wait_timeout=_max_slice * get_tick_count_res(uclk);
 #endif
 #endif
 	_max_fd_count=max_fd_count;
@@ -107,22 +107,22 @@ void aio_provider_t::set_max_slice(uint32 max_slice)
 
 #ifdef LINUX        
 #if defined(__ENABLE_EPOLL__)
-        _epoll_wait_timeout=_max_slice * uclk->get_resolution();        
+        _epoll_wait_timeout=_max_slice * get_tick_count_res(uclk);       
 #else
-        uint32 ms_slice=_max_slice * uclk->get_resolution();
+        uint32 ms_slice=_max_slice * get_tick_count_res(uclk);
         _sigtimedwait_timeout.tv_sec=ms_slice/1000;             
         _sigtimedwait_timeout.tv_nsec=(ms_slice%1000) * 1000000;
 #endif
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
-	_iocp_wait_timeout=_max_slice * uclk->get_resolution();
+	_iocp_wait_timeout=_max_slice * get_tick_count_res(uclk);
 #endif
 #endif  
 }
 
 void aio_provider_t::init_hb_thd()
 {
-	_hb_thread = pthread_self();
+	_hb_thread = fy_thread_self();
 
 #ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
@@ -138,7 +138,7 @@ void aio_provider_t::init_hb_thd()
 #endif
 }
 
-bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
+bool aio_provider_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh)
 {
 	FY_ASSERT(fd != INVALID_FD);
 
@@ -149,10 +149,9 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 
 		return false;
 	}
-
+#ifdef LINUX
         int flags = ::fcntl(fd, F_GETFL, NULL);
 
-#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 
         flags |= O_NONBLOCK;
@@ -228,7 +227,7 @@ void aio_provider_t::unregister_fd(fyfd_t fd)
 int8 aio_provider_t::heart_beat()
 {
         user_clock_t *usr_clk=user_clock_t::instance();
-        uint32 tc_start=usr_clk->get_usr_tick();
+        uint32 tc_start=get_tick_count(usr_clk);
 
 #ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
@@ -331,7 +330,7 @@ int8 aio_provider_t::heart_beat()
 #endif
 #endif
                	//check time slice
-               	if(tc_util_t::is_over_tc_end(tc_start, _max_slice, usr_clk->get_usr_tick()))
+               	if(tc_util_t::is_over_tc_end(tc_start, _max_slice, get_tick_count(usr_clk)))
                	{
                        	//hb_ret=RET_HB_INT;
                        	break;

@@ -44,6 +44,8 @@ DECL_FY_NAME_SPACE_BEGIN
  */
 #ifdef POSIX
 
+typedef long long int64; //size is 64 bits
+typedef unsigned long long uint64; //size is 64 bits
 typedef pthread_t fy_thread_t;
 #define fy_thread_self pthread_self
 
@@ -62,6 +64,8 @@ typedef pthread_key_t fy_thread_key_t;
 
 #elif defined(WIN32)
 
+typedef LONGLONG int64; //size is 64 bits
+typedef ULONGLONG uint64; //size is 64 bits
 typedef HANDLE fy_thread_t;
 #define fy_thread_self GetCurrentThread
 
