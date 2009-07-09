@@ -29,7 +29,7 @@ public:
 			_aiop(aiop)
 	{
 	}
-	void on_aio_events(fyfd_t fd, uint32 aio_events)
+	void on_aio_events(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para)
 	{
 		printf("==on_aio_events is called,_listen_flag:%d, fd:%d, aio_events:%d==\n", _listen_flag, fd, aio_events);
 		if(_listen_flag) //as server

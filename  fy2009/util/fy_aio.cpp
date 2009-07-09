@@ -19,6 +19,7 @@ sp_aiop_t aio_provider_t::s_create(uint16 max_fd_count, bool rcts_flag)
 	aio_provider_t *raw_prvd=new aio_provider_t(max_fd_count);
 	if(rcts_flag) raw_prvd->set_lock(&(raw_prvd->_cs));
 
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 	
 	raw_prvd->_epoll_h=::epoll_create(raw_prvd->_max_fd_count);
@@ -30,7 +31,20 @@ sp_aiop_t aio_provider_t::s_create(uint16 max_fd_count, bool rcts_flag)
 		return sp_aiop_t();
 	}
 #endif
+#elif defined(WIN32)
+#if defined(__ENABLE_COMPLETION_PORT__)
 
+	raw_prvd->_iocp = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+	if(raw_prvd->_iocp == NULL)
+	{
+		FY_ERROR("aio_provider_t::s_create, CreateIoCompletionPort fails,errno:"
+			<<(int32)GetLastError());
+		delete raw_prvd;
+
+		return sp_aiop_t();
+	}
+#endif
+#endif
 	return sp_aiop_t(raw_prvd, true); 
 }
 
@@ -40,7 +54,8 @@ aio_provider_t::aio_provider_t(uint16 max_fd_count) : _cs(true)
 	_hb_thread=0;
 
 	user_clock_t *uclk=user_clock_t::instance();
-	
+
+#ifdef LINUX	
 #if defined(__ENABLE_EPOLL__)
 	_epoll_h=0;
 
@@ -52,6 +67,11 @@ aio_provider_t::aio_provider_t(uint16 max_fd_count) : _cs(true)
 	_sigtimedwait_timeout.tv_nsec=(ms_slice%1000) * 1000000;
 
         sigemptyset(&_sigset);
+#endif
+#elif defined(WIN32)
+#ifdef __ENABLE_COMPLETION_PORT__
+	_iocp_wait_timeout=_max_slice * uclk->get_resolution();
+#endif
 #endif
 	_max_fd_count=max_fd_count;
 	if(_max_fd_count)
@@ -68,8 +88,14 @@ aio_provider_t::~aio_provider_t()
 {
 	if(_ehs) delete [] _ehs;
 
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 	if(_epoll_h > 0) ::close(_epoll_h);
+#endif
+#elif defined(WIN32)
+#if defined(__ENABLE_COMPLETION_PORT__)
+	if(_iocp) ::CloseHandle(_iocp);
+#endif
 #endif
 }
 
@@ -78,13 +104,19 @@ void aio_provider_t::set_max_slice(uint32 max_slice)
 	_max_slice=max_slice;
 
         user_clock_t *uclk=user_clock_t::instance();
-        
+
+#ifdef LINUX        
 #if defined(__ENABLE_EPOLL__)
         _epoll_wait_timeout=_max_slice * uclk->get_resolution();        
 #else
         uint32 ms_slice=_max_slice * uclk->get_resolution();
         _sigtimedwait_timeout.tv_sec=ms_slice/1000;             
         _sigtimedwait_timeout.tv_nsec=(ms_slice%1000) * 1000000;
+#endif
+#elif defined(WIN32)
+#ifdef __ENABLE_COMPLETION_PORT__
+	_iocp_wait_timeout=_max_slice * uclk->get_resolution();
+#endif
 #endif  
 }
 
@@ -92,6 +124,7 @@ void aio_provider_t::init_hb_thd()
 {
 	_hb_thread = pthread_self();
 
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 #else
 	_hb_tid=fy_gettid();
@@ -100,6 +133,8 @@ void aio_provider_t::init_hb_thd()
         sigaddset(&_sigset, SIGIO);
         sigprocmask(SIG_BLOCK, &_sigset, NULL);
 	signal(SIGPIPE, SIG_IGN);
+#endif
+#elif defined(WIN32)
 #endif
 }
 
@@ -117,6 +152,7 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 
         int flags = ::fcntl(fd, F_GETFL, NULL);
 
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 
         flags |= O_NONBLOCK;
@@ -138,6 +174,16 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 	}
         ::fcntl(fd, F_SETSIG, AIO_RTS_NUM);
         ::fcntl(fd, F_SETOWN, _hb_tid); //real-time signal will be routed to heart-beat thread	
+#endif
+#elif defined(WIN32)
+#if defined(__ENABLE_COMPLETION_PORT__)
+	if(::CreateIoCompletionPort((HANDLE)fd, _iocp, 0, 0) == NULL)
+	{
+		FY_XERROR("register_fd, CreateIoCompletionPort fails,error:"<<(int32)GetLastError());
+
+		return false;
+	}
+#endif
 #endif
 	smart_lock_t slock(&_cs);
 
@@ -162,6 +208,7 @@ void aio_provider_t::unregister_fd(fyfd_t fd)
 
 	if(fd>= _max_fd_count) return;
 
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 	FY_ASSERT(_epoll_h);
 	
@@ -170,6 +217,8 @@ void aio_provider_t::unregister_fd(fyfd_t fd)
         int flags = fcntl(fd, F_GETFL, 0);
         flags &= ~O_ASYNC;
         ::fcntl(fd, F_SETFL, flags);//os will not report rts on this socket afterward	
+#endif
+#elif defined(WIN32)
 #endif
 	smart_lock_t slock(&_cs);
 
@@ -181,6 +230,7 @@ int8 aio_provider_t::heart_beat()
         user_clock_t *usr_clk=user_clock_t::instance();
         uint32 tc_start=usr_clk->get_usr_tick();
 
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 	struct epoll_event evs[EPOLL_WAIT_SIZE]={0};	
 	int ep_cnt=0;
@@ -190,12 +240,15 @@ int8 aio_provider_t::heart_beat()
 
 	int rts_num=0;
 #endif
+#elif defined(WIN32)
+#endif
 	int8 hb_ret=RET_HB_IDLE;
 
 	FY_TRY
 
 	while(true)
 	{
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 
 		ep_cnt=::epoll_wait(_epoll_h, evs, EPOLL_WAIT_SIZE, _epoll_wait_timeout);
@@ -246,20 +299,43 @@ int8 aio_provider_t::heart_beat()
                 default: //rts triggered
                         {
 				if(!_ehs[_sig_info.si_fd].is_null())
-				_ehs[_sig_info.si_fd]->on_aio_events(_sig_info.si_fd, _sig_info.si_band);	
+					_ehs[_sig_info.si_fd]->on_aio_events(_sig_info.si_fd, _sig_info.si_band);	
                         }
                         break;
                 }//switch(rts_num)
 		hb_ret = RET_HB_BUSY;
 #endif
+#elif defined(WIN32)
+#ifdef __ENABLE_COMPLETION_PORT__
+	
+		uint32 bytes_transferred=0;
+		LPFY_OVERLAPPED p_op=NULL;
+		if (::GetQueuedCompletionStatus(_iocp, &bytes_transferred, NULL, 
+			(LPDWORD)&PerHandleData, (LPOVERLAPPED *)&p_op, _iocp_wait_timeout) == 0)
+		{
+			uint32 last_error=GetLastError();
+			if(WAIT_TIMEOUT != last_error)
+			{
+				FY_XERROR("heart_beat,GetQueuedCompletionStatus fail, error:"<<last_error);
+				return hb_ret;
+			}
+      		}
+		if(p_op)
+		{
+			hb_ret=RET_HB_BUSY;
+			p_op->transferred_bytes = bytes_transferred;
+                        if(!_ehs[p_op->fd].is_null())
+                                _ehs[p_op->fd]->on_aio_events(p_op->fd, p_op->aio_events, (pointer_box_t)p_op);			
 
+		}	
+#endif
+#endif
                	//check time slice
                	if(tc_util_t::is_over_tc_end(tc_start, _max_slice, usr_clk->get_usr_tick()))
                	{
-                       	hb_ret=RET_HB_INT;
+                       	//hb_ret=RET_HB_INT;
                        	break;
                	}
-
 	}//while(true)
 
 	FY_EXCEPTION_XTERMINATOR();
@@ -312,7 +388,7 @@ aio_stub_t::aio_stub_t(fyfd_t fd, sp_owp_t& ep, aio_proxy_t *aio_proxy, sp_msg_p
 	_esi_notempty = esi_notempty;
 }
 
-void aio_stub_t::on_aio_events(fyfd_t fd, uint32 aio_events)
+void aio_stub_t::on_aio_events(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para)
 {
 	FY_XFUNC("on_aio_events,fd:"<<(uint32)fd<<",aio_events:"<<aio_events);
 
@@ -324,7 +400,7 @@ void aio_stub_t::on_aio_events(fyfd_t fd, uint32 aio_events)
 		_ep->rollback_w();
 
 		//send event via generic message service
-		_send_aio_events_as_msg(fd, aio_events);
+		_send_aio_events_as_msg(fd, aio_events, ex_para);
 
 		return;
 	}
@@ -333,9 +409,18 @@ void aio_stub_t::on_aio_events(fyfd_t fd, uint32 aio_events)
 		_ep->rollback_w();
 
                 //send event via generic message service
-                _send_aio_events_as_msg(fd, aio_events);
+                _send_aio_events_as_msg(fd, aio_events, ex_para);
 
 		return;
+	}
+	if(_ep->write((const int8*)&ex_para, sizeof(ex_para), false) != sizeof(ex_para))
+	{
+		_ep->rollback_w();
+		
+		//send event via generic message service
+		_send_aio_events_as_msg(fd, aio_events, ex_para);
+
+		return;		
 	}
 	_ep->commit_w();
 	if(_es_notempty) _es_notempty->signal(_esi_notempty);//notify aio_proxy that event pipe isn't empty
@@ -376,18 +461,19 @@ void aio_stub_t::_lazy_init_object_id() throw()
 	__INTERNAL_FY_EXCEPTION_TERMINATOR();
 }
 
-void aio_stub_t::_send_aio_events_as_msg(fyfd_t fd, uint32 aio_events)
+void aio_stub_t::_send_aio_events_as_msg(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para)
 {
 	FY_XFUNC("_send_aio_events_as_msg,fd:"<<(int32)fd<<",aio_events:"<<aio_events);
 
 	FY_ASSERT(!_msg_proxy.is_null());
 	FY_ASSERT(!_msg_rcver.is_null());
 
-	sp_msg_t msg=msg_t::s_create(MSG_AIO_EVENTS, 2, true);
+	sp_msg_t msg=msg_t::s_create(MSG_AIO_EVENTS, 3, true);
 	
 	msg->set_receiver(_msg_rcver);
 	msg->set_para(0, variant_t((int32)fd));
 	msg->set_para(1, variant_t((int32)aio_events));
+	msg->set_para(2, variant_t(ex_para));
 
 	_msg_proxy->post_msg(msg);
 }
@@ -546,6 +632,7 @@ int8 aio_proxy_t::heart_beat()
 	int8 hb_ret=RET_HB_IDLE;
 	fyfd_t fd=0;
 	uint32 aio_events=0;
+	pointer_box_t ex_para=0;
 	int32 read_len=0;
 
 	FY_TRY
@@ -567,6 +654,12 @@ int8 aio_proxy_t::heart_beat()
 		
 			return hb_ret;
 		}
+		if(_ep->read((int8*)&ex_para, sizeof(ex_para)) != sizeof(ex_para))
+		{
+			FY_XERROR("heart_beat, fail to read entire ex_para from _ep");
+			
+			return hb_ret;
+		}
  		hb_ret = RET_HB_BUSY;
 
                 if(fd >= _max_fd_count)
@@ -578,7 +671,7 @@ int8 aio_proxy_t::heart_beat()
                 if(!_items[fd].aioeh.is_null())
                 {
 			//it should be efficient enought, otherwise, it will block heart_beat
-                        _items[fd].aioeh->on_aio_events(fd, aio_events); //handle aio events
+                        _items[fd].aioeh->on_aio_events(fd, aio_events, ex_para); //handle aio events
                 }
                 else
                 {
@@ -613,6 +706,8 @@ void aio_proxy_t::on_msg(msg_t *msg)
 
 			variant_t v_fd=msg->get_para(0);
 			variant_t v_events=msg->get_para(1);
+			variant_t v_expara=msg->get_para(2);
+
 			FY_ASSERT(v_fd.get_type() == VT_I32 && v_events.get_type() == VT_I32);
 
 			fyfd_t fd=(fyfd_t)(v_fd.get_i32());
@@ -623,9 +718,11 @@ void aio_proxy_t::on_msg(msg_t *msg)
         		}
 
 			uint32 aio_events=(uint32)v_events.get_i32();
+			pointer_box_t ex_para=v_expara.get_ptb();
+
 			if(!_items[fd].aioeh.is_null())
 			{
-				_items[fd].aioeh->on_aio_events(fd, aio_events); //handle aio events
+				_items[fd].aioeh->on_aio_events(fd, aio_events, ex_para); //handle aio events
 			}
 			else
 			{

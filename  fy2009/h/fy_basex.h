@@ -35,7 +35,8 @@ const int8 VT_NULL =0;
 const int8 VT_I8   =0x01;
 const int8 VT_I16  =0x02;
 const int8 VT_I32  =0x03;
-const int8 VT_LOOKUP  =0x04;//which realizes lookup_it interface and generally, ref_cnt_it is often needed
+const int8 VT_I64  =0x04;
+const int8 VT_LOOKUP  =0x05;//which realizes lookup_it interface and generally, ref_cnt_it is often needed
 
 class variant_t
 {
@@ -44,6 +45,8 @@ public:
         variant_t(int8 i8);
         variant_t(int16 i16);
         variant_t(int32 i32);
+	variant_t(int64 i64);
+	variant_t(pointer_box_t ptb);
         variant_t(lookup_it *obj, bool attach_opt=true);
         variant_t(const variant_t& v);//shallow copy object value,if any
         ~variant_t();
@@ -83,6 +86,18 @@ public:
         void set_i32s(int32 *pi32, uint16 size, bool attach_opt=false);
         int32 *get_i32s(uint16 *psize) const;
 
+	void set_i64(int64 i64);
+	int64 get_i64() const;
+
+        void set_i64s(int64 *pi64, uint16 size, bool attach_opt=false);
+        int64 *get_i64s(uint16 *psize) const;
+
+	void set_ptb(pointer_box_t ptb);
+	pointer_box_t get_ptb() const;
+
+	void set_ptbs(pointer_box_t *pptb, uint16 size, bool attach_opt=false);
+	pointer_box_t *get_ptbs(uint16 *psize) const;
+	
         void set_obj(lookup_it *obj, bool attach_opt=false);
         lookup_it *get_obj() const;
 
@@ -111,6 +126,9 @@ private:
 
                 int32 i32;
                 int32 *pi32;
+
+		int64 i64;
+		int64 *pi64;
 
                 lookup_it *obj;
                 lookup_it **objs;

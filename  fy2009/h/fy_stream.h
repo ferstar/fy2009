@@ -226,6 +226,8 @@ public:
         stream_adaptor_t& operator <<(uint16 data);
         stream_adaptor_t& operator <<(int32 data);
         stream_adaptor_t& operator <<(uint32 data);
+	stream_adaptor_t& operator <<(int64 data);
+	stream_adaptor_t& operator <<(uint64 data);
         stream_adaptor_t& operator <<(const int8* cstr);
         stream_adaptor_t& operator <<(const string_t& str);
         stream_adaptor_t& operator <<(const int8v_t& i8v);
@@ -239,6 +241,8 @@ public:
         stream_adaptor_t& operator >>(uint16& data);
         stream_adaptor_t& operator >>(int32& data);
         stream_adaptor_t& operator >>(uint32& data);
+	stream_adaptor_t& operator >>(int64& data);
+	stream_adaptor_t& operator >>(uint64& data);
         stream_adaptor_t& operator >>(string_t& str);
         stream_adaptor_t& operator >>(int8v_t& i8v);
         stream_adaptor_t& operator >>(bb_t& bb);//2008-4-14

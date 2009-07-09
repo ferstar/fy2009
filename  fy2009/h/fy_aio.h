@@ -65,15 +65,34 @@ typedef int32 fyfd_t; //portable file descriptor type
 #       define AIO_POLLIN   POLLIN  /* There is data to read.  */
 #       define AIO_POLLOUT  POLLOUT /* Writing now will not block.  */
 #       define AIO_POLLERR  POLLERR /* Error condition.  */
-#	define AIO_POLLHUP  POLLHUP /* Hung up.--seems never occurs on socket  */
+#	define AIO_POLLHUP  POLLHUP /* Hung up.peer shutdown connection */
 
 #	define AIO_RTS_NUM (SIGRTMIN+20)
 #endif //__ENABLE_EPOLL__
 
 #elif defined(WIN32)
+#include <winsock2.h>
 
 typedef HANDLE fyfd_t; //portable file descriptor type
 
+#ifdef __ENABLE_COMPLETION_PORT__
+
+#       define AIO_POLLIN   0  /*accept or receiv  */
+#       define AIO_POLLOUT  1  /* send  */
+#       define AIO_POLLERR  2  /* Error condition.  */
+#       define AIO_POLLHUP  3  /* Hung up.peer shutdown connection */
+
+typedef struct
+{
+	OVERLAPPED overlapped;
+	fyfd_t fd;
+	//set to AIO_POLLIN by WSAAccept, WSARecv or set to AIO_POLLOUT by WSASend, or set to AIO_POLLERR by aio_provider
+	uint32 aio_events; 	
+	WSABUF wsa_buf;
+	uint32 transferred_bytes; //set by aio_provider
+} FY_OVERLAPPED, *LPFY_OVERLAPPED;
+
+#endif
 #endif //LINUX
 
 const int INVALID_FD=-1;
@@ -81,6 +100,7 @@ const int INVALID_FD=-1;
 //deliver aio events via message
 //para_0(int32):socket fd
 //para_1(uint32):aio events
+//para_2(pointer_box_t):ex_para
 const uint32 MSG_AIO_EVENTS=MSG_USER;
 const uint32 MSG_PIN_AIO_EVENTS=0x89acd299;
 
@@ -132,7 +152,8 @@ class aio_event_handler_it : public lookup_it
 {
 public:
 	//once call can deliver multi events, aio_events can be one or more AIO_POLLXXX events
-	virtual void on_aio_events(fyfd_t fd, uint32 aio_events)=0;
+	//add ex_para to pass overlapped data pointer in windwos completion port
+	virtual void on_aio_events(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para=0)=0;
 };
 
 /*[tip]
@@ -196,15 +217,23 @@ private:
 	uint32 _max_fd_count; //size of _ehs
 	critical_section_t _cs;
 	fy_thread_t _hb_thread;
-	
+
+#ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
 	int32 _epoll_h; //epoll handle, it's only valid if enable epoll
 	uint32 _epoll_wait_timeout; //unit: ms
-#else
+#else //real-time signal
 	uint32 _hb_tid; //id of thread in which heart_beat will run, this thread will receive real-time signal
 	struct timespec _sigtimedwait_timeout; //used as sigtimedwait para in heart_beat
 	siginfo_t _sig_info; //used as sigtimedwait para in heart_beat
 	sigset_t _sigset;
+#endif
+#elif defined(WIN32)
+#if defined(__ENABLE_COMPLETION_PORT__)
+	HANDLE _iocp; //completion port
+	uint32 _iocp_wait_timeout; //unit: ms
+#else
+#endif
 #endif
 };
 
@@ -227,7 +256,7 @@ class aio_stub_t : public aio_event_handler_it,
 	friend class aio_proxy_t;
 public:
 	//aio_event_handler_it
-	void on_aio_events(fyfd_t fd, uint32 aio_events);	
+	void on_aio_events(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para=0);	
 
         //lookup_it
         void *lookup(uint32 iid, uint32 pin) throw();
@@ -238,7 +267,7 @@ protected:
 	void _lazy_init_object_id() throw();
 
 	//if event pipe is full, aio events will be delivered to destination proxy via generic message service
-	void _send_aio_events_as_msg(fyfd_t fd, uint32 aio_events);
+	void _send_aio_events_as_msg(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para);
 private:
 	//aio event pipe,refer to  TLS one-way pipe associated with aio_proxy_t
 	sp_owp_t _ep;

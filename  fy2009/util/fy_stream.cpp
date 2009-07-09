@@ -261,6 +261,58 @@ stream_adaptor_t& stream_adaptor_t::operator <<(uint32 data)
         return *this;
 }
 
+stream_adaptor_t& stream_adaptor_t::operator <<(int64 data)
+{
+        FY_ASSERT(!_sp_stm.is_null());
+
+        if(_is_correct_bo())
+        {
+                if(_sp_stm->write((const int8*)(&data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator<<(int64)", "sasi64",
+                                "fail to write all or part data into stream");
+                }
+        }
+        else
+        {
+                int64 r_data;
+                s_reverse_bytes((uint8*)&data,(uint8*)&r_data,sizeof(data));
+                if(_sp_stm->write((const int8*)(&r_data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator<<(int64)", "sasi64-2",
+                                "fail to write all or part data into stream");
+                }
+        }
+
+        return *this;
+}
+
+stream_adaptor_t& stream_adaptor_t::operator <<(uint64 data)
+{
+        FY_ASSERT(!_sp_stm.is_null());
+
+        if(_is_correct_bo())
+        {
+                if(_sp_stm->write((const int8*)(&data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator<<(uint64)", "sasui64",
+                                "fail to write all or part data into stream");
+                }
+        }
+        else
+        {
+                uint64 r_data;
+                s_reverse_bytes((uint8*)&data,(uint8*)&r_data,sizeof(data));
+                if(_sp_stm->write((const int8*)(&r_data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator<<(uint64)", "sasui64-2",
+                                "fail to write all or part data into stream");
+                }
+        }
+
+        return *this;
+}
+
 //bit pattern:length_of_string(uint32)|sequence of characters,not include '\0'
 stream_adaptor_t& stream_adaptor_t::operator <<(const int8* cstr)
 {
@@ -476,6 +528,58 @@ stream_adaptor_t& stream_adaptor_t::operator >>(uint32& data)
                 if(_sp_stm->read((int8*)(&r_data),sizeof(data)) != sizeof(data))
                 {
                         __INTERNAL_FY_THROW(get_object_id(), "operator>>(uint32&)", "sadui32-2",
+                                "fail to read all or part data from stream");
+                }
+                s_reverse_bytes((uint8*)&r_data,(uint8*)&data,sizeof(data));
+        }
+
+        return *this;
+}
+
+stream_adaptor_t& stream_adaptor_t::operator >>(int64& data)
+{
+        FY_ASSERT(!_sp_stm.is_null());
+
+        if(_is_correct_bo())
+        {
+                if(_sp_stm->read((int8*)(&data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator>>(int64&)", "sadi64",
+                                "fail to read all or part data from stream");
+                }
+        }
+        else
+        {
+                int64 r_data;
+                if(_sp_stm->read((int8*)(&r_data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator>>(int64&)", "sadi64-2",
+                                "fail to read all or part data from stream");
+                }
+                s_reverse_bytes((uint8*)&r_data,(uint8*)&data,sizeof(data));
+        }
+
+        return *this;
+}
+
+stream_adaptor_t& stream_adaptor_t::operator >>(uint64& data)
+{
+        FY_ASSERT(!_sp_stm.is_null());
+
+        if(_is_correct_bo())
+        {
+                if(_sp_stm->read((int8*)(&data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator>>(uint64&)", "sadui64",
+                                "fail to read all or part data from stream");
+                }
+        }
+        else
+        {
+                uint64 r_data;
+                if(_sp_stm->read((int8*)(&r_data),sizeof(data)) != sizeof(data))
+                {
+                        __INTERNAL_FY_THROW(get_object_id(), "operator>>(uint64&)", "sadui64-2",
                                 "fail to read all or part data from stream");
                 }
                 s_reverse_bytes((uint8*)&r_data,(uint8*)&data,sizeof(data));

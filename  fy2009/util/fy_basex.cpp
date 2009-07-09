@@ -32,6 +32,10 @@ void variant_t::_reset()
                 case VT_I32:
                         if(_val.pi32) delete [] (_val.pi32);
                         break;
+		
+		case VT_I64:
+			if(_val.pi64) delete [] (_val.pi64);
+			break;
 
                 case VT_LOOKUP:
                         for(i=0;i<_size;i++)
@@ -81,6 +85,11 @@ void variant_t::_copy(const variant_t& v, bool shallow_copy_obj)
                         _val.pi32=new int32[_size];
                         memcpy(_val.pi32, v._val.pi32, _size*sizeof(int32));
                         break;
+
+		case VT_I64:
+			_val.pi64 = new int64[_size];
+			memcpy(_val.pi64, v._val.pi64, _size*sizeof(int64));
+			break;
 
                 case VT_LOOKUP:
                         _val.objs=new lookup_it*[_size];
@@ -145,6 +154,10 @@ void variant_t::_copy(const variant_t& v, bool shallow_copy_obj)
                         _val.i32=v._val.i32;
                         break;
 
+		case VT_I64:
+			_val.i64=v._val.i64;
+			break;
+
                 case VT_LOOKUP:
                         if(shallow_copy_obj)
                         {
@@ -202,6 +215,27 @@ variant_t::variant_t(int32 i32)
         _vt=VT_I32;
         _val.i32=i32;
 }
+
+variant_t::variant_t(int64 i64)
+{
+        _vt=VT_I64;
+        _val.i64=i64;
+}
+
+variant_t::variant_t(pointer_box_t ptb)
+{
+#ifdef __OS64__
+       
+        _vt=VT_I64;
+        _val.i64=ptb;
+
+#else //OS32
+
+	_vt=VT_I32;
+	_val.i32=ptb;
+
+#endif
+}           
 
 variant_t::variant_t(lookup_it *obj, bool attach_opt)
 {
@@ -399,6 +433,89 @@ int32 *variant_t::get_i32s(uint16 *psize) const
         return _val.pi32;
 }
 
+void variant_t::set_i64(int64 i64)
+{
+        _reset();
+        _vt=VT_I64;
+        _val.i64=i64;
+}
+
+int64 variant_t::get_i64() const
+{
+        if(_vt != VT_I64)
+        {
+                __INTERNAL_FY_THROW("variant_t","get_i64","vtgi64",
+                        "type isn't wanted,current type is "<<_vt);
+        }
+        return _val.i64;
+}
+
+void variant_t::set_i64s(int64 *pi64, uint16 size, bool attach_opt)
+{
+        _reset();
+
+        if(pi64 && size)
+        {
+                _size=size;
+                _vt=VT_ARRAY | VT_I64;
+                if(attach_opt)
+                        _val.pi64=pi64; //attach
+                else
+                {
+                        _val.pi64=new int64[_size];
+                        memcpy(_val.pi64, pi64, _size*sizeof(int64));
+                }
+        }
+}
+
+int64 *variant_t::get_i64s(uint16 *psize) const
+{
+        if(_vt != (VT_ARRAY | VT_I64))
+        {
+                __INTERNAL_FY_THROW("variant_t","get_i64s","vtgi64s",
+                        "type isn't wanted,current type is "<<_vt);
+        }
+        if(psize) *psize=_size;
+
+        return _val.pi64;
+}
+
+void variant_t::set_ptb(pointer_box_t ptb)
+{
+#ifdef __OS64__
+	set_i64((int64)ptb);
+#else
+	set_i32((int32)ptb);
+#endif
+}
+
+pointer_box_t variant_t::get_ptb() const
+{
+#ifdef __OS64__
+	return (pointer_box_t)get_i64();
+#else
+	return (pointer_box_t)get_i32();
+#endif
+}
+
+void variant_t::set_ptbs(pointer_box_t *pptb, uint16 size, bool attach_opt)
+{
+#ifdef __OS64__
+	set_i64s((int64*)pptb, size, attach_opt);
+#else
+	set_i32s((int32*)pptb, size, attach_opt);
+#endif
+}
+
+pointer_box_t *variant_t::get_ptbs(uint16 *psize) const
+{
+#ifdef __OS64__
+	return (pointer_box_t*)get_i64s(psize);
+#else
+	return (pointer_box_t*)get_i32s(psize);
+#endif
+}
+
 void variant_t::set_obj(lookup_it *obj, bool attach_opt)
 {
         _reset();
@@ -485,6 +602,10 @@ uint32 variant_t::calc_persist_size() const
                         psize+=_size*sizeof(int32);
                         break;
 
+		case VT_I64:
+			psize+=_size*sizeof(int64);
+			break;
+
                 case VT_LOOKUP:
                         for(i=0;i<_size;i++)
                         {
@@ -517,6 +638,10 @@ uint32 variant_t::calc_persist_size() const
                 case VT_I32:
                         psize+=sizeof(int32);
                         break;
+
+		case VT_I64:
+			psize+=sizeof(int64);
+			break;
 
                 case VT_LOOKUP:
                         {
@@ -555,6 +680,10 @@ void variant_t::save_to(stream_adaptor_t& stm_adp)
                         for(i=0;i<_size;i++) stm_adp<<_val.pi32[i];
                         break;
 
+		case VT_I64:
+			for(i=0;i<_size;i++) stm_adp<<_val.pi64[i];
+			break;
+
                 case VT_LOOKUP:
                         {
                                 persist_it *per_obj=0;
@@ -589,6 +718,10 @@ void variant_t::save_to(stream_adaptor_t& stm_adp)
                 case VT_I32:
                         stm_adp<<_val.i32;
                         break;
+
+		case VT_I64:
+			stm_adp<<_val.i64;
+			break;
 
                 case VT_LOOKUP:
                         {
@@ -631,6 +764,11 @@ void variant_t::load_from(stream_adaptor_t& stm_adp)
                         for(i=0;i<_size;++i) stm_adp>>(_val.pi32[i]);
                         break;
 
+		case VT_I64:
+			_val.pi64=new int64[_size];
+			for(i=0;i<_size;++i) stm_adp>>(_val.pi64[i]);
+			break;
+
                 case VT_LOOKUP:
                         {
                                 _val.objs=new lookup_it*[_size];
@@ -665,6 +803,10 @@ void variant_t::load_from(stream_adaptor_t& stm_adp)
                 case VT_I32:
                         stm_adp>>(_val.i32);
                         break;
+
+		case VT_I64:
+			stm_adp>>(_val.i64);
+			break;
 
                 case VT_LOOKUP:
                         {

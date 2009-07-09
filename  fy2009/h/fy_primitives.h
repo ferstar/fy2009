@@ -39,6 +39,29 @@ typedef unsigned short uint16; //size is 16 bits
 typedef long int32; //size is 32 bits 
 typedef unsigned long uint32; //size is 32 bits
 
+#ifdef LINUX
+
+typedef long long int64; //size is 64 bits
+typedef unsigned long long uint64; //size is 64 bits
+
+#elif defined(WIN32)
+
+typedef LONGLONG int64;
+typedef ULONGLONG uint64;
+
+#endif
+
+//pointer_box_t is used to contain or transfer pointer type, it should be portable between 32bit OS and 64bit OS
+#ifdef __OS64__
+
+typedef uint64 pointer_box_t;
+
+#else
+
+typedef uint32 pointer_box_t; 
+
+#endif
+
 /*[tip] typedef std::string
  *[desc] in almost any occuasion, std::string can replace plain c string, meanwhile, you still can use pain c function 
  * if you like just by extracting plain c string from std::string by calling c_str()
