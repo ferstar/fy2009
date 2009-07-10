@@ -6,82 +6,11 @@
 --------------------Configuration: fy2009_util_windows - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA1D.tmp" with contents
-[
-/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "__ENABLE_COMPLETION_PORT__" /Fp"Debug/fy2009_util_windows.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"F:\fy2009\util\fy_aio.cpp"
-]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA1D.tmp" 
-Creating command line "link.exe -lib /nologo /out:"Debug\fy_util.lib "  .\Debug\fy_base.obj .\Debug\fy_basex.obj .\Debug\fy_msg.obj .\Debug\fy_stream.obj .\Debug\fy_trace.obj .\Debug\fy_aio.obj "
-<h3>Output Window</h3>
-Compiling...
-fy_aio.cpp
-F:\fy2009\util\fy_aio.cpp(145) : error C2446: '>=' : no conversion from 'unsigned long' to 'void *'
-        Conversion from integral type to pointer type requires reinterpret_cast, C-style cast or function-style cast
-F:\fy2009\util\fy_aio.cpp(145) : error C2040: '>=' : 'void *' differs in levels of indirection from 'unsigned long'
-F:\fy2009\util\fy_aio.cpp(191) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(191) : error C2228: left of '.is_null' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(198) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(198) : error C2440: '=' : cannot convert from 'class fy2009::smart_pointer_lu_tt<class fy2009::aio_event_handler_it>' to 'class fy2009::smart_pointer_lu_tt<class fy2009::aio_event_handler_it> *'
-        No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
-F:\fy2009\util\fy_aio.cpp(208) : error C2446: '>=' : no conversion from 'unsigned long' to 'void *'
-        Conversion from integral type to pointer type requires reinterpret_cast, C-style cast or function-style cast
-F:\fy2009\util\fy_aio.cpp(208) : error C2040: '>=' : 'void *' differs in levels of indirection from 'unsigned long'
-F:\fy2009\util\fy_aio.cpp(224) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(224) : error C2440: '=' : cannot convert from 'class fy2009::smart_pointer_lu_tt<class fy2009::aio_event_handler_it>' to 'class fy2009::smart_pointer_lu_tt<class fy2009::aio_event_handler_it> *'
-        No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
-F:\fy2009\util\fy_aio.cpp(313) : error C2065: 'PerHandleData' : undeclared identifier
-F:\fy2009\util\fy_aio.cpp(313) : error C2660: 'GetQueuedCompletionStatus' : function does not take 6 parameters
-F:\fy2009\util\fy_aio.cpp(326) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(326) : error C2228: left of '.is_null' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(327) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(327) : error C2039: 'on_aio_events' : is not a member of 'smart_pointer_lu_tt<class fy2009::aio_event_handler_it>'
-F:\fy2009\util\fy_aio.cpp(340) : warning C4003: not enough actual parameters for macro 'FY_EXCEPTION_XTERMINATOR'
-F:\fy2009\util\fy_aio.cpp(460) : warning C4003: not enough actual parameters for macro '__INTERNAL_FY_EXCEPTION_TERMINATOR'
-F:\fy2009\util\fy_aio.cpp(562) : error C2446: '>=' : no conversion from 'unsigned long' to 'void *'
-        Conversion from integral type to pointer type requires reinterpret_cast, C-style cast or function-style cast
-F:\fy2009\util\fy_aio.cpp(562) : error C2040: '>=' : 'void *' differs in levels of indirection from 'unsigned long'
-F:\fy2009\util\fy_aio.cpp(573) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(573) : error C2440: '=' : cannot convert from 'class fy2009::aio_proxy_t::_reg_item_t' to 'class fy2009::aio_proxy_t::_reg_item_t *'
-        No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
-F:\fy2009\util\fy_aio.cpp(584) : error C2446: '>=' : no conversion from 'unsigned long' to 'void *'
-        Conversion from integral type to pointer type requires reinterpret_cast, C-style cast or function-style cast
-F:\fy2009\util\fy_aio.cpp(584) : error C2040: '>=' : 'void *' differs in levels of indirection from 'unsigned long'
-F:\fy2009\util\fy_aio.cpp(588) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(588) : error C2228: left of '.dest_sap' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(588) : error C2228: left of '.is_null' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(590) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(590) : error C2228: left of '.dest_sap' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(590) : error C2227: left of '->unregister_fd' must point to class/struct/union
-F:\fy2009\util\fy_aio.cpp(591) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(591) : error C2440: '=' : cannot convert from 'class fy2009::aio_proxy_t::_reg_item_t' to 'class fy2009::aio_proxy_t::_reg_item_t *'
-        No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
-F:\fy2009\util\fy_aio.cpp(664) : error C2446: '>=' : no conversion from 'unsigned long' to 'void *'
-        Conversion from integral type to pointer type requires reinterpret_cast, C-style cast or function-style cast
-F:\fy2009\util\fy_aio.cpp(664) : error C2040: '>=' : 'void *' differs in levels of indirection from 'unsigned long'
-F:\fy2009\util\fy_aio.cpp(670) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(670) : error C2228: left of '.aioeh' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(670) : error C2228: left of '.is_null' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(673) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(673) : error C2228: left of '.aioeh' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(673) : error C2227: left of '->on_aio_events' must point to class/struct/union
-F:\fy2009\util\fy_aio.cpp(688) : warning C4003: not enough actual parameters for macro 'FY_EXCEPTION_XTERMINATOR'
-F:\fy2009\util\fy_aio.cpp(713) : error C2446: '>=' : no conversion from 'unsigned long' to 'void *'
-        Conversion from integral type to pointer type requires reinterpret_cast, C-style cast or function-style cast
-F:\fy2009\util\fy_aio.cpp(713) : error C2040: '>=' : 'void *' differs in levels of indirection from 'unsigned long'
-F:\fy2009\util\fy_aio.cpp(722) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(722) : error C2228: left of '.aioeh' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(722) : error C2228: left of '.is_null' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(724) : error C2107: illegal index, indirection not allowed
-F:\fy2009\util\fy_aio.cpp(724) : error C2228: left of '.aioeh' must have class/struct/union type
-F:\fy2009\util\fy_aio.cpp(724) : error C2227: left of '->on_aio_events' must point to class/struct/union
-F:\fy2009\util\fy_aio.cpp(745) : warning C4003: not enough actual parameters for macro '__INTERNAL_FY_EXCEPTION_TERMINATOR'
-Error executing cl.exe.
 
 
 
 <h3>Results</h3>
-fy_util.lib - 46 error(s), 4 warning(s)
+fy_util.lib - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>

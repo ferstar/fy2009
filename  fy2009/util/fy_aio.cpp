@@ -32,6 +32,13 @@ sp_aiop_t aio_provider_t::s_create(uint16 max_fd_count, bool rcts_flag)
 	}
 #endif
 #elif defined(WIN32)
+	if(max_fd_count < MAX_FD_COUNT_LOWER_BOUND_WIN32)
+	{
+		FY_ERROR("aio_provider_t::s_create, max_fd_count<MAX_FD_COUNT_LOWER_BOUND_WIN32");
+		delete raw_prvd;
+
+		return sp_aiop_t();
+	}
 #if defined(__ENABLE_COMPLETION_PORT__)
 
 	raw_prvd->_iocp = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
@@ -128,10 +135,9 @@ void aio_provider_t::init_hb_thd()
 #if defined(__ENABLE_EPOLL__)
 #else
 	_hb_tid=fy_gettid();
-
-        sigaddset(&_sigset, AIO_RTS_NUM);
-        sigaddset(&_sigset, SIGIO);
-        sigprocmask(SIG_BLOCK, &_sigset, NULL);
+	sigaddset(&_sigset, AIO_RTS_NUM);
+	sigaddset(&_sigset, SIGIO);
+	sigprocmask(SIG_BLOCK, &_sigset, NULL);
 	signal(SIGPIPE, SIG_IGN);
 #endif
 #elif defined(WIN32)
@@ -142,28 +148,29 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh
 {
 	FY_ASSERT(fd != INVALID_FD);
 
-	if(fd >= _max_fd_count)
+	uint32 fd_key=AIO_SOCKET_TO_KEY(fd);
+	if(fd_key >= _max_fd_count)
 	{
 		FY_XERROR("register_fd,too big fd, can't be registered to aio service,fd="<<(uint32)fd\
-			<<",_max_fd_count:"<<_max_fd_count);
+			<<",fd_key="<<fd_key<<",_max_fd_count:"<<_max_fd_count);
 
 		return false;
 	}
 #ifdef LINUX
-        int flags = ::fcntl(fd, F_GETFL, NULL);
+	int flags = ::fcntl(fd, F_GETFL, NULL);
 
 #if defined(__ENABLE_EPOLL__)
 
-        flags |= O_NONBLOCK;
-        ::fcntl(fd, F_SETFL, flags);
+	flags |= O_NONBLOCK;
+	::fcntl(fd, F_SETFL, flags);
 
 	struct epoll_event ev;
 	ev.data.fd=fd;
 	ev.events=AIO_POLLIN | AIO_POLLOUT | AIO_POLLERR | AIO_POLLHUP | EPOLLET;		
 	::epoll_ctl(_epoll_h, EPOLL_CTL_ADD, fd, &ev);
 #else
-        flags |= O_NONBLOCK|O_ASYNC;
-        ::fcntl(fd, F_SETFL, flags);
+	flags |= O_NONBLOCK|O_ASYNC;
+	::fcntl(fd, F_SETFL, flags);
 
 	if(!_hb_tid)
 	{
@@ -171,8 +178,8 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh
 
 		return false;
 	}
-        ::fcntl(fd, F_SETSIG, AIO_RTS_NUM);
-        ::fcntl(fd, F_SETOWN, _hb_tid); //real-time signal will be routed to heart-beat thread	
+	::fcntl(fd, F_SETSIG, AIO_RTS_NUM);
+	::fcntl(fd, F_SETOWN, _hb_tid); //real-time signal will be routed to heart-beat thread	
 #endif
 #elif defined(WIN32)
 #if defined(__ENABLE_COMPLETION_PORT__)
@@ -188,14 +195,14 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh
 
 	//fix a re-connecting bug, fd has been re-used by another connection,
 	//as socket is half-closed,e.g. ::shutdown() it from this side--2009-1-12
-	if(!_ehs[fd].is_null()) 
+	if(!_ehs[ fd_key ].is_null()) 
 	{
 		FY_XWARNING("register_fd, duplicate fd has been registered,fd:"<<(uint32)fd);
 
 		return false; 
  	}
 
-	_ehs[fd]=eh; //map aio event handler to file descriptor
+	_ehs[ fd_key ]=eh; //map aio event handler to file descriptor
 
 	return true;		
 }
@@ -205,7 +212,8 @@ void aio_provider_t::unregister_fd(fyfd_t fd)
 {
 	FY_ASSERT(fd != INVALID_FD);
 
-	if(fd>= _max_fd_count) return;
+	uint32 fd_key=AIO_SOCKET_TO_KEY(fd);
+	if(fd_key>= _max_fd_count) return;
 
 #ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
@@ -213,21 +221,21 @@ void aio_provider_t::unregister_fd(fyfd_t fd)
 	
 	::epoll_ctl(_epoll_h, EPOLL_CTL_DEL, fd, 0);
 #else
-        int flags = fcntl(fd, F_GETFL, 0);
-        flags &= ~O_ASYNC;
-        ::fcntl(fd, F_SETFL, flags);//os will not report rts on this socket afterward	
+	int flags = fcntl(fd, F_GETFL, 0);
+	flags &= ~O_ASYNC;
+	::fcntl(fd, F_SETFL, flags);//os will not report rts on this socket afterward	
 #endif
 #elif defined(WIN32)
 #endif
 	smart_lock_t slock(&_cs);
 
-	_ehs[fd]=sp_aioeh_t();
+	_ehs[fd_key]=sp_aioeh_t();
 }
 
 int8 aio_provider_t::heart_beat()
 {
-        user_clock_t *usr_clk=user_clock_t::instance();
-        uint32 tc_start=get_tick_count(usr_clk);
+	user_clock_t *usr_clk=user_clock_t::instance();
+	uint32 tc_start=get_tick_count(usr_clk);
 
 #ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
@@ -279,19 +287,19 @@ int8 aio_provider_t::heart_beat()
 
                 case SIGIO: //overflow of rts queue,poll all sockets and reset rts queue
                         {
-                                FY_XWARNING("heart_beat, system real time signal queue is overflow");
+							FY_XWARNING("heart_beat, system real time signal queue is overflow");
 
-                                //reset rts queue
-                                signal(AIO_RTS_NUM, SIG_IGN);
-                                signal(AIO_RTS_NUM, SIG_DFL);
+							//reset rts queue
+							signal(AIO_RTS_NUM, SIG_IGN);
+							signal(AIO_RTS_NUM, SIG_DFL);
 
-                                //notify all sockets that system real time signal queue is overflow
-				//this logic should seldom occur, as a exception logic, it's inefficient
-				for(int i=0; i<_max_fd_count; ++i)
-				{
-					if(_ehs[i].is_null()) continue;
-					_ehs[i]->on_aio_events(i, AIO_POLLIN | AIO_POLLOUT);
-				}	
+                            //notify all sockets that system real time signal queue is overflow
+							//this logic should seldom occur, as a exception logic, it's inefficient
+							for(int i=0; i<_max_fd_count; ++i)
+							{
+								if(_ehs[i].is_null()) continue;
+								_ehs[i]->on_aio_events(i, AIO_POLLIN | AIO_POLLOUT);
+							}	
                         }
                         break;
 
@@ -310,7 +318,7 @@ int8 aio_provider_t::heart_beat()
 		uint32 bytes_transferred=0;
 		LPFY_OVERLAPPED p_op=NULL;
 		if (::GetQueuedCompletionStatus(_iocp, &bytes_transferred, NULL, 
-			(LPDWORD)&PerHandleData, (LPOVERLAPPED *)&p_op, _iocp_wait_timeout) == 0)
+			(LPOVERLAPPED *)&p_op, _iocp_wait_timeout) == 0)
 		{
 			uint32 last_error=GetLastError();
 			if(WAIT_TIMEOUT != last_error)
@@ -318,26 +326,24 @@ int8 aio_provider_t::heart_beat()
 				FY_XERROR("heart_beat,GetQueuedCompletionStatus fail, error:"<<last_error);
 				return hb_ret;
 			}
-      		}
+      	}
 		if(p_op)
 		{
 			hb_ret=RET_HB_BUSY;
 			p_op->transferred_bytes = bytes_transferred;
-                        if(!_ehs[p_op->fd].is_null())
-                                _ehs[p_op->fd]->on_aio_events(p_op->fd, p_op->aio_events, (pointer_box_t)p_op);			
+			uint32 fd_key=AIO_SOCKET_TO_KEY(p_op->fd);
+			if(!_ehs[fd_key].is_null())
+				_ehs[fd_key]->on_aio_events(p_op->fd, p_op->aio_events, (pointer_box_t)p_op);			
 
 		}	
 #endif
 #endif
-               	//check time slice
-               	if(tc_util_t::is_over_tc_end(tc_start, _max_slice, get_tick_count(usr_clk)))
-               	{
-                       	//hb_ret=RET_HB_INT;
-                       	break;
-               	}
+		//check time slice
+		if(tc_util_t::is_over_tc_end(tc_start, _max_slice, get_tick_count(usr_clk)))
+			break;
 	}//while(true)
 
-	FY_EXCEPTION_XTERMINATOR();
+	FY_EXCEPTION_XTERMINATOR(;);
 	
 	return hb_ret;
 }
@@ -457,7 +463,7 @@ void aio_stub_t::_lazy_init_object_id() throw()
 	sb<<"aio_stub_fd"<<(int32)_fd<<"_"<<(void*)this;
 	sb.build(_object_id); 
 
-	__INTERNAL_FY_EXCEPTION_TERMINATOR();
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;);
 }
 
 void aio_stub_t::_send_aio_events_as_msg(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para)
@@ -484,42 +490,50 @@ critical_section_t aio_proxy_t::_s_cs=critical_section_t(true);
 
 aio_proxy_t *aio_proxy_t::s_tls_instance(uint32 ep_size, uint16 max_fd_count, event_slot_t *es_notempty, uint16 esi_notempty)
 {
-        if(!_s_key_created)//lazy create tls key
-        {
-                _s_cs.lock();
+#ifdef WIN32
+	if(max_fd_count < MAX_FD_COUNT_LOWER_BOUND_WIN32)
+	{
+		FY_ERROR("aio_proxy_t::s_tls_instance,max_fd_count < MAX_FD_COUNT_LOWER_BOUND_WIN32");
 
-                if(!_s_key_created)
-                {
-                        if(fy_thread_key_create(&_s_tls_key,0))
-                        {
-                                FY_ERROR("aio_proxy_t::s_tls_instance, create TLS key error");
-                                _s_cs.unlock();
+		return 0;
+	}
+#endif
+	if(!_s_key_created)//lazy create tls key
+	{
+		_s_cs.lock();
 
-                                return 0;
-                        }
-                        _s_key_created=true;
-                }
+		if(!_s_key_created)
+		{
+			if(fy_thread_key_create(&_s_tls_key,0))
+			{
+				FY_ERROR("aio_proxy_t::s_tls_instance, create TLS key error");
+				_s_cs.unlock();
 
-                _s_cs.unlock();
-        }
-        void *ret=fy_thread_getspecific(_s_tls_key);//read aio_proxy_t pointer from Thread Local Storage
-        if(ret) return (aio_proxy_t *)ret; //current thread ever has one aio_proxy instance
+				return 0;
+			}
+			_s_key_created=true;
+		}
 
-        aio_proxy_t *aio_proxy=new aio_proxy_t(ep_size, max_fd_count);
+		_s_cs.unlock();
+	}
+	void *ret=fy_thread_getspecific(_s_tls_key);//read aio_proxy_t pointer from Thread Local Storage
+	if(ret) return (aio_proxy_t *)ret; //current thread ever has one aio_proxy instance
 
-        //register read thread for _ep
-        aio_proxy->_ep->register_read();
+	aio_proxy_t *aio_proxy=new aio_proxy_t(ep_size, max_fd_count);
 
-        //register aio_proxy to TLS
-        aio_proxy->add_reference();
-        int ret_set=fy_thread_setspecific(_s_tls_key,(void *)aio_proxy);
-        FY_ASSERT(ret_set == 0);
-        aio_proxy->_thd=fy_thread_self();
+	//register read thread for _ep
+	aio_proxy->_ep->register_read();
+
+	//register aio_proxy to TLS
+	aio_proxy->add_reference();
+	int ret_set=fy_thread_setspecific(_s_tls_key,(void *)aio_proxy);
+	FY_ASSERT(ret_set == 0);
+	aio_proxy->_thd=fy_thread_self();
 	aio_proxy->_msg_proxy = sp_msg_proxy_t(msg_proxy_t::s_tls_instance(), true);
 	aio_proxy->_es_notempty = es_notempty;
 	aio_proxy->_esi_notempty = esi_notempty;
 
-        return aio_proxy;
+	return aio_proxy;
 }
 
 void aio_proxy_t::s_delete_tls_instance()
@@ -538,15 +552,15 @@ aio_proxy_t::aio_proxy_t(uint32 ep_size, uint16 max_fd_count) : _cs(true), ref_c
 	_ep=oneway_pipe_t::s_create((sizeof(int32)+sizeof(uint32))*ep_size);
 	_max_slice=AIOEHPXY_HB_MAX_SLICE;	
 
-        _max_fd_count=max_fd_count;
-        if(_max_fd_count)
-        {
-                _items=new _reg_item_t[_max_fd_count];
-        }
-        else
-        {
-                _items=0;
-        }
+	_max_fd_count=max_fd_count;
+	if(_max_fd_count)
+	{
+			_items=new _reg_item_t[_max_fd_count];
+	}
+	else
+	{
+			_items=0;
+	}
 }
 
 aio_proxy_t::~aio_proxy_t()
@@ -556,21 +570,21 @@ aio_proxy_t::~aio_proxy_t()
 
 bool aio_proxy_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh)
 {
-        FY_ASSERT(fd != INVALID_FD);
+    FY_ASSERT(fd != INVALID_FD);
 	FY_ASSERT(dest_sap);
 
-        if(fd >= _max_fd_count)
-        {
-                FY_XERROR("register_fd,too big fd, can't be registered to aio service,fd="<<(uint32)fd\
-                        <<",_max_fd_count:"<<_max_fd_count);
+	uint32 fd_key = AIO_SOCKET_TO_KEY(fd);
+	if(fd_key >= _max_fd_count)
+	{
+		FY_XERROR("register_fd,too big fd, can't be registered to aio service,fd="<<(uint32)fd\
+				<<",fd_key="<<fd_key<<",_max_fd_count:"<<_max_fd_count);
 
-                return false;
-        }
+		return false;
+	}
 
 	smart_lock_t slock(&_cs);
 
-	
-	_items[fd]=_reg_item_t(sp_aiosap_t(dest_sap,true), eh); //map aio event handler to file descriptor
+	_items[fd_key]=_reg_item_t(sp_aiosap_t(dest_sap,true), eh); //map aio event handler to file descriptor
 	aio_stub_t *raw_stub=new aio_stub_t(fd, _ep, this, _msg_proxy, _es_notempty, _esi_notempty);	
 	sp_aioeh_t smt_eh((aio_event_handler_it*)raw_stub, true);//add_reference raw_stub
 
@@ -579,43 +593,44 @@ bool aio_proxy_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh)
 
 void aio_proxy_t::unregister_fd(fyfd_t fd)
 {
-        FY_ASSERT(fd != INVALID_FD);
+	FY_ASSERT(fd != INVALID_FD);
 
-        if(fd>= _max_fd_count) return;
+	uint32 fd_key = AIO_SOCKET_TO_KEY(fd);
+	if(fd_key >= _max_fd_count) return;
 
 	smart_lock_t slock(&_cs);
 
-	if(_items[fd].dest_sap.is_null()) return;
+	if(_items[fd_key].dest_sap.is_null()) return;
 
-	_items[fd].dest_sap->unregister_fd(fd);
-	_items[fd]= _reg_item_t();
+	_items[fd_key].dest_sap->unregister_fd(fd);
+	_items[fd_key]= _reg_item_t();
 }
 
 //lookup_it
 void *aio_proxy_t::lookup(uint32 iid, uint32 pin) throw()
 {
-        switch(iid)
-        {
-        case IID_self:
-				if(pin!=PIN_self) return 0;
-        case IID_lookup:
-				if(pin != PIN_lookup) return 0;
-                return this;
+	switch(iid)
+	{
+	case IID_self:
+		if(pin!=PIN_self) return 0;
+	case IID_lookup:
+		if(pin != PIN_lookup) return 0;
+		return this;
 
 	case IID_aio_sap:
 		if(pin != PIN_aio_sap) return 0;
 		return static_cast<aio_sap_it*>(this);
 
-        case IID_heart_beat:
-				if(pin != PIN_heart_beat) return 0;
-                return static_cast<heart_beat_it*>(this);
+	case IID_heart_beat:
+		if(pin != PIN_heart_beat) return 0;
+		return static_cast<heart_beat_it*>(this);
 
-        case IID_object_id:
-                return object_id_impl_t::lookup(iid, pin);
+	case IID_object_id:
+		return object_id_impl_t::lookup(iid, pin);
 
-        default:
-                return ref_cnt_impl_t::lookup(iid, pin);
-        }
+	default:
+		return ref_cnt_impl_t::lookup(iid, pin);
+	}
 }
 
 //heart_beat_it
@@ -625,8 +640,8 @@ int8 aio_proxy_t::heart_beat()
 
 	FY_ASSERT(!_ep.is_null());
 
-        user_clock_t *usr_clk=user_clock_t::instance();
-        uint32 tc_start=get_tick_count(usr_clk);
+    user_clock_t *usr_clk=user_clock_t::instance();
+    uint32 tc_start=get_tick_count(usr_clk);
 
 	int8 hb_ret=RET_HB_IDLE;
 	fyfd_t fd=0;
@@ -661,31 +676,32 @@ int8 aio_proxy_t::heart_beat()
 		}
  		hb_ret = RET_HB_BUSY;
 
-                if(fd >= _max_fd_count)
-                {
-                        FY_XERROR("heart_beat,too big fd:"<<(uint32)fd<<",_max_fd_count:"<<_max_fd_count);
+		uint32 fd_key=AIO_SOCKET_TO_KEY(fd);
+		if(fd_key >= _max_fd_count)
+		{
+			FY_XERROR("heart_beat,too big fd:"<<(uint32)fd<<",fd_key="<<fd_key<<",_max_fd_count:"<<_max_fd_count);
 
-                        continue;
-                }
-                if(!_items[fd].aioeh.is_null())
-                {
+			continue;
+		}
+		if(!_items[fd_key].aioeh.is_null())
+		{
 			//it should be efficient enought, otherwise, it will block heart_beat
-                        _items[fd].aioeh->on_aio_events(fd, aio_events, ex_para); //handle aio events
-                }
-                else
-                {
-                        FY_XWARNING("heart_beat, no matched aio event handler for fd:"<<(uint32)fd);
-                }
+			_items[fd_key].aioeh->on_aio_events(fd, aio_events, ex_para); //handle aio events
+		}
+		else
+		{
+			FY_XWARNING("heart_beat, no matched aio event handler for fd:"<<(uint32)fd);
+		}
 
-                //check time slice
-                if(tc_util_t::is_over_tc_end(tc_start, _max_slice, get_tick_count(usr_clk)))
-                {
-                        hb_ret=RET_HB_INT;
-                        break;
-                }	
+		//check time slice
+		if(tc_util_t::is_over_tc_end(tc_start, _max_slice, get_tick_count(usr_clk)))
+		{
+			hb_ret=RET_HB_INT;
+			break;
+		}	
 	}
 
-	FY_EXCEPTION_XTERMINATOR();
+	FY_EXCEPTION_XTERMINATOR(;);
 	
 	return hb_ret;				
 }
@@ -710,18 +726,19 @@ void aio_proxy_t::on_msg(msg_t *msg)
 			FY_ASSERT(v_fd.get_type() == VT_I32 && v_events.get_type() == VT_I32);
 
 			fyfd_t fd=(fyfd_t)(v_fd.get_i32());
-        		if(fd >= _max_fd_count)
-        		{
-                		FY_XERROR("on_msg,too big fd:"<<(uint32)fd<<",_max_fd_count:"<<_max_fd_count);
+			uint32 fd_key=AIO_SOCKET_TO_KEY(fd);
+			if(fd_key >= _max_fd_count)
+			{
+				FY_XERROR("on_msg,too big fd:"<<(uint32)fd<<",fd_key="<<fd_key<<",_max_fd_count:"<<_max_fd_count);
 				return;
-        		}
+			}
 
 			uint32 aio_events=(uint32)v_events.get_i32();
 			pointer_box_t ex_para=v_expara.get_ptb();
 
-			if(!_items[fd].aioeh.is_null())
+			if(!_items[fd_key].aioeh.is_null())
 			{
-				_items[fd].aioeh->on_aio_events(fd, aio_events, ex_para); //handle aio events
+				_items[fd_key].aioeh->on_aio_events(fd, aio_events, ex_para); //handle aio events
 			}
 			else
 			{
@@ -742,6 +759,6 @@ void aio_proxy_t::_lazy_init_object_id() throw()
         sb<<"aio_proxy_thd"<<(uint32)_thd<<"_"<<(void*)this;
         sb.build(_object_id);
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR();
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;);
 }
 

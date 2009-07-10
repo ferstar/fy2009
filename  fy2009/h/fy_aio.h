@@ -89,7 +89,7 @@ typedef struct
 	//set to AIO_POLLIN by WSAAccept, WSARecv or set to AIO_POLLOUT by WSASend, or set to AIO_POLLERR by aio_provider
 	uint32 aio_events; 	
 	WSABUF wsa_buf;
-	uint32 transferred_bytes; //set by aio_provider
+	volatile uint32 transferred_bytes; //set by aio_provider
 } FY_OVERLAPPED, *LPFY_OVERLAPPED;
 
 #endif
@@ -173,10 +173,25 @@ uint32 const AIOP_HB_MAX_SLICE=10; //unit:user tick-count
 //epoll_wait can polled max events count for each call
 int const EPOLL_WAIT_SIZE=512;
 
+#ifdef POSIX
+
+#define AIO_SOCKET_TO_KEY(fd) (fd)
+#define AIO_KEY_TO_SOCKET(key) (key)
+
+#elif defined(WIN32)
+
+//max_fd_count should not be less thant 1952/4, otherwise, aio_provider will not work due to socket handle is out of bound
+uint32 const MAX_FD_COUNT_LOWER_BOUND_WIN32=512;
+//under windows socket always increases/decreases for each 4, under 64bit OS, it may be different
+#define AIO_SOCKET_TO_KEY(fd) ((uint32)fd>>2)
+#define AIO_KEY_TO_SOCKET(key) ((fyfd_t)(key<<2))
+
+#endif
+
 class aio_provider_t : public aio_sap_it,
 		       public heart_beat_it,
 		       public object_id_impl_t,
-                       public ref_cnt_impl_t
+               public ref_cnt_impl_t
 {
 public:
 	//max_fd_count available max value is limited by OS allowed open files,
