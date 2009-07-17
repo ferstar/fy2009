@@ -144,7 +144,7 @@ void aio_provider_t::init_hb_thd()
 #endif
 }
 
-bool aio_provider_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh)
+bool aio_provider_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 {
 	FY_ASSERT(fd != INVALID_FD);
 
@@ -208,7 +208,7 @@ bool aio_provider_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh
 }
 
 //test shows that in real-time signal mode, after this call, there may still be signal is polled 
-void aio_provider_t::unregister_fd(fyfd_t fd)
+void aio_provider_t::unregister_fd(int32 fd)
 {
 	FY_ASSERT(fd != INVALID_FD);
 
@@ -376,7 +376,7 @@ void *aio_provider_t::lookup(uint32 iid, uint32 pin) throw()
 }
 
 //aio_stub_t
-aio_stub_t::aio_stub_t(fyfd_t fd, sp_owp_t& ep, aio_proxy_t *aio_proxy, sp_msg_proxy_t& msg_proxy, 
+aio_stub_t::aio_stub_t(int32 fd, sp_owp_t& ep, aio_proxy_t *aio_proxy, sp_msg_proxy_t& msg_proxy, 
 			event_slot_t *es_notempty, uint16 esi_notempty)
 	 : _cs(true), ref_cnt_impl_t(&_cs) 
 {
@@ -393,7 +393,7 @@ aio_stub_t::aio_stub_t(fyfd_t fd, sp_owp_t& ep, aio_proxy_t *aio_proxy, sp_msg_p
 	_esi_notempty = esi_notempty;
 }
 
-void aio_stub_t::on_aio_events(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para)
+void aio_stub_t::on_aio_events(int32 fd, uint32 aio_events, pointer_box_t ex_para)
 {
 	FY_XFUNC("on_aio_events,fd:"<<(uint32)fd<<",aio_events:"<<aio_events);
 
@@ -466,7 +466,7 @@ void aio_stub_t::_lazy_init_object_id() throw()
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(;);
 }
 
-void aio_stub_t::_send_aio_events_as_msg(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para)
+void aio_stub_t::_send_aio_events_as_msg(int32 fd, uint32 aio_events, pointer_box_t ex_para)
 {
 	FY_XFUNC("_send_aio_events_as_msg,fd:"<<(int32)fd<<",aio_events:"<<aio_events);
 
@@ -568,7 +568,7 @@ aio_proxy_t::~aio_proxy_t()
 	if(_items) delete [] _items;	
 }
 
-bool aio_proxy_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh)
+bool aio_proxy_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 {
     FY_ASSERT(fd != INVALID_FD);
 	FY_ASSERT(dest_sap);
@@ -591,7 +591,7 @@ bool aio_proxy_t::register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh)
 	return dest_sap->register_fd(0, fd, smt_eh); 
 }
 
-void aio_proxy_t::unregister_fd(fyfd_t fd)
+void aio_proxy_t::unregister_fd(int32 fd)
 {
 	FY_ASSERT(fd != INVALID_FD);
 
@@ -644,7 +644,7 @@ int8 aio_proxy_t::heart_beat()
     uint32 tc_start=get_tick_count(usr_clk);
 
 	int8 hb_ret=RET_HB_IDLE;
-	fyfd_t fd=0;
+	int32 fd=0;
 	uint32 aio_events=0;
 	pointer_box_t ex_para=0;
 	int32 read_len=0;
@@ -725,7 +725,7 @@ void aio_proxy_t::on_msg(msg_t *msg)
 
 			FY_ASSERT(v_fd.get_type() == VT_I32 && v_events.get_type() == VT_I32);
 
-			fyfd_t fd=(fyfd_t)(v_fd.get_i32());
+			int32 fd=v_fd.get_i32();
 			uint32 fd_key=AIO_SOCKET_TO_KEY(fd);
 			if(fd_key >= _max_fd_count)
 			{

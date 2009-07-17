@@ -23,10 +23,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#elif defined(WIN32)
-
-#include <winsock.h>
-
 #endif //LINUX
 
 USING_FY_NAME_SPACE

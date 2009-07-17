@@ -30,6 +30,15 @@
 
 #elif defined(WIN32)
 
+//0500:windows 2000; 0501:windows XP; 0502:windows 2003; 0600: windows vista
+#ifndef WINVER
+#	define WINVER 0x0400
+#endif
+
+#ifndef _WIN32_WINNT
+#	define _WIN32_WINNT 0x0400
+#endif
+
 #include <windows.h>
 #include <time.h>
 

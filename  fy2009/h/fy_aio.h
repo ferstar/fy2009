@@ -51,8 +51,6 @@ typedef smart_pointer_tt<aio_proxy_t> sp_aio_proxy_t;
  */
 #ifdef LINUX
 
-typedef int32 fyfd_t; //portable file descriptor type
-
 #if defined(__ENABLE_EPOLL__)
 #	include <sys/epoll.h>
 #	define AIO_POLLIN   EPOLLIN  /* There is data to read.  */
@@ -71,9 +69,6 @@ typedef int32 fyfd_t; //portable file descriptor type
 #endif //__ENABLE_EPOLL__
 
 #elif defined(WIN32)
-#include <winsock2.h>
-
-typedef HANDLE fyfd_t; //portable file descriptor type
 
 #ifdef __ENABLE_COMPLETION_PORT__
 
@@ -85,7 +80,7 @@ typedef HANDLE fyfd_t; //portable file descriptor type
 typedef struct
 {
 	OVERLAPPED overlapped;
-	fyfd_t fd;
+	int32 fd;
 	//set to AIO_POLLIN by WSAAccept, WSARecv or set to AIO_POLLOUT by WSASend, or set to AIO_POLLERR by aio_provider
 	uint32 aio_events; 	
 	WSABUF wsa_buf;
@@ -133,10 +128,10 @@ public:
         //to event hander eh
 	//if implementation is aio_provider_t, dest_sap will be ignored, i.e. it can be null in this case
 	//,otherwise, if implementatior is aio_proxy_t, it points to aio_provider_t
-        virtual bool register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh)=0;
+        virtual bool register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)=0;
 
         //unregister file descriptor from aio service
-        virtual void unregister_fd(fyfd_t fd)=0;	
+        virtual void unregister_fd(int32 fd)=0;	
 };
 typedef smart_pointer_lu_tt<aio_sap_it> sp_aiosap_t;
 
@@ -153,7 +148,7 @@ class aio_event_handler_it : public lookup_it
 public:
 	//once call can deliver multi events, aio_events can be one or more AIO_POLLXXX events
 	//add ex_para to pass overlapped data pointer in windwos completion port
-	virtual void on_aio_events(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para=0)=0;
+	virtual void on_aio_events(int32 fd, uint32 aio_events, pointer_box_t ex_para=0)=0;
 };
 
 /*[tip]
@@ -184,7 +179,7 @@ int const EPOLL_WAIT_SIZE=512;
 uint32 const MAX_FD_COUNT_LOWER_BOUND_WIN32=512;
 //under windows socket always increases/decreases for each 4, under 64bit OS, it may be different
 #define AIO_SOCKET_TO_KEY(fd) ((uint32)fd>>2)
-#define AIO_KEY_TO_SOCKET(key) ((fyfd_t)(key<<2))
+#define AIO_KEY_TO_SOCKET(key) ((int32)(key<<2))
 
 #endif
 
@@ -200,8 +195,8 @@ public:
 public:
 	~aio_provider_t();
 	//aio_sap_it
-	bool register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh);
-	void unregister_fd(fyfd_t fd);
+	bool register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh);
+	void unregister_fd(int32 fd);
 
 	//if epoll isn't enabled, it shoulde be called from heart_beat thread within thread initialization,
 	//on the other hand, set heart beat thread
@@ -271,22 +266,22 @@ class aio_stub_t : public aio_event_handler_it,
 	friend class aio_proxy_t;
 public:
 	//aio_event_handler_it
-	void on_aio_events(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para=0);	
+	void on_aio_events(int32 fd, uint32 aio_events, pointer_box_t ex_para=0);	
 
         //lookup_it
         void *lookup(uint32 iid, uint32 pin) throw();
 protected:
 	//it only can be instantiated by aio_proxy_t
-	aio_stub_t(fyfd_t fd, sp_owp_t& ep, aio_proxy_t *aio_proxy, sp_msg_proxy_t& msg_proxy, 
+	aio_stub_t(int32 fd, sp_owp_t& ep, aio_proxy_t *aio_proxy, sp_msg_proxy_t& msg_proxy, 
 			event_slot_t *es_notempty, uint16 esi_notempty);
 	void _lazy_init_object_id() throw();
 
 	//if event pipe is full, aio events will be delivered to destination proxy via generic message service
-	void _send_aio_events_as_msg(fyfd_t fd, uint32 aio_events, pointer_box_t ex_para);
+	void _send_aio_events_as_msg(int32 fd, uint32 aio_events, pointer_box_t ex_para);
 private:
 	//aio event pipe,refer to  TLS one-way pipe associated with aio_proxy_t
 	sp_owp_t _ep;
-	fyfd_t _fd;
+	int32 _fd;
 	sp_aio_proxy_t _proxy; //associated aio_proxy
 
 	//notify aio_proxy aio events pipe isn't empty to release possible waiting thread
@@ -347,8 +342,8 @@ public:
 
 	//aio_sap_it
 	//more than one aio provider can be supported, but caller should ensure all providers will run in same thread
-       	bool register_fd(aio_sap_it *dest_sap, fyfd_t fd, sp_aioeh_t& eh);
-        void unregister_fd(fyfd_t fd);
+       	bool register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh);
+        void unregister_fd(int32 fd);
 	
         //lookup_it
         void *lookup(uint32 iid, uint32 pin) throw();

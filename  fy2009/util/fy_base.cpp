@@ -10,12 +10,6 @@
  * ====================================================================
  */
 //to enable TryEnterCriticalSection definition
-#ifdef WIN32
-#	ifndef _WIN32_WINNT
-#	define _WIN32_WINNT 0x0400
-#	endif
-#endif
-
 #include "fy_base.h"
 #include <stdio.h>
 USING_FY_NAME_SPACE
