@@ -316,9 +316,10 @@ int8 aio_provider_t::heart_beat()
 #ifdef __ENABLE_COMPLETION_PORT__
 	
 		uint32 bytes_transferred=0;
+		uint32 cp_key=0;
 		LPFY_OVERLAPPED p_op=NULL;
-		if (::GetQueuedCompletionStatus(_iocp, &bytes_transferred, NULL, 
-			(LPOVERLAPPED *)&p_op, _iocp_wait_timeout) == 0)
+		if (::GetQueuedCompletionStatus(_iocp, &bytes_transferred, &cp_key, 
+			(LPOVERLAPPED *)(&p_op), _iocp_wait_timeout) == 0)
 		{
 			uint32 last_error=GetLastError();
 			if(WAIT_TIMEOUT != last_error)

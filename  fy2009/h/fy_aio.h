@@ -70,15 +70,14 @@ typedef smart_pointer_tt<aio_proxy_t> sp_aio_proxy_t;
 
 #elif defined(WIN32)
 
-#ifdef __ENABLE_COMPLETION_PORT__
-
 #       define AIO_POLLIN   0  /*accept or receiv  */
 #       define AIO_POLLOUT  1  /* send  */
 #       define AIO_POLLERR  2  /* Error condition.  */
 #       define AIO_POLLHUP  3  /* Hung up.peer shutdown connection */
 
-typedef struct
-{
+#ifdef __ENABLE_COMPLETION_PORT__
+
+typedef struct{
 	OVERLAPPED overlapped;
 	int32 fd;
 	//set to AIO_POLLIN by WSAAccept, WSARecv or set to AIO_POLLOUT by WSASend, or set to AIO_POLLERR by aio_provider

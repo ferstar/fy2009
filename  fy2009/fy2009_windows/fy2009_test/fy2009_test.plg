@@ -6,32 +6,11 @@
 --------------------Configuration: fy2009_test - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPBEE.tmp" with contents
-[
-/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "FY_ENABLE_ASSERT" /D "FY_TEST_AIO" /Fp"Debug/fy2009_test.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"F:\fy2009\test\fyt_aio.cpp"
-]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPBEE.tmp" 
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPBEF.tmp" with contents
-[
-kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/fy2009_test.pdb" /debug /machine:I386 /out:"Debug/fy2009_test.exe" /pdbtype:sept 
-.\Debug\fyt_aio.obj
-.\Debug\fyt_base.obj
-.\Debug\fyt_msg.obj
-.\Debug\fyt_stream.obj
-\fy2009\fy2009_windows\fy2009_util_windows\Debug\fy_util.lib
-]
-Creating command line "link.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPBEF.tmp"
-<h3>Output Window</h3>
-Compiling...
-fyt_aio.cpp
-F:\fy2009\test\fyt_aio.cpp(423) : error C2065: 'EINPROGRESS' : undeclared identifier
-Error executing cl.exe.
 
 
 
 <h3>Results</h3>
-fy2009_test.exe - 1 error(s), 0 warning(s)
+fy2009_test.exe - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>

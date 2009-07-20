@@ -17,6 +17,8 @@
 
 #include "fy_aio.h"
 
+USING_FY_NAME_SPACE
+
 #ifdef LINUX
 
 #include <sys/socket.h>
@@ -34,31 +36,21 @@ GUID GuidAcceptEx = WSAID_ACCEPTEX;
 #ifdef __ENABLE_COMPLETION_PORT__
 
 FY_OVERLAPPED a_ovlp; //accept overlapped
-a_ovlp.aio_events = AIO_POLLIN;
-
 #define MAX_BUF_SIZE 1024
 char r_buf[MAX_BUF_SIZE];
 char s_buf[MAX_BUF_SIZE];
 FY_OVERLAPPED r_ovlp; //receive overlapped
-r_ovlp.wsa_buf.buf=r_buf;
-r_ovlp.wsa_buf.len = MAX_BUF_SIZE;
-r_ovlp.aio_events  = AIO_POLLIN;
-
 FY_OVERLAPPED s_ovlp; //send overlapped
-s_ovlp.wsa_buf.buf=s_buf;
-s_ovlp.wsa_buf.len=MAX_BUF_SIZE;
-s_ovlp.aio_events = AIO_POLLOUT;
 
 #endif //__ENABLE_COMPLETION_PORT__
-
 #endif //LINUX
 
-USING_FY_NAME_SPACE
 
 //test aio
 int32 g_conn_fd=0;
+int32 g_listen_fd=0;
 bool read_flag=false;
-/*
+
 class test_aio_eh_t : public aio_event_handler_it,
 			public ref_cnt_impl_t
 {
@@ -77,7 +69,7 @@ public:
 				printf("listen socket received an AIO_POLLIN\n");
 #ifdef LINUX
 				int32 conn_fd=::accept(fd, 0, 0);
-                        	if(conn_fd == -1) 
+                if(conn_fd == -1) 
 				{
 					perror("accept failed\n");
                         		return;
@@ -114,8 +106,8 @@ public:
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
 				r_ovlp.transferred_bytes = 0;
 				r_ovlp.fd = conn_fd;
-				int32 recv_bytes, flags;
-				if(WSARecv(conn_fd, &(r_ovlp.wsa_buf), 1, & recv_bytes, &flags,
+				uint32 recv_bytes, flags;
+				if(WSARecv(conn_fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
 					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
 					if (WSAGetLastError() != ERROR_IO_PENDING)
@@ -188,15 +180,15 @@ printf("<<<<received %d\n",ret);
 				//asyn receive request
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
 				r_ovlp.transferred_bytes = 0;
-				r_ovlp.fd = conn_fd;
-				int32 recv_bytes, flags;
-				if(WSARecv(conn_fd, &(r_ovlp.wsa_buf), 1, & recv_bytes, &flags,
+				r_ovlp.fd = fd;
+				uint32 recv_bytes, flags;
+				if(WSARecv(fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
 					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
 					if (WSAGetLastError() != ERROR_IO_PENDING)
 					{
 						printf("WSARecv fail\n");
-						fy_close_sok(conn_fd);
+						fy_close_sok(fd);
 						return;
 					}
 				}
@@ -235,8 +227,8 @@ printf("<<<<received %d\n",ret);
 				//asyn send request
 				ZeroMemory(&(s_ovlp.overlapped), sizeof(OVERLAPPED));
 				s_ovlp.transferred_bytes = 0;
-				int32 send_bytes, flags;
-				if(WSASend(fd, &(s_ovlp.wsa_buf), 1, & send_bytes, &flags,
+				uint32 send_bytes, flags;
+				if(WSASend(fd, &(s_ovlp.wsa_buf), 1, & send_bytes, flags,
 					&(s_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
 					if (WSAGetLastError() != ERROR_IO_PENDING)
@@ -295,12 +287,36 @@ private:
 	sp_aiop_t _aiop;
 	bool _listen_flag;
 };
-*/
+
 #define SERVPORT 8888
 #define BACKLOG 128
 
 int main(int argc,char **argv)
 {
+	trace_provider_t *trace_prvd=trace_provider_t::instance();
+    trace_prvd->open();
+    trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer();
+
+#ifdef WIN32
+
+	WSADATA wsa_data;
+	WSAStartup(0x0202, &wsa_data);
+
+#ifdef __ENABLE_COMPLETION_PORT__
+
+a_ovlp.aio_events = AIO_POLLIN;
+
+r_ovlp.wsa_buf.buf=r_buf;
+r_ovlp.wsa_buf.len = MAX_BUF_SIZE;
+r_ovlp.aio_events  = AIO_POLLIN;
+
+s_ovlp.wsa_buf.buf=s_buf;
+s_ovlp.wsa_buf.len=MAX_BUF_SIZE;
+s_ovlp.aio_events = AIO_POLLOUT;
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
+	
 	bool is_svr=true;
 	int conn_cnt=0;
 
@@ -328,8 +344,13 @@ int main(int argc,char **argv)
 #endif
     if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
 	{
+#ifdef WIN32
+		printf("fail to create socket to listen,error:%d\n",
+			WSAGetLastError());
+#else
         perror("fail to create a socket descriptor to listen!\n");
-        exit(1);
+#endif
+        return 0;
     }
 	if(is_svr)
 	{
@@ -353,7 +374,8 @@ int main(int argc,char **argv)
 		// we pass the pointer to our AcceptEx function. This is used
 		// so that we can call the AcceptEx function directly, rather
 		// than refer to the Mswsock.lib library.
-		WSAIoctl(fd, 
+		DWORD dwBytes;
+		WSAIoctl(sockfd, 
 			SIO_GET_EXTENSION_FUNCTION_POINTER, 
 			&GuidAcceptEx, 
 			sizeof(GuidAcceptEx),
@@ -363,19 +385,19 @@ int main(int argc,char **argv)
 			NULL, 
 			NULL);
 
-#endif //iocp
-#endif
+#endif //completion port
+#endif 
 		//bind socket to address
 		if (bind(sockfd, (struct sockaddr *)&svr_addr, sizeof(struct sockaddr)) == -1) 
 		{
 			perror("bind failed\n");
-			exit(1);
+			return 0;
 		}
 	}
-
-//	sp_aioeh_t aio_eh(new test_aio_eh_t(aiop, is_svr), true);
-
-//	aiop->register_fd(0, sockfd, aio_eh);
+#ifndef __ENABLE_COMPLETION_PORT__
+	sp_aioeh_t aio_eh(new test_aio_eh_t(aiop, is_svr), true);
+	aiop->register_fd(0, sockfd, aio_eh);
+#endif
 
 	if(is_svr)// as server, listen on
 	{
@@ -383,13 +405,18 @@ int main(int argc,char **argv)
 		if (listen(sockfd, BACKLOG) == -1) 
 		{
 			perror("listen failed\n");
-			exit(1);
+			return 0;
 		}
+		g_listen_fd = sockfd;
+
 #ifdef WIN32
 #ifdef __ENABLE_COMPLETION_PORT__
 		//asyn accept request on listen socket
 		ZeroMemory(&(a_ovlp.overlapped), sizeof(OVERLAPPED));
 		a_ovlp.fd = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+		sp_aioeh_t aio_eh(new test_aio_eh_t(aiop, is_svr), true);
+		aiop->register_fd(0, a_ovlp.fd, aio_eh);
+
 		uint32 bytes;
 		if(lpfnAcceptEx(sockfd, 
 			a_ovlp.fd,
@@ -403,17 +430,18 @@ int main(int argc,char **argv)
 			if (WSAGetLastError() != ERROR_IO_PENDING)
 			{
 				printf("WSAAccept fail\n");
-				exit(1);
+				return 0;
 			}
 		}
 
-#endif //iocp
+#endif //completion port
 #endif
 	}
 	else //as client, connect to
 	{
 		int32 ret_conn=connect(sockfd, (struct sockaddr *)&svr_addr, sizeof(struct sockaddr));
 		if(ret_conn == 0) printf("%d:ret_conn=%d\n",++conn_cnt,ret_conn);
+#ifdef LINUX
 		if ( ret_conn== -1) 
 		{
 			if(errno == EAGAIN)
@@ -428,14 +456,32 @@ int main(int argc,char **argv)
 			else
 			{
 				printf("exit on error:errno=%d\n",errno);
-				exit(1);
+				return 0;
 			}
 		}
+#elif defined(WIN32)
+		if(ret_conn == SOCKET_ERROR)
+		{
+			if(WSAGetLastError() ==  WSAEWOULDBLOCK)
+			{
+				printf("connect request is pending...\n");
+			}
+			else
+			{
+				printf("connect request failed\n");
+				return 0;
+			}
+		}
+		else
+		{
+			printf("succeeded in connecting\n");
+		}
+#endif
 		g_conn_fd=sockfd;
 	}
 
 	int8 ret_hb=0;
-	aiop->set_max_slice(100);
+	aiop->set_max_slice(1000);
 	const int BUF_SIZE=32768;
 	char buf[BUF_SIZE];
 	//88
@@ -443,7 +489,7 @@ int main(int argc,char **argv)
 	while(true)
 	{
 		ret_hb=aiop->heart_beat();
-		printf("heart_beat99,ret=%d\n",ret_hb);
+		printf("heart_beat,ret=%d\n",ret_hb);
 
 		if(g_conn_fd && !sent_flag)
 		{
@@ -461,7 +507,15 @@ int main(int argc,char **argv)
 
 	aiop->unregister_fd(sockfd);
 	fy_close_sok(sockfd);
-	
+
+#ifdef WIN32
+
+	WSACleanup(); 
+
+#endif
+    trace_prvd->unregister_tracer();
+    trace_prvd->close();
+
 	return 0;
 }
 
