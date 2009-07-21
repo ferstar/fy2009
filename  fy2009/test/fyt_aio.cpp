@@ -83,48 +83,31 @@ public:
 					return;
 				}
 				int32 conn_fd= p_ovlp->fd;
-				//asyn accept request on listen socket
-				ZeroMemory(&(a_ovlp.overlapped), sizeof(OVERLAPPED));
-				a_ovlp.fd = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-				uint32 bytes;
-				if(lpfnAcceptEx(fd, 
-					a_ovlp.fd,
-					r_buf, 
-					0, //don't receive first block
-					sizeof(sockaddr_in) + 16, 
-					sizeof(sockaddr_in) + 16, 
-					&bytes, 
-					&(a_ovlp.overlapped)) == 0)
-				{
-					if (WSAGetLastError() != ERROR_IO_PENDING)
-					{
-						printf("WSAAccept fail\n");
-						return;
-					}
-				}
-				//asyn receive request on accepted socket
-				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
-				r_ovlp.transferred_bytes = 0;
-				r_ovlp.fd = conn_fd;
-				uint32 recv_bytes, flags;
-				if(WSARecv(conn_fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
-					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
-				{
-					if (WSAGetLastError() != ERROR_IO_PENDING)
-					{
-						printf("WSARecv fail\n");
-						fy_close_sok(conn_fd);
-						return;
-					}
-				}
-				printf("asyn receive is pending...\n");
+				_aiop->unregister_fd(conn_fd);
 #endif //iocp
 #endif
             	printf("accepted an incoming connection:%d\n",(uint32)conn_fd);
 				sp_aioeh_t aio_eh(new test_aio_eh_t(_aiop, false), true);
 				_aiop->register_fd(0, conn_fd, aio_eh);
 				g_conn_fd=conn_fd;
-
+#ifdef __ENABLE_COMPLETION_PORT__
+				//asyn receive request on accepted socket
+				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
+				r_ovlp.transferred_bytes = 0;
+				r_ovlp.fd = g_conn_fd;
+				uint32 recv_bytes, flags;
+				if(WSARecv(g_conn_fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
+					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
+				{
+					if (WSAGetLastError() != ERROR_IO_PENDING)
+					{
+						printf("WSARecv fail\n");
+						fy_close_sok(g_conn_fd);
+						return;
+					}
+				}
+				printf("asyn receive is pending...\n");
+#endif
 				return;	
 			}
 			if((aio_events & AIO_POLLERR) == AIO_POLLERR)
@@ -360,7 +343,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
     //set server address
     svr_addr.sin_family=PF_INET; //protocol family
     svr_addr.sin_port=htons(SERVPORT); //listening port number--transfer short type to network sequence
-    svr_addr.sin_addr.s_addr = INADDR_ANY; //IP address(autodetect)
+    svr_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //IP address(autodetect)
 
 	if(is_svr)
 	{
@@ -394,10 +377,8 @@ s_ovlp.aio_events = AIO_POLLOUT;
 			return 0;
 		}
 	}
-#ifndef __ENABLE_COMPLETION_PORT__
 	sp_aioeh_t aio_eh(new test_aio_eh_t(aiop, is_svr), true);
 	aiop->register_fd(0, sockfd, aio_eh);
-#endif
 
 	if(is_svr)// as server, listen on
 	{
@@ -429,18 +410,16 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		{
 			if (WSAGetLastError() != ERROR_IO_PENDING)
 			{
-				printf("WSAAccept fail\n");
+				printf("lpfnAcceptEx fail\n");
 				return 0;
 			}
 		}
-
 #endif //completion port
 #endif
 	}
 	else //as client, connect to
 	{
 		int32 ret_conn=connect(sockfd, (struct sockaddr *)&svr_addr, sizeof(struct sockaddr));
-		if(ret_conn == 0) printf("%d:ret_conn=%d\n",++conn_cnt,ret_conn);
 #ifdef LINUX
 		if ( ret_conn== -1) 
 		{
@@ -462,13 +441,14 @@ s_ovlp.aio_events = AIO_POLLOUT;
 #elif defined(WIN32)
 		if(ret_conn == SOCKET_ERROR)
 		{
-			if(WSAGetLastError() ==  WSAEWOULDBLOCK)
+			int32 err=WSAGetLastError();
+			if( err ==  WSAEWOULDBLOCK)
 			{
 				printf("connect request is pending...\n");
 			}
 			else
 			{
-				printf("connect request failed\n");
+				printf("connect request failed,err:%d\n",err);
 				return 0;
 			}
 		}
@@ -495,13 +475,29 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		{
 			sent_flag=true;
 			int sent_cnt=0;
+#ifdef LINUX
 			int ret=::send(g_conn_fd, buf, BUF_SIZE, 0);
-/*			while(ret > 0)
-			{
-				sent_cnt+=ret;
-				ret=::send(g_conn_fd, buf, BUF_SIZE, 0);
-			}
-*/			printf("sent %d bytes from %d\n",sent_cnt, g_conn_fd);
+			printf("sent %d bytes from %d\n",sent_cnt, g_conn_fd);
+#elif defined(WIN32)
+#ifdef __ENABLE_COMPLETION_PORT__
+				//asyn send request
+				ZeroMemory(&(s_ovlp.overlapped), sizeof(OVERLAPPED));
+				s_ovlp.transferred_bytes = 0;
+				uint32 send_bytes, flags;
+				if(WSASend(g_conn_fd, &(s_ovlp.wsa_buf), 1, & send_bytes, flags,
+					&(s_ovlp.overlapped), NULL) == SOCKET_ERROR)
+				{
+					int32 err=WSAGetLastError();
+					if (err != ERROR_IO_PENDING)
+					{
+						printf("WSASend fail,err:%d\n",err);
+						fy_close_sok(g_conn_fd);
+						return 0;
+					}
+				}
+				printf("asyn send is pending...\n");
+#endif
+#endif
 		}
 	}
 
