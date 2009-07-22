@@ -333,9 +333,11 @@ int8 aio_provider_t::heart_beat()
 			hb_ret=RET_HB_BUSY;
 			p_op->transferred_bytes = bytes_transferred;
 			uint32 fd_key=AIO_SOCKET_TO_KEY(p_op->fd);
+//88
+FY_INFOD("88transfer bytes:"<<bytes_transferred<<",fd:"<<p_op->fd<<",fd_key:"<<fd_key<<",ehs is null?"<<(int8)_ehs[fd_key].is_null());
 			if(!_ehs[fd_key].is_null())
 				_ehs[fd_key]->on_aio_events(p_op->fd, p_op->aio_events, (pointer_box_t)p_op);			
-
+FY_INFOD("88on_aio_events is called");
 		}	
 #endif
 #endif

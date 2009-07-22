@@ -61,17 +61,18 @@ public:
 	}
 	void on_aio_events(int32 fd, uint32 aio_events, pointer_box_t ex_para)
 	{
-		printf("==on_aio_events is called,_listen_flag:%d, fd:%d, aio_events:%d==\n", _listen_flag, fd, aio_events);
+		FY_INFOI("==on_aio_events is called,_listen_flag:"<<(int8)_listen_flag<<",fd:"<<(uint32)fd
+			<<",aio_events:"<<aio_events);
 		if(_listen_flag) //as server
 		{
 			if((aio_events & AIO_POLLIN) == AIO_POLLIN)
 			{
-				printf("listen socket received an AIO_POLLIN\n");
+				FY_INFOI("listen socket received an AIO_POLLIN");
 #ifdef LINUX
 				int32 conn_fd=::accept(fd, 0, 0);
                 if(conn_fd == -1) 
 				{
-					perror("accept failed\n");
+					FY_ERROR("accept failed");
                         		return;
 				}
 #elif defined(WIN32)
@@ -79,17 +80,21 @@ public:
 				LPFY_OVERLAPPED p_ovlp= (LPFY_OVERLAPPED)ex_para;
 				if(!p_ovlp)
 				{
-					printf("invalid overlapped pointer\n");
+					FY_ERROR("invalid overlapped pointer");
 					return;
 				}
 				int32 conn_fd= p_ovlp->fd;
 				_aiop->unregister_fd(conn_fd);
 #endif //iocp
 #endif
-            	printf("accepted an incoming connection:%d\n",(uint32)conn_fd);
-				sp_aioeh_t aio_eh(new test_aio_eh_t(_aiop, false), true);
-				_aiop->register_fd(0, conn_fd, aio_eh);
-				g_conn_fd=conn_fd;
+            	FY_INFOD("accepted an incoming connection:"<<(uint32)conn_fd
+						<<",_aiop is null?"<<(int8)_aiop.is_null());
+test_aio_eh_t *peh=new test_aio_eh_t(_aiop, false);
+//				sp_aioeh_t aio_eh(new test_aio_eh_t(_aiop, false), true);
+				FY_INFOD("88create a new event handler for connection");
+/*				_aiop->register_fd(0, conn_fd, aio_eh);
+				FY_INFOD("88register_fd again succeessfully");
+*/				g_conn_fd=conn_fd;
 #ifdef __ENABLE_COMPLETION_PORT__
 				//asyn receive request on accepted socket
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
@@ -101,18 +106,18 @@ public:
 				{
 					if (WSAGetLastError() != ERROR_IO_PENDING)
 					{
-						printf("WSARecv fail\n");
+						FY_ERROR("WSARecv fail");
 						fy_close_sok(g_conn_fd);
 						return;
 					}
 				}
-				printf("asyn receive is pending...\n");
+				FY_INFOD("asyn receive is pending...");
 #endif
 				return;	
 			}
 			if((aio_events & AIO_POLLERR) == AIO_POLLERR)
 			{
-				printf("listen socket received an AIO_POLLERR\n");
+				FY_INFOD("listen socket received an AIO_POLLERR");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 				
@@ -120,13 +125,13 @@ public:
 			}
 			if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
 			{
-				printf("listen socket received an AIO_POLLHUP\n");
+				FY_INFOD("listen socket received an AIO_POLLHUP");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 
 				return;
 			}
-			printf("listen socket received an unknow event\n");
+			FY_INFOD("listen socket received an unknow event");
 
 			return;
 		}
@@ -134,7 +139,7 @@ public:
 		{
 			if((aio_events & AIO_POLLIN) == AIO_POLLIN)
 			{
-				printf("conn received an AIO_POLLIN\n");
+				FY_INFOD("conn received an AIO_POLLIN");
 //if(!read_flag)
 //{
 //read_flag=true;
@@ -142,12 +147,12 @@ public:
 				const int BUF_SIZE=1024;
 				char buf[BUF_SIZE];
 				int ret=::recv(fd, buf, BUF_SIZE, 0);
-printf("<<<<received %d\n",ret);
+				FY_INFOD("<<<<received:"<<(int32)ret);
 				int rcv_cnt=0;
 				while(ret > 0) {rcv_cnt+= ret; ret=::recv(fd, buf, BUF_SIZE, 0); }	
 				if(ret == 0)
 				{ 
-					printf("connection has been closed by peer\n");
+					FY_INFOD("connection has been closed by peer");
 					_aiop->unregister_fd(fd);
 					fy_close_sok(fd);
 				}
@@ -156,7 +161,7 @@ printf("<<<<received %d\n",ret);
 				LPFY_OVERLAPPED p_ovlp= (LPFY_OVERLAPPED)ex_para;
 				if(!p_ovlp)
 				{
-					printf("invalid overlapped pointer\n");
+					FY_ERROR("invalid overlapped pointer");
 					return;
 				}
 				int rcv_cnt = p_ovlp->transferred_bytes;
@@ -170,21 +175,21 @@ printf("<<<<received %d\n",ret);
 				{
 					if (WSAGetLastError() != ERROR_IO_PENDING)
 					{
-						printf("WSARecv fail\n");
+						FY_ERROR("WSARecv fail");
 						fy_close_sok(fd);
 						return;
 					}
 				}
-				printf("asyn receive is pending...\n");
+				FY_INFOD("asyn receive is pending...");
 #endif //iocp				
 #endif
-				printf("recieved %d bytes from %d\n",rcv_cnt, fd);
+				FY_INFOD("recieved "<<(int32)rcv_cnt<<" bytes from "<<(uint32)fd);
 //}
 			}
 
 			if((aio_events & AIO_POLLOUT) == AIO_POLLOUT)
 			{
-				printf("conn received an AIO_POLLOUT\n");
+				FY_INFOD("conn received an AIO_POLLOUT");
 
 #ifdef LINUX
                 const int BUF_SIZE=1025;
@@ -194,7 +199,7 @@ printf("<<<<received %d\n",ret);
 				while(ret > 0) { sent_cnt+=ret; ret=::send(fd, buf, BUF_SIZE, 0); }
 				if(ret == 0)
 				{ 
-					printf("connection has been closed by peer\n");
+					FY_INFOD("connection has been closed by peer");
 					_aiop->unregister_fd(fd);
 					fy_close_sok(fd);
 				}
@@ -203,7 +208,7 @@ printf("<<<<received %d\n",ret);
 				LPFY_OVERLAPPED p_ovlp= (LPFY_OVERLAPPED)ex_para;
 				if(!p_ovlp)
 				{
-					printf("invalid overlapped pointer\n");
+					FY_ERROR("invalid overlapped pointer");
 					return;
 				}
 				int sent_cnt=p_ovlp->transferred_bytes;
@@ -216,21 +221,21 @@ printf("<<<<received %d\n",ret);
 				{
 					if (WSAGetLastError() != ERROR_IO_PENDING)
 					{
-						printf("WSASend fail\n");
+						FY_ERROR("WSASend fail");
 						fy_close_sok(fd);
 						return;
 					}
 				}
 #endif //iocp
 #endif
-				printf("sent %d bytes from %d\n", sent_cnt, fd);
+				FY_INFOD("sent "<<(int32)sent_cnt<<" bytes from "<<(uint32)fd);
 
 				return;				
 			}
                         
 			if((aio_events & AIO_POLLERR) == AIO_POLLERR)
                         {
-                                printf("conn socket received an AIO_POLLERR\n");
+                                FY_INFOD("conn socket received an AIO_POLLERR");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 
@@ -238,7 +243,7 @@ printf("<<<<received %d\n",ret);
                         }
                         if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
                         {
-                                printf("conn socket received an AIO_POLLHUP\n");
+                                FY_INFOD("conn socket received an AIO_POLLHUPn");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 
@@ -308,9 +313,9 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		if(strcmp(argv[1],"client") == 0) is_svr=false;
 	}
 	if(is_svr)
-		printf("==as is running as server==\n");
+		FY_INFOD("==as is running as server==");
 	else
-		printf("==as is running as client==\n");
+		FY_INFOD("==as is running as client==");
 
 	sp_aiop_t aiop=aio_provider_t::s_create();
 	aiop->init_hb_thd();
@@ -328,10 +333,10 @@ s_ovlp.aio_events = AIO_POLLOUT;
     if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
 	{
 #ifdef WIN32
-		printf("fail to create socket to listen,error:%d\n",
-			WSAGetLastError());
+		FY_INFOD("fail to create socket to listen,error:"
+			<<(uint32)WSAGetLastError());
 #else
-        perror("fail to create a socket descriptor to listen!\n");
+        FY_ERROR("Fail to create a socket descriptor to listen");
 #endif
         return 0;
     }
@@ -373,7 +378,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		//bind socket to address
 		if (bind(sockfd, (struct sockaddr *)&svr_addr, sizeof(struct sockaddr)) == -1) 
 		{
-			perror("bind failed\n");
+			FY_ERROR("bind failed");
 			return 0;
 		}
 	}
@@ -385,7 +390,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		//listen on address and port
 		if (listen(sockfd, BACKLOG) == -1) 
 		{
-			perror("listen failed\n");
+			FY_ERROR("listen failed");
 			return 0;
 		}
 		g_listen_fd = sockfd;
@@ -410,7 +415,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		{
 			if (WSAGetLastError() != ERROR_IO_PENDING)
 			{
-				printf("lpfnAcceptEx fail\n");
+				FY_ERROR("lpfnAcceptEx fail");
 				return 0;
 			}
 		}
@@ -425,16 +430,16 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		{
 			if(errno == EAGAIN)
 			{
-				printf("try again later ...\n");
+				FY_INFOD("try again later ...");
 			}
 			else if(errno == EINPROGRESS)
 			{
-				printf("errno=EINPROGRESS\n");
+				FY_INFOD("errno=EINPROGRESS");
 
 			}
 			else
 			{
-				printf("exit on error:errno=%d\n",errno);
+				FY_ERROR("exit on error:errno="<<(uint32)errno);
 				return 0;
 			}
 		}
@@ -444,17 +449,17 @@ s_ovlp.aio_events = AIO_POLLOUT;
 			int32 err=WSAGetLastError();
 			if( err ==  WSAEWOULDBLOCK)
 			{
-				printf("connect request is pending...\n");
+				FY_INFOD("connect request is pending...");
 			}
 			else
 			{
-				printf("connect request failed,err:%d\n",err);
+				FY_ERROR("connect request failed,err:"<<err);
 				return 0;
 			}
 		}
 		else
 		{
-			printf("succeeded in connecting\n");
+			FY_INFOD("succeeded in connecting");
 		}
 #endif
 		g_conn_fd=sockfd;
@@ -469,7 +474,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
 	while(true)
 	{
 		ret_hb=aiop->heart_beat();
-		printf("heart_beat,ret=%d\n",ret_hb);
+		FY_INFOD("heart_beat,ret="<<ret_hb);
 
 		if(g_conn_fd && !sent_flag)
 		{
@@ -477,10 +482,10 @@ s_ovlp.aio_events = AIO_POLLOUT;
 			int sent_cnt=0;
 #ifdef LINUX
 			int ret=::send(g_conn_fd, buf, BUF_SIZE, 0);
-			printf("sent %d bytes from %d\n",sent_cnt, g_conn_fd);
+			FY_INFOD("sent "<<sent_cnt<<" bytes from "<<"(uint32)g_conn_fd);
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
-				//asyn send request
+/*				//asyn send request
 				ZeroMemory(&(s_ovlp.overlapped), sizeof(OVERLAPPED));
 				s_ovlp.transferred_bytes = 0;
 				uint32 send_bytes, flags;
@@ -490,12 +495,13 @@ s_ovlp.aio_events = AIO_POLLOUT;
 					int32 err=WSAGetLastError();
 					if (err != ERROR_IO_PENDING)
 					{
-						printf("WSASend fail,err:%d\n",err);
+						FY_ERROR("WSASend fail,err:"<<err);
 						fy_close_sok(g_conn_fd);
 						return 0;
 					}
 				}
-				printf("asyn send is pending...\n");
+				FY_INFOD("asyn send is pending...");
+*/
 #endif
 #endif
 		}
