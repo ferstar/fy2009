@@ -112,6 +112,7 @@ public:
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
 				r_ovlp.transferred_bytes = 0;
 				r_ovlp.fd = g_conn_fd;
+				r_ovlp.aio_events = AIO_POLLIN;
 				uint32 recv_bytes=0, flags=0;
 				if(WSARecv(g_conn_fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
 					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
@@ -182,13 +183,15 @@ public:
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
 				r_ovlp.transferred_bytes = 0;
 				r_ovlp.fd = fd;
+				r_ovlp.aio_events = AIO_POLLIN;
 				uint32 recv_bytes=0, flags=0;
 				if(WSARecv(fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
 					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
-					if (WSAGetLastError() != ERROR_IO_PENDING)
+					int32 wsa_err=WSAGetLastError();
+					if (wsa_err != ERROR_IO_PENDING)
 					{
-						FY_ERROR("WSARecv fail");
+						FY_ERROR("WSARecv fail,err:"<<wsa_err);
 						fy_close_sok(fd);
 						return;
 					}
@@ -228,6 +231,7 @@ public:
 				//asyn send request
 				ZeroMemory(&(s_ovlp.overlapped), sizeof(OVERLAPPED));
 				s_ovlp.transferred_bytes = 0;
+				s_ovlp.aio_events = AIO_POLLOUT;
 				uint32 send_bytes=0, flags=0;
 				if(WSASend(fd, &(s_ovlp.wsa_buf), 1, & send_bytes, flags,
 					&(s_ovlp.overlapped), NULL) == SOCKET_ERROR)
@@ -239,6 +243,7 @@ public:
 						return;
 					}
 				}
+				FY_INFOD("asyn send is pending...");
 #endif //iocp
 #endif
 				FY_INFOD("sent "<<(int32)sent_cnt<<" bytes from "<<(uint32)fd);
@@ -256,7 +261,7 @@ public:
                         }
                         if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
                         {
-                                FY_INFOD("conn socket received an AIO_POLLHUPn");
+                                FY_INFOD("conn socket received an AIO_POLLHUP");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 
@@ -502,6 +507,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
 				//asyn send request
 				ZeroMemory(&(s_ovlp.overlapped), sizeof(OVERLAPPED));
 				s_ovlp.transferred_bytes = 0;
+				s_ovlp.aio_events = AIO_POLLOUT;
 				uint32 send_bytes=0, flags=0;
 				if(WSASend(g_conn_fd, &(s_ovlp.wsa_buf), 1, & send_bytes, flags,
 					&(s_ovlp.overlapped), NULL) == SOCKET_ERROR)
@@ -515,6 +521,25 @@ s_ovlp.aio_events = AIO_POLLOUT;
 					}
 				}
 				FY_INFOD("asyn send is pending...");
+				//asyn receive request
+/*				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
+				r_ovlp.transferred_bytes = 0;
+				r_ovlp.fd = g_conn_fd;
+				r_ovlp.aio_events = AIO_POLLIN;
+				uint32 recv_bytes=0;
+				flags=0;
+				if(WSARecv(g_conn_fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
+					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
+				{
+					if (WSAGetLastError() != ERROR_IO_PENDING)
+					{
+						FY_ERROR("WSARecv fail");
+						fy_close_sok(g_conn_fd);
+						return 0;
+					}
+				}
+				FY_INFOD("asyn receive is pending...");
+*/
 #endif
 #endif
 		}
