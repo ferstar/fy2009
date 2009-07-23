@@ -325,6 +325,8 @@ int8 aio_provider_t::heart_beat()
 			if(WAIT_TIMEOUT != last_error)
 			{
 				FY_XERROR("heart_beat,GetQueuedCompletionStatus fail, error:"<<last_error);
+				//peer prcoess shutdown forcely, it will return ERROR_NETNAME_DELETED(64),
+				//in this case, AIO_POLLERR can be delivered to upper layer
 				return hb_ret;
 			}
       	}

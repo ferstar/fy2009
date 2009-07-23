@@ -84,29 +84,42 @@ public:
 					return;
 				}
 				int32 conn_fd= p_ovlp->fd;
-				_aiop->unregister_fd(conn_fd);
+				_listen_flag = false; //indicate connection has been accepted
 #endif //iocp
 #endif
             	FY_INFOD("accepted an incoming connection:"<<(uint32)conn_fd
 						<<",_aiop is null?"<<(int8)_aiop.is_null());
-test_aio_eh_t *peh=new test_aio_eh_t(_aiop, false);
-//				sp_aioeh_t aio_eh(new test_aio_eh_t(_aiop, false), true);
-				FY_INFOD("88create a new event handler for connection");
-/*				_aiop->register_fd(0, conn_fd, aio_eh);
-				FY_INFOD("88register_fd again succeessfully");
-*/				g_conn_fd=conn_fd;
+				g_conn_fd=conn_fd;
 #ifdef __ENABLE_COMPLETION_PORT__
+				//sync properties of accepted socket with listening socket
+				int32 err = setsockopt( g_conn_fd, 
+					SOL_SOCKET, 
+					SO_UPDATE_ACCEPT_CONTEXT, 
+					(char *)&g_listen_fd, 
+					sizeof(g_listen_fd) );
+				if(err == SOCKET_ERROR)
+				{
+					int32 wsa_err=WSAGetLastError();
+					FY_ERROR("sync properties of accepted socket failed, err:"<<wsa_err);
+					fy_close_sok(g_conn_fd);
+					return;
+				}
+				else
+				{
+					FY_INFOD("Sync properties of accpeted socket successfully");
+				}
 				//asyn receive request on accepted socket
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
 				r_ovlp.transferred_bytes = 0;
 				r_ovlp.fd = g_conn_fd;
-				uint32 recv_bytes, flags;
+				uint32 recv_bytes=0, flags=0;
 				if(WSARecv(g_conn_fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
 					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
-					if (WSAGetLastError() != ERROR_IO_PENDING)
+					int32 wsa_err=WSAGetLastError();
+					if (wsa_err != ERROR_IO_PENDING)
 					{
-						FY_ERROR("WSARecv fail");
+						FY_ERROR("WSARecv fail:"<<wsa_err);
 						fy_close_sok(g_conn_fd);
 						return;
 					}
@@ -169,7 +182,7 @@ test_aio_eh_t *peh=new test_aio_eh_t(_aiop, false);
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
 				r_ovlp.transferred_bytes = 0;
 				r_ovlp.fd = fd;
-				uint32 recv_bytes, flags;
+				uint32 recv_bytes=0, flags=0;
 				if(WSARecv(fd, &(r_ovlp.wsa_buf), 1, &recv_bytes, &flags,
 					&(r_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
@@ -215,7 +228,7 @@ test_aio_eh_t *peh=new test_aio_eh_t(_aiop, false);
 				//asyn send request
 				ZeroMemory(&(s_ovlp.overlapped), sizeof(OVERLAPPED));
 				s_ovlp.transferred_bytes = 0;
-				uint32 send_bytes, flags;
+				uint32 send_bytes=0, flags=0;
 				if(WSASend(fd, &(s_ovlp.wsa_buf), 1, & send_bytes, flags,
 					&(s_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
@@ -340,6 +353,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
 #endif
         return 0;
     }
+
 	if(is_svr)
 	{
         int opt=1;
@@ -400,7 +414,7 @@ s_ovlp.aio_events = AIO_POLLOUT;
 		//asyn accept request on listen socket
 		ZeroMemory(&(a_ovlp.overlapped), sizeof(OVERLAPPED));
 		a_ovlp.fd = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-		sp_aioeh_t aio_eh(new test_aio_eh_t(aiop, is_svr), true);
+		sp_aioeh_t aio_eh(new test_aio_eh_t(aiop, true/*to indicate it's not accepted*/), true);
 		aiop->register_fd(0, a_ovlp.fd, aio_eh);
 
 		uint32 bytes;
@@ -482,13 +496,13 @@ s_ovlp.aio_events = AIO_POLLOUT;
 			int sent_cnt=0;
 #ifdef LINUX
 			int ret=::send(g_conn_fd, buf, BUF_SIZE, 0);
-			FY_INFOD("sent "<<sent_cnt<<" bytes from "<<"(uint32)g_conn_fd);
+			FY_INFOD("sent "<<(int32)sent_cnt<<" bytes from "<<(uint32)g_conn_fd);
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
-/*				//asyn send request
+				//asyn send request
 				ZeroMemory(&(s_ovlp.overlapped), sizeof(OVERLAPPED));
 				s_ovlp.transferred_bytes = 0;
-				uint32 send_bytes, flags;
+				uint32 send_bytes=0, flags=0;
 				if(WSASend(g_conn_fd, &(s_ovlp.wsa_buf), 1, & send_bytes, flags,
 					&(s_ovlp.overlapped), NULL) == SOCKET_ERROR)
 				{
@@ -501,7 +515,6 @@ s_ovlp.aio_events = AIO_POLLOUT;
 					}
 				}
 				FY_INFOD("asyn send is pending...");
-*/
 #endif
 #endif
 		}
