@@ -60,9 +60,9 @@ typedef smart_pointer_tt<aio_proxy_t> sp_aio_proxy_t;
 #else
 //real-time signal
 #	include <sys/poll.h>
-#       define AIO_POLLIN   POLLIN  /* There is data to read.  */
-#       define AIO_POLLOUT  POLLOUT /* Writing now will not block.  */
-#       define AIO_POLLERR  POLLERR /* Error condition.  */
+#	define AIO_POLLIN   POLLIN  /* There is data to read.  */
+#	define AIO_POLLOUT  POLLOUT /* Writing now will not block.  */
+#	define AIO_POLLERR  POLLERR /* Error condition.  */
 #	define AIO_POLLHUP  POLLHUP /* Hung up.peer shutdown connection */
 
 #	define AIO_RTS_NUM (SIGRTMIN+20)
@@ -70,10 +70,10 @@ typedef smart_pointer_tt<aio_proxy_t> sp_aio_proxy_t;
 
 #elif defined(WIN32)
 
-#       define AIO_POLLIN   0  /*accept or receiv  */
-#       define AIO_POLLOUT  1  /* send  */
-#       define AIO_POLLERR  2  /* Error condition.  */
-#       define AIO_POLLHUP  3  /* Hung up.peer shutdown connection */
+#	define AIO_POLLIN   1  /*accept or receiv  */
+#	define AIO_POLLOUT  2  /* send  */
+#	define AIO_POLLERR  4  /* Error condition.  */
+#	define AIO_POLLHUP  8  /* Hung up.peer shutdown connection */
 
 #ifdef __ENABLE_COMPLETION_PORT__
 

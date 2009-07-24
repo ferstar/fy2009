@@ -6,37 +6,11 @@
 --------------------Configuration: fy2009_test - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP135.tmp" with contents
-[
-/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "FY_ENABLE_ASSERT" /D "FY_TEST_AIO" /D "__ENABLE_COMPLETION_PORT__" /Fp"Debug/fy2009_test.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"E:\kelvin_space\do\fy2009\test\fyt_aio.cpp"
-]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP135.tmp" 
-Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP136.tmp" with contents
-[
-kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/fy2009_test.pdb" /debug /machine:I386 /out:"Debug/fy2009_test.exe" /pdbtype:sept 
-.\Debug\fyt_aio.obj
-.\Debug\fyt_base.obj
-.\Debug\fyt_msg.obj
-.\Debug\fyt_stream.obj
-\kelvin_space\do\fy2009\fy2009_windows\fy2009_util_windows\Debug\fy_util.lib
-]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP136.tmp"
-<h3>Output Window</h3>
-Compiling...
-fyt_aio.cpp
-E:\kelvin_space\do\fy2009\test\fyt_aio.cpp(490) : warning C4101: 'buf' : unreferenced local variable
-E:\kelvin_space\do\fy2009\test\fyt_aio.cpp(349) : warning C4101: 'remote_addr' : unreferenced local variable
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::const_iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> const &,fy2009::smart_pointer_tt<fy2009::msg_t> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> &,fy2009::smart_pointer_tt<fy2009::msg_t> *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
-Linking...
 
 
 
 <h3>Results</h3>
-fy2009_test.exe - 0 error(s), 6 warning(s)
+fy2009_test.exe - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>

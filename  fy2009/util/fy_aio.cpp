@@ -324,20 +324,33 @@ int8 aio_provider_t::heart_beat()
 			uint32 last_error=GetLastError();
 			if(WAIT_TIMEOUT != last_error)
 			{
-				FY_XERROR("heart_beat,GetQueuedCompletionStatus fail, error:"<<last_error);
 				//peer prcoess shutdown forcely, it will return ERROR_NETNAME_DELETED(64),
 				//in this case, AIO_POLLERR can be delivered to upper layer
-				if(p_op)	
+				if(p_op)
+				{
+					FY_XTRACE_IO("heart_beat,GetQueuedCompletionStatus fail, error:"<<last_error);
 					p_op->aio_events = AIO_POLLERR;
+				}
 				else
+				{
+					FY_XERROR("heart_beat,GetQueuedCompletionStatus fail, error:"<<last_error);
 					return hb_ret;
+				}
 			}
       	}
+		else //succeed
+		{
+			FY_XTRACE_IO("heart_beat,GetQueuedCompletionStatus successfully");
+		}
 		if(p_op)
 		{
 			hb_ret=RET_HB_BUSY;
 			p_op->transferred_bytes = bytes_transferred;
 			uint32 fd_key=AIO_SOCKET_TO_KEY(p_op->fd);
+			
+			FY_XTRACE_IO("heart_beat,GetQueuedCompletionStatus, fd:"<<(uint32)p_op->fd<<",fd_key:"
+				<<fd_key<<",aio_events:"<<p_op->aio_events<<",event handler is null?"
+				<<(int8)_ehs[fd_key].is_null());
 
 			if(!_ehs[fd_key].is_null())
 				_ehs[fd_key]->on_aio_events(p_op->fd, p_op->aio_events, (pointer_box_t)p_op);			
