@@ -158,11 +158,12 @@ public:
  *[note that]
  *1.On OS RedHat8.0, pass real-time signal test, and On OS CentOS, pass both real-time signal and epoll test,2008-6-20
  */
-//default concurrent open file descriptor count can be monitored by aio service
+//default concurrent open file descriptor count can be monitored by aio service,
+//it refers to fd key exactly, for linux, it's same as fd, for windows, it isn't
 uint16 const AIO_DEF_MAX_FD_COUNT=1024;
 
 //default max slice of heart_beat,100ms
-uint32 const AIOP_HB_MAX_SLICE=10; //unit:user tick-count
+uint32 const AIOP_HB_MAX_SLICE=100; //unit:ms
 
 //epoll_wait can polled max events count for each call
 int const EPOLL_WAIT_SIZE=512;
@@ -174,8 +175,9 @@ int const EPOLL_WAIT_SIZE=512;
 
 #elif defined(WIN32)
 
-//max_fd_count should not be less thant 1952/4, otherwise, aio_provider will not work due to socket handle is out of bound
+//max_fd_count should not be less than 1952/4=488, otherwise, aio_provider will not work due to socket handle is out of bound
 uint32 const MAX_FD_COUNT_LOWER_BOUND_WIN32=512;
+
 //under windows socket always increases/decreases for each 4, under 64bit OS, it may be different
 #define AIO_SOCKET_TO_KEY(fd) ((uint32)fd>>2)
 #define AIO_KEY_TO_SOCKET(key) ((int32)(key<<2))
@@ -185,12 +187,24 @@ uint32 const MAX_FD_COUNT_LOWER_BOUND_WIN32=512;
 class aio_provider_t : public aio_sap_it,
 		       public heart_beat_it,
 		       public object_id_impl_t,
-               public ref_cnt_impl_t
+			public ref_cnt_impl_t
 {
 public:
 	//max_fd_count available max value is limited by OS allowed open files,
 	//can call getrlimit(RLIMIT_NOFILE,) to retrieve it. maximum is 65535
 	static sp_aiop_t s_create(uint16 max_fd_count=AIO_DEF_MAX_FD_COUNT, bool rcts_flag=false);
+
+#ifdef LINUX
+#if defined(__ENABLE_EPOLL__)
+#else
+	//real-time signal
+
+	//if SIGIO is often triggered under real-time signal mode, it indicates the length of real-time signal queue
+	// is too short or server is too busy,2009-8-6
+	int32 s_get_sigio_count(){ return _s_sigio_count; }
+#endif
+#endif //LINUX
+
 public:
 	~aio_provider_t();
 	//aio_sap_it
@@ -207,12 +221,12 @@ public:
 	//heart_beat_i,ensure it's only called by one thread
         virtual int8 heart_beat(); //drive aio service and monitor aio events
 
-        //expected max slice(user tick-count) for heart_beat once call
+        //expected max slice(milli-seccond) for heart_beat once call
         virtual void set_max_slice(uint32 max_slice); 
-        virtual uint32 get_max_slice() const throw() { return _max_slice; }
+        virtual uint32 get_max_slice() const throw(); 
 
         //indicate callee expected called frequency: 0 means expected to be called as frequent as possible,
-        //otherwise, means expected interval user tick-count between two calling
+        //otherwise, means expected interval(unit:ms) between two calling
         virtual uint32 get_expected_interval() const throw() { return 0; }
 
 	//lookup_it
@@ -221,7 +235,7 @@ protected:
 	aio_provider_t(uint16 max_fd_count=AIO_DEF_MAX_FD_COUNT);
 	void _lazy_init_object_id() throw(){ OID_DEF_IMP("aio_provider"); }	
 private:
-	uint32 _max_slice; //max slice length expected once heart_beat calling,unit:user tick-count
+	uint32 _utc_max_slice; //max slice length expected once heart_beat calling,unit:ms
 	sp_aioeh_t *_ehs; //registered event handler, which subfix is file descriptor
 	uint32 _max_fd_count; //size of _ehs
 	critical_section_t _cs;
@@ -232,6 +246,14 @@ private:
 	int32 _epoll_h; //epoll handle, it's only valid if enable epoll
 	uint32 _epoll_wait_timeout; //unit: ms
 #else //real-time signal
+	//under linux 2.6,SIGIO can not be blocked, and it will not be queued, 2009-8-6
+	//->
+	static critical_section_t _s_cs; //sync lazy SIGIO catching
+	static bool _s_sigio_is_hooked;
+	static bool _s_sigio_triggered; //indicate SIGIO is triggered or not due to real-time signal queue is full
+	static uint32 _s_sigio_count; //total times of SIGIO is triggered over whole operation system
+	static void _s_catch_sigio(int sig_num);		
+	//<-
 	uint32 _hb_tid; //id of thread in which heart_beat will run, this thread will receive real-time signal
 	struct timespec _sigtimedwait_timeout; //used as sigtimedwait para in heart_beat
 	siginfo_t _sig_info; //used as sigtimedwait para in heart_beat
@@ -311,8 +333,8 @@ private:
  */
 uint32 const AIOEHPXY_DEF_EP_SIZE=1024;
 
-//max slice of once heart_beat,unit:user tick-count(10ms)
-uint32 const AIOEHPXY_HB_MAX_SLICE=8;
+//max slice of once heart_beat,unit:ms
+uint32 const AIOEHPXY_HB_MAX_SLICE=80;
 
 class aio_proxy_t : public aio_sap_it,
 		    public heart_beat_it,
@@ -351,12 +373,12 @@ public:
 	//ensure it's only called by owner thread
         virtual int8 heart_beat(); //receive aio event from _ep and dispatch to proper destination aio event handler 
 
-        //expected max slice(user tick-count) for heart_beat once call
-        virtual void set_max_slice(uint32 max_slice) { _max_slice=max_slice; }
-        virtual uint32 get_max_slice() const throw() { return _max_slice; }
+        //expected max slice(unit:ms) for heart_beat once call
+        virtual void set_max_slice(uint32 max_slice); 
+        virtual uint32 get_max_slice() const throw(); 
 
         //indicate callee expected called frequency: 0 means expected to be called as frequent as possible,
-        //otherwise, means expected interval user tick-count between two calling
+        //otherwise, means expected interval(uint:ms) between two calling
         virtual uint32 get_expected_interval() const throw() { return 0; }
 
 	//msg_receiver_it
@@ -398,7 +420,7 @@ private:
 private:
 	sp_owp_t _ep; //event format in pipe: fd(int32)+aio events(uint32)
 	fy_thread_t _thd; //owner thread
-	uint32 _max_slice; //max slice length expected once heart_beat calling
+	uint32 _utc_max_slice; //max slice length expected once heart_beat calling,uint:ms
         _reg_item_t *_items; //registered item, whose subfix is file descriptor
         uint32 _max_fd_count; //size of _ehs	
 	critical_section_t _cs;

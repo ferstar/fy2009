@@ -23,6 +23,7 @@ USING_FY_NAME_SPACE
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define fy_close_sok close
 
@@ -70,11 +71,13 @@ public:
 				FY_INFOI("listen socket received an AIO_POLLIN");
 #ifdef LINUX
 				int32 conn_fd=::accept(fd, 0, 0);
-                if(conn_fd == -1) 
+				if(conn_fd == -1) 
 				{
 					FY_ERROR("accept failed");
                         		return;
 				}
+				sp_aioeh_t aio_eh(new test_aio_eh_t(_aiop, false), true);
+				_aiop->register_fd(0,conn_fd, aio_eh);
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
 				LPFY_OVERLAPPED p_ovlp= (LPFY_OVERLAPPED)ex_para;
@@ -87,7 +90,7 @@ public:
 				_listen_flag = false; //indicate connection has been accepted
 #endif //iocp
 #endif
-            	FY_INFOD("accepted an incoming connection:"<<(uint32)conn_fd
+				FY_INFOD("accepted an incoming connection:"<<(uint32)conn_fd
 						<<",_aiop is null?"<<(int8)_aiop.is_null());
 				g_conn_fd=conn_fd;
 #ifdef __ENABLE_COMPLETION_PORT__
@@ -203,7 +206,6 @@ public:
 				FY_INFOD("next asyn receive is pending...");
 #endif //__ENABLE_COMPLETION_PORT__
 //}
-				return;
 			}
 
 			if((aio_events & AIO_POLLOUT) == AIO_POLLOUT)
@@ -211,9 +213,9 @@ public:
 				FY_INFOD("conn received an AIO_POLLOUT");
 
 #ifdef LINUX
-                const int BUF_SIZE=1025;
-                char buf[BUF_SIZE];
-                int ret=::send(fd, buf, BUF_SIZE, 0);
+                		const int BUF_SIZE=1025;
+                		char buf[BUF_SIZE];
+                		int ret=::send(fd, buf, BUF_SIZE, 0);
 				int sent_cnt=0;
 				while(ret > 0) { sent_cnt+=ret; ret=::send(fd, buf, BUF_SIZE, 0); }
 				if(ret == 0)
@@ -222,6 +224,7 @@ public:
 					_aiop->unregister_fd(fd);
 					fy_close_sok(fd);
 				}
+				//usleep(1000); //on this line, process will exit abnormally due to io storm
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
 				LPFY_OVERLAPPED p_ovlp= (LPFY_OVERLAPPED)ex_para;
@@ -253,25 +256,24 @@ public:
 				}
 				FY_INFOD("next asyn send is pending...");
 #endif //__ENABLE_COMPLETION_PORT__
-				return;				
 			}
                         
 			if((aio_events & AIO_POLLERR) == AIO_POLLERR)
-            {
-                FY_INFOD("conn socket received an AIO_POLLERR");
+			{
+				FY_INFOD("conn socket received an AIO_POLLERR");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 
 				return;
-            }
-            if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
-            {
+            		}
+            		if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
+            		{
 				FY_INFOD("conn socket received an AIO_POLLHUP");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 
 				return;
-            }
+            		}
 			FY_INFOD("conn socket received an unknown event");
 			return;
 		}
@@ -302,9 +304,17 @@ private:
 
 #define SERVPORT 8888
 #define BACKLOG 128
-
+int g_caught_sig=0;
+void catch_signal( int sig )
+{
+	 g_caught_sig=sig;
+}
 int main(int argc,char **argv)
 {
+//	signal(SIGIO, catch_signal);
+	signal(SIGINT, catch_signal);
+	signal(SIGTERM, catch_signal);
+	
 	trace_provider_t *trace_prvd=trace_provider_t::instance();
     trace_prvd->open();
 	trace_prvd->set_enable_flag(TRACE_LEVEL_IO,true);
@@ -318,15 +328,15 @@ int main(int argc,char **argv)
 
 #ifdef __ENABLE_COMPLETION_PORT__
 
-a_ovlp.aio_events = AIO_POLLIN;
+	a_ovlp.aio_events = AIO_POLLIN;
 
-r_ovlp.wsa_buf.buf=r_buf;
-r_ovlp.wsa_buf.len = MAX_BUF_SIZE;
-r_ovlp.aio_events  = AIO_POLLIN;
+	r_ovlp.wsa_buf.buf=r_buf;
+	r_ovlp.wsa_buf.len = MAX_BUF_SIZE;
+	r_ovlp.aio_events  = AIO_POLLIN;
 
-s_ovlp.wsa_buf.buf=s_buf;
-s_ovlp.wsa_buf.len=MAX_BUF_SIZE;
-s_ovlp.aio_events = AIO_POLLOUT;
+	s_ovlp.wsa_buf.buf=s_buf;
+	s_ovlp.wsa_buf.len=MAX_BUF_SIZE;
+	s_ovlp.aio_events = AIO_POLLOUT;
 
 #endif //__ENABLE_COMPLETION_PORT__
 #endif //WIN32
@@ -345,37 +355,36 @@ s_ovlp.aio_events = AIO_POLLOUT;
 
 	sp_aiop_t aiop=aio_provider_t::s_create();
 	aiop->init_hb_thd();
-
 	sp_aiosap_t aio_sap((aio_sap_it*)aiop->lookup(IID_aio_sap, PIN_aio_sap), true);
 
-    int32 sockfd; 
+	int32 sockfd; 
 #ifdef LINUX
-    struct sockaddr_in svr_addr;
-    struct sockaddr_in remote_addr;
+	struct sockaddr_in svr_addr;
+	struct sockaddr_in remote_addr;
 #elif defined(WIN32)
 	SOCKADDR_IN svr_addr;
 	SOCKADDR_IN remote_addr;
 #endif
-    if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
+	if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
 	{
 #ifdef WIN32
 		FY_INFOD("fail to create socket to listen,error:"
 			<<(uint32)WSAGetLastError());
 #else
-        FY_ERROR("Fail to create a socket descriptor to listen");
+        	FY_ERROR("Fail to create a socket descriptor to listen");
 #endif
-        return 0;
-    }
+        	return 0;
+	}
 
 	if(is_svr)
 	{
-        int opt=1;
-        setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int));
+		int opt=1;
+		setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int));
 	}
-    //set server address
-    svr_addr.sin_family=PF_INET; //protocol family
-    svr_addr.sin_port=htons(SERVPORT); //listening port number--transfer short type to network sequence
-    svr_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //IP address(autodetect)
+	//set server address
+	svr_addr.sin_family=PF_INET; //protocol family
+	svr_addr.sin_port=htons(SERVPORT); //listening port number--transfer short type to network sequence
+	svr_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //IP address(autodetect)
 
 	if(is_svr)
 	{
@@ -462,12 +471,12 @@ s_ovlp.aio_events = AIO_POLLOUT;
 			}
 			else if(errno == EINPROGRESS)
 			{
-				FY_INFOD("errno=EINPROGRESS");
+				FY_INFOD("connect,errno=EINPROGRESS");
 
 			}
 			else
 			{
-				FY_ERROR("exit on error:errno="<<(uint32)errno);
+				FY_ERROR("connect,exit on error:errno="<<(uint32)errno);
 				return 0;
 			}
 		}
@@ -495,12 +504,18 @@ s_ovlp.aio_events = AIO_POLLOUT;
 
 	int8 ret_hb=0;
 	aiop->set_max_slice(1000);
-	const int BUF_SIZE=32768;
+	const int BUF_SIZE=1025;
 	char buf[BUF_SIZE];
 	//88
 	bool sent_flag=false;
 	while(true)
 	{
+		if(g_caught_sig)
+		{
+			FY_WARNING("####caught a signal:"<<(int32)g_caught_sig<<"####");
+			g_caught_sig=0;
+			break;
+		}
 		ret_hb=aiop->heart_beat();
 		FY_INFOD("heart_beat,ret="<<ret_hb);
 
@@ -510,7 +525,14 @@ s_ovlp.aio_events = AIO_POLLOUT;
 			int sent_cnt=0;
 #ifdef LINUX
 			int ret=::send(g_conn_fd, buf, BUF_SIZE, 0);
-			FY_INFOD("sent "<<(int32)sent_cnt<<" bytes from "<<(uint32)g_conn_fd);
+			while(ret > 0) { sent_cnt+=ret; ret=::send(g_conn_fd, buf, BUF_SIZE, 0);}
+			if(ret == 0)
+			{
+				FY_INFOD("main thread,connection has been closed by peer");
+				fy_close_sok(g_conn_fd);
+				return 0;
+			}
+			FY_INFOD("main thread sent "<<(int32)sent_cnt<<" bytes from "<<(uint32)g_conn_fd);
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
 				//asyn send request
@@ -525,12 +547,12 @@ s_ovlp.aio_events = AIO_POLLOUT;
 					int32 err=WSAGetLastError();
 					if (err != ERROR_IO_PENDING)
 					{
-						FY_ERROR("WSASend fail,err:"<<err);
+						FY_ERROR("main thread, WSASend fail,err:"<<err);
 						fy_close_sok(g_conn_fd);
 						return 0;
 					}
 				}
-				FY_INFOD("asyn send is pending...");
+				FY_INFOD("main thread,asyn send is pending...");
 				//asyn receive request
 				ZeroMemory(&(r_ovlp.overlapped), sizeof(OVERLAPPED));
 				r_ovlp.transferred_bytes = 0;
@@ -544,12 +566,12 @@ s_ovlp.aio_events = AIO_POLLOUT;
 					int32 wsa_err=WSAGetLastError();
 					if (wsa_err != ERROR_IO_PENDING)
 					{
-						FY_ERROR("WSARecv fail,err="<<wsa_err);
+						FY_ERROR("main thread,WSARecv fail,err="<<wsa_err);
 						fy_close_sok(g_conn_fd);
 						return 0;
 					}
 				}
-				FY_INFOD("asyn receive is pending...");
+				FY_INFOD("main thread,asyn receive is pending...");
 #endif
 #endif
 		}

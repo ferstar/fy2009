@@ -14,6 +14,25 @@
 USING_FY_NAME_SPACE
 
 //aio_provider_t
+#ifdef LINUX
+#if defined(__ENABLE_EPOLL__)
+#else
+//real-time signal
+
+critical_section_t aio_provider_t::_s_cs = critical_section_t(true); 
+bool aio_provider_t::_s_sigio_is_hooked = false;
+bool aio_provider_t::_s_sigio_triggered = false;
+uint32 aio_provider_t::_s_sigio_count = 0;
+
+void aio_provider_t::_s_catch_sigio(int sig_num)
+{
+	_s_sigio_triggered = true;
+	++_s_sigio_count;
+}
+
+#endif
+#endif //LINUX
+
 sp_aiop_t aio_provider_t::s_create(uint16 max_fd_count, bool rcts_flag)
 {
 	aio_provider_t *raw_prvd=new aio_provider_t(max_fd_count);
@@ -57,27 +76,32 @@ sp_aiop_t aio_provider_t::s_create(uint16 max_fd_count, bool rcts_flag)
 
 aio_provider_t::aio_provider_t(uint16 max_fd_count) : _cs(true)
 {
-	_max_slice=AIOP_HB_MAX_SLICE;
-	_hb_thread=0;
-
 	user_clock_t *uclk=user_clock_t::instance();
+	FY_ASSERT(uclk);
+
+	uint32 utc_res=get_tick_count_res(uclk);
+	if(utc_res)
+		_utc_max_slice=AIOP_HB_MAX_SLICE/utc_res;
+	else
+		_utc_max_slice=AIOP_HB_MAX_SLICE;
+
+	_hb_thread=0;
 
 #ifdef LINUX	
 #if defined(__ENABLE_EPOLL__)
 	_epoll_h=0;
 
-	_epoll_wait_timeout=_max_slice * get_tick_count_res(uclk);	
+	_epoll_wait_timeout=AIOP_HB_MAX_SLICE;	
 #else
 	_hb_tid=0;
-	uint32 ms_slice=_max_slice * get_tick_count_res(uclk);
-	_sigtimedwait_timeout.tv_sec=ms_slice/1000;		
-	_sigtimedwait_timeout.tv_nsec=(ms_slice%1000) * 1000000;
+	_sigtimedwait_timeout.tv_sec=AIOP_HB_MAX_SLICE/1000;		
+	_sigtimedwait_timeout.tv_nsec=(AIOP_HB_MAX_SLICE % 1000) * 1000000;
 
         sigemptyset(&_sigset);
 #endif
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
-	_iocp_wait_timeout=_max_slice * get_tick_count_res(uclk);
+	_iocp_wait_timeout=AIOP_HB_MAX_SLICE;
 #endif
 #endif
 	_max_fd_count=max_fd_count;
@@ -108,23 +132,35 @@ aio_provider_t::~aio_provider_t()
 
 void aio_provider_t::set_max_slice(uint32 max_slice)
 {
-	_max_slice=max_slice;
-
         user_clock_t *uclk=user_clock_t::instance();
+	FY_ASSERT(uclk);
+
+	uint32 utc_res=get_tick_count_res(uclk);
+	if(utc_res)
+		_utc_max_slice=max_slice/utc_res;
+	else
+		_utc_max_slice=max_slice;
 
 #ifdef LINUX        
 #if defined(__ENABLE_EPOLL__)
-        _epoll_wait_timeout=_max_slice * get_tick_count_res(uclk);       
+        _epoll_wait_timeout=max_slice;       
 #else
-        uint32 ms_slice=_max_slice * get_tick_count_res(uclk);
-        _sigtimedwait_timeout.tv_sec=ms_slice/1000;             
-        _sigtimedwait_timeout.tv_nsec=(ms_slice%1000) * 1000000;
+        _sigtimedwait_timeout.tv_sec=max_slice/1000;             
+        _sigtimedwait_timeout.tv_nsec=(max_slice%1000) * 1000000;
 #endif
 #elif defined(WIN32)
 #ifdef __ENABLE_COMPLETION_PORT__
-	_iocp_wait_timeout=_max_slice * get_tick_count_res(uclk);
+	_iocp_wait_timeout=max_slice;
 #endif
 #endif  
+}
+
+uint32 aio_provider_t::get_max_slice() const throw()
+{
+	user_clock_t *uclk=user_clock_t::instance();
+	FY_ASSERT(uclk);
+
+	return _utc_max_slice * get_tick_count_res(uclk);	
 }
 
 void aio_provider_t::init_hb_thd()
@@ -132,13 +168,22 @@ void aio_provider_t::init_hb_thd()
 	_hb_thread = fy_thread_self();
 
 #ifdef LINUX
+	signal(SIGPIPE, SIG_IGN);
 #if defined(__ENABLE_EPOLL__)
 #else
+	if(!aio_provider_t::_s_sigio_is_hooked)
+	{
+		smart_lock_t slock(&aio_provider_t::_s_cs);
+		if(!aio_provider_t::_s_sigio_is_hooked)
+		{
+			signal(SIGIO, _s_catch_sigio); //lazy hook SIGIO within process scope
+			aio_provider_t::_s_sigio_is_hooked = true; 
+		}	
+	}
 	_hb_tid=fy_gettid();
 	sigaddset(&_sigset, AIO_RTS_NUM);
-	sigaddset(&_sigset, SIGIO);
+	//sigaddset(&_sigset, SIGIO); //it doesn't work on linux 2.6
 	sigprocmask(SIG_BLOCK, &_sigset, NULL);
-	signal(SIGPIPE, SIG_IGN);
 #endif
 #elif defined(WIN32)
 #endif
@@ -274,6 +319,24 @@ int8 aio_provider_t::heart_beat()
 
 		}
 #else
+		//check if real-time signal queue overflows,2009-8-6
+		if(aio_provider_t::_s_sigio_triggered)
+		{
+			aio_provider_t::_s_sigio_triggered = false;
+			FY_XWARNING("heart_beat, system real-time signal queue is overflow");
+
+			//reset rts queue
+			signal(AIO_RTS_NUM, SIG_IGN);
+			signal(AIO_RTS_NUM, SIG_DFL);
+			
+			//notify all sockets that system real time signal queue is overflow
+			//this logic should seldom occur, as a exception logic, it's inefficient
+			for(int i=0; i<_max_fd_count; ++i)
+			{
+				if(_ehs[i].is_null()) continue;
+				_ehs[i]->on_aio_events(i, AIO_POLLIN | AIO_POLLOUT);
+			}	
+		}
 		//wait for real time signal
         	rts_num = ::sigtimedwait(&_sigset, &_sig_info, &_sigtimedwait_timeout);
         	switch(rts_num)
@@ -284,24 +347,6 @@ int8 aio_provider_t::heart_beat()
                         FY_XERROR("heart_beat,sigtimedwait error,errno="<<(int32)errno);
 
                         return hb_ret;
-
-                case SIGIO: //overflow of rts queue,poll all sockets and reset rts queue
-                        {
-							FY_XWARNING("heart_beat, system real time signal queue is overflow");
-
-							//reset rts queue
-							signal(AIO_RTS_NUM, SIG_IGN);
-							signal(AIO_RTS_NUM, SIG_DFL);
-
-                            //notify all sockets that system real time signal queue is overflow
-							//this logic should seldom occur, as a exception logic, it's inefficient
-							for(int i=0; i<_max_fd_count; ++i)
-							{
-								if(_ehs[i].is_null()) continue;
-								_ehs[i]->on_aio_events(i, AIO_POLLIN | AIO_POLLOUT);
-							}	
-                        }
-                        break;
 
                 default: //rts triggered
                         {
@@ -358,7 +403,7 @@ int8 aio_provider_t::heart_beat()
 #endif
 #endif
 		//check time slice
-		if(tc_util_t::is_over_tc_end(tc_start, _max_slice, get_tick_count(usr_clk)))
+		if(tc_util_t::is_over_tc_end(tc_start, _utc_max_slice, get_tick_count(usr_clk)))
 			break;
 	}//while(true)
 
@@ -569,16 +614,24 @@ aio_proxy_t::aio_proxy_t(uint32 ep_size, uint16 max_fd_count) : _cs(true), ref_c
 {
 	_overflow_cnt=0;
 	_ep=oneway_pipe_t::s_create((sizeof(int32)+sizeof(uint32))*ep_size);
-	_max_slice=AIOEHPXY_HB_MAX_SLICE;	
+
+        user_clock_t *uclk=user_clock_t::instance();
+        FY_ASSERT(uclk);
+
+        uint32 utc_res=get_tick_count_res(uclk);
+        if(utc_res)
+		_utc_max_slice=AIOEHPXY_HB_MAX_SLICE/utc_res;
+	else
+		_utc_max_slice=AIOEHPXY_HB_MAX_SLICE;	
 
 	_max_fd_count=max_fd_count;
 	if(_max_fd_count)
 	{
-			_items=new _reg_item_t[_max_fd_count];
+		_items=new _reg_item_t[_max_fd_count];
 	}
 	else
 	{
-			_items=0;
+		_items=0;
 	}
 }
 
@@ -589,7 +642,7 @@ aio_proxy_t::~aio_proxy_t()
 
 bool aio_proxy_t::register_fd(aio_sap_it *dest_sap, int32 fd, sp_aioeh_t& eh)
 {
-    FY_ASSERT(fd != INVALID_FD);
+	FY_ASSERT(fd != INVALID_FD);
 	FY_ASSERT(dest_sap);
 
 	uint32 fd_key = AIO_SOCKET_TO_KEY(fd);
@@ -656,11 +709,10 @@ void *aio_proxy_t::lookup(uint32 iid, uint32 pin) throw()
 int8 aio_proxy_t::heart_beat()
 {
 	FY_XFUNC("heart_beat");
-
 	FY_ASSERT(!_ep.is_null());
 
-    user_clock_t *usr_clk=user_clock_t::instance();
-    uint32 tc_start=get_tick_count(usr_clk);
+	user_clock_t *usr_clk=user_clock_t::instance();
+	uint32 tc_start=get_tick_count(usr_clk);
 
 	int8 hb_ret=RET_HB_IDLE;
 	int32 fd=0;
@@ -713,7 +765,7 @@ int8 aio_proxy_t::heart_beat()
 		}
 
 		//check time slice
-		if(tc_util_t::is_over_tc_end(tc_start, _max_slice, get_tick_count(usr_clk)))
+		if(tc_util_t::is_over_tc_end(tc_start, _utc_max_slice, get_tick_count(usr_clk)))
 		{
 			hb_ret=RET_HB_INT;
 			break;
@@ -723,6 +775,26 @@ int8 aio_proxy_t::heart_beat()
 	FY_EXCEPTION_XTERMINATOR(;);
 	
 	return hb_ret;				
+}
+
+void aio_proxy_t::set_max_slice(uint32 max_slice)
+{
+        user_clock_t *uclk=user_clock_t::instance();
+        FY_ASSERT(uclk);
+
+        uint32 utc_res=get_tick_count_res(uclk);
+        if(utc_res)
+                _utc_max_slice=max_slice/utc_res;
+        else
+                _utc_max_slice=max_slice;
+}
+
+uint32 aio_proxy_t::get_max_slice() const throw()
+{
+        user_clock_t *uclk=user_clock_t::instance();
+        FY_ASSERT(uclk);
+
+        return _utc_max_slice * get_tick_count_res(uclk);
 }
 
 //msg_receiver_it

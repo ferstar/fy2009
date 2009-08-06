@@ -1,3 +1,3 @@
 CXX = g++
-OS_D = -D POSIX -D LINUX
+OS_D = -D POSIX -D LINUX -D __ENABLE_EPOLL__ 
 DEFAULT_FLAGS = $(OS_D) -g 
