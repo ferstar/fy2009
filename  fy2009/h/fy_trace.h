@@ -160,6 +160,10 @@ public:
                 //read thread call it to decide writting has been stopped or not
                 inline bool is_stopped_writing() const throw() { return _stop_w_flag; }
 
+		//return lost count of trace pieces due to trace queue and/or onewap pipe is too small or 
+		//trace writting is too busy,2009-8-7
+		inline uint32 get_loss_count() const throw() { return _loss_cnt; }
+
                 //oneway_pipe_sink_it
                 void on_destroy(const int8 *buf, uint32 buf_len);
 
@@ -238,9 +242,9 @@ private:
 #ifdef POSIX
         static void *_thd_r_f(void * arg);
 #elif defined(WIN32)
-		static DWORD WINAPI _thd_r_f(LPVOID arg);
+	static DWORD WINAPI _thd_r_f(LPVOID arg);
 #endif
-		trace_provider_t(); //forbiden caller create this object directly
+	trace_provider_t(); //forbiden caller create this object directly
         void _start();//start read thread
         //poll read one trip and return readed pieces of trace info,or return 0 if no data,or return -1 if no pipe
         int16 _poll_once();
