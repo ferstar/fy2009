@@ -265,16 +265,15 @@ public:
 				fy_close_sok(fd);
 
 				return;
-            		}
-            		if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
-            		{
+			}
+			if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
+			{
 				FY_INFOD("conn socket received an AIO_POLLHUP");
 				_aiop->unregister_fd(fd);
 				fy_close_sok(fd);
 
 				return;
-            		}
-			FY_INFOD("conn socket received an unknown event");
+			}
 			return;
 		}
 	}
@@ -304,22 +303,31 @@ private:
 
 #define SERVPORT 8888
 #define BACKLOG 128
+
+#ifdef LINUX
+
 int g_caught_sig=0;
 void catch_signal( int sig )
 {
 	 g_caught_sig=sig;
 }
+
+#endif
+
 int main(int argc,char **argv)
 {
+#ifdef LINUX
 //	signal(SIGIO, catch_signal);
 	signal(SIGINT, catch_signal);
 	signal(SIGTERM, catch_signal);
-	
+#endif	
 	trace_provider_t *trace_prvd=trace_provider_t::instance();
     trace_prvd->open();
 	trace_prvd->set_enable_flag(TRACE_LEVEL_IO,true);
 
-    trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer();
+	uint32 owp_size_trace=1024;
+	uint32 que_size_trace=1024;
+    trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer(owp_size_trace);
 
 #ifdef WIN32
 
@@ -510,12 +518,14 @@ int main(int argc,char **argv)
 	bool sent_flag=false;
 	while(true)
 	{
+#ifdef LINUX
 		if(g_caught_sig)
 		{
 			FY_WARNING("####caught a signal:"<<(int32)g_caught_sig<<"####");
 			g_caught_sig=0;
 			break;
 		}
+#endif
 		ret_hb=aiop->heart_beat();
 		FY_INFOD("heart_beat,ret="<<ret_hb);
 
