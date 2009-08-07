@@ -527,7 +527,7 @@ int main(int argc,char **argv)
 		}
 #endif
 		ret_hb=aiop->heart_beat();
-		FY_INFOD("heart_beat,ret="<<ret_hb);
+		FY_INFOD("heart_beat,ret="<<ret_hb<<",loss trace count:"<<tracer->get_loss_count());
 
 		if(g_conn_fd && !sent_flag)
 		{
