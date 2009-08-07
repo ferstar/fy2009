@@ -314,6 +314,10 @@ void catch_signal( int sig )
 
 #endif
 
+//in this case, Too many tracees are created, so trace service can't be able to handle them immediately,
+//and many of them are dropped, so outputted trace may be incomplete, once one side exits, another side
+//will output stored traces quickly for a while as expected. 2009-8-7
+
 int main(int argc,char **argv)
 {
 #ifdef LINUX
