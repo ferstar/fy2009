@@ -56,7 +56,8 @@ public:
 
 #elif defined(WIN32)
 
-	DWORD WINAPI s_t_f(LPVOID para);
+	static DWORD WINAPI s_t_f(LPVOID para);
+
 #endif
 
 public:

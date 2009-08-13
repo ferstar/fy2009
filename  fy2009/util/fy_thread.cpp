@@ -170,6 +170,7 @@ thread_t::~thread_t()
 int32 thread_t::start()
 {
 	if(_thd) return 0; //has started
+	_stop_flag=false;
 
 #ifdef POSIX
 
@@ -187,8 +188,8 @@ int32 thread_t::start()
 
 #elif defined(WIN32)
 
-	_thd=::CreateThread(NULL, 0, thread_t::s_t_f, (void*)this, 0, NULL);
-	ret = (_thd? 0:-1);
+	_thd=::CreateThread(NULL, 0, s_t_f, (void*)this, 0, NULL);
+	int32 ret = (_thd? 0:-1);
 #endif
 	if(ret) 
 	{
@@ -205,7 +206,6 @@ int32 thread_t::start()
     	pthread_attr_destroy(&attr);
 
 #endif
-	_stop_flag=false;
 	return ret;
 }
 
@@ -281,7 +281,7 @@ bool thread_t::_on_idle(uint32 time_out)
 		}
 	}
 
-	FY_CATCH_N_THROW_AGAIN_EX("thdidl","cnta",)
+	FY_CATCH_N_THROW_AGAIN_EX("thdidl","cnta",;)
 	
 	return false;		
 }
@@ -522,8 +522,8 @@ sp_thd_t thread_pool_t::assign_thd(uint16 *p_idx)
 	smart_lock_t slock(&_cs);
 
 	if(!_pool_size) return sp_thd_t(); //no thread available
-
-	for(uint16 i=_next_rr_index; i<_pool_size; ++i)
+	uint16 i=0;
+	for(i=_next_rr_index; i<_pool_size; ++i)
 	{
 		if(!_pp_thds[i])//empty thread slot
 		{
@@ -543,7 +543,7 @@ sp_thd_t thread_pool_t::assign_thd(uint16 *p_idx)
 		}
 	} //for
 
-	for(uint16 i=0; i<_next_rr_index; ++i)
+	for(i=0; i<_next_rr_index; ++i)
 	{
                 if(!_pp_thds[i])//empty thread slot
                 {

@@ -105,6 +105,10 @@ SOURCE=..\..\util\fy_stream.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\util\fy_thread.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\util\fy_trace.cpp
 # End Source File
 # End Group
