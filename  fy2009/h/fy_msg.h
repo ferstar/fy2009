@@ -79,17 +79,10 @@ public:
 	//it's used for message delay doing
 	inline uint32 get_utc_posted() const throw() { return _utc_posted; }
 
-	//specify interval user tick-count in which message will be delayed doing or repeated doing
-        inline void set_utc_interval(uint32 utc_interval) throw() 
-	{
-        	if((_flag & MSG_FLAG_POSTED) == MSG_FLAG_POSTED)
-        	{
-                	FY_XERROR("set_utc_interval, it is posted, not allow change");
-                	return;
-        	}	 
-		_utc_interval = utc_interval; 
-	}
-        inline uint32 get_utc_interval() const throw() { return _utc_interval; }
+	//specify interval(unit:ms) in which message will be delayed doing or repeated doing
+        void set_tc_interval(uint32 tc_interval) throw();
+	uint32 get_tc_interval() const throw(); //unit:ms 
+        inline uint32 get_utc_interval() const throw() { return _utc_interval; } 
 
 	//indicate this message will be done specified times or infinitely(_repeat == -1),
 	//time interval between consective doing is specified by set_tc_interval

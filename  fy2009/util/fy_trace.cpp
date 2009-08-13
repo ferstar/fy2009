@@ -319,11 +319,7 @@ DWORD WINAPI trace_provider_t::_thd_r_f(LPVOID arg)
                 else //no data
                 {
                         --final_trip;
-#ifdef LINUX
-                        usleep(10000);//10ms
-#elif defined(WIN32)
-			Sleep(10);
-#endif
+			fy_msleep(10);
                 }
 
         }while(final_trip>0);
@@ -608,11 +604,7 @@ void trace_provider_t::unregister_tracer()
                 while(icnt--)
                 {
                         if(sp_pip->get_r_size()==0) break; //no rest data to read
-#ifdef LINUX
-                        usleep(100000);//100ms
-#elif defined(WIN32)
-			::Sleep(100);
-#endif
+			fy_msleep(100);
                 }
                 if(!icnt) __INTERNAL_FY_TRACE("trace_provider_t::unregister_tracer lost some traces\n");
 

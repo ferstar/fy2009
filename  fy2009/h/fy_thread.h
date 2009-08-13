@@ -6,7 +6,7 @@
  * Author: DreamFreelancer, zhangxb66@2008.sina.com
  *
  * [History]
- * initialize: 2009-6-1
+ * initialize: 2009-8-7
  * ====================================================================
  */
 #ifndef __FENGYI2009_THREAD_DREAMFREELANCER_20080610_H__
@@ -26,29 +26,39 @@ typedef smart_pointer_lu_tt<thread_t> sp_thd_t;
 class thread_pool_t;
 typedef smart_pointer_tt<thread_pool_t> sp_tpool_t;
 
-/*[bullet]
- *[desc] manage a thread which can be enabled trace service and/or message service and can prvovide a graceful
- *       thread terminating mechanism.
- *[author] kelvin 2008-6-16
- *[note that] it's just a abstract base class, concrete class must implement run(), additionally, it can realize
+/*[tip]
+ *[desc] manage a thread which can be enabled trace service and/or message service and/or aio serverice and can 
+ * prvovide a graceful thread terminating mechanism.
+ *
+ *[note that] it's just an abstract base class, concrete class must implement run(), additionally, it can realize
  *            ref_cnt_it if needed
- *1. add aio proxy support,2008-10-10
+ *[history] 
+ * Initialize 2008-6-16
+ * add aio proxy support,2008-10-10
  */
-
-//default time out to wait for thread exit
+//default time out to wait for thread exit(unit:ms)
 #define THD_DEF_TIMEOUT 1000
 
 uint16 const THREAD_EVENT_SLOT_COUNT=3; //++it has to be changed as adding new Event slot index
-
+//->
 uint16 const THD_ESI_TRACE=0; //event slot index for trace service, when trace pipe isn't full, it will be signalled 
 uint16 const THD_ESI_MSG=1; //event slot index for msg service, if msg comes to this thread, it will be signalled
 uint16 const THD_ESI_AIO=2; //event slot index for aio service, if aio event comes to this thread, it will be signalled
+//<-
 
 class thread_t : public object_id_impl_t
 {
 public:
+#ifdef POSIX
+
 	static void *s_t_f(void *para);//universal thread function,specific logic is in run().
 	static void s_cleanup_f(void *para);//universal thread cleanup function,specific logic is in on_cancel().
+
+#elif defined(WIN32)
+
+	DWORD WINAPI s_t_f(LPVOID para);
+#endif
+
 public:
 	thread_t();
 	virtual ~thread_t();
@@ -56,8 +66,8 @@ public:
 	//specific thread logic,should be overwritten by descendant
 	virtual void run()=0;
 
-	//when thread was cancelled by pthread_cancel(e.g. run() doesn't respond to stop command,
-	//this logic will be called,should be overwritten by descendant
+	//when thread was cancelled by pthread_cancel(e.g. run() doesn't respond to stop command),
+	//this logic will be called,can be overwritten by descendant
 	virtual void on_cancel(){} 	
 
 	//create a detached thread,return the return value of pthread_create
@@ -100,7 +110,7 @@ public:
 	inline uint32 get_timeout() const throw() { return _timeout; } 		
 	
 	//lookup_it
-	void *lookup(uint32 iid) throw();
+	void *lookup(uint32 iid, uint32 pin) throw();
 	
 	inline fy_thread_t get_thd() const throw() { return _thd; }
 	inline uint32 get_thd_id() const throw() { return _thd_id; }
@@ -115,6 +125,10 @@ protected:
 	//when run() completed initialization, it should be called to unlock start(),
 	//start() then return
 	inline void _unlock_start() throw() { _cs.unlock(); _is_running=true; }
+	
+	//implementation of run should call it frequently within while loop near nonsystemic cancel-point
+	//to check if receiving cancellation request from other thread
+	void _test_cancel();
 
 	//descendant must ofen checked stop flag to exit on demand
 	inline bool _is_stopping() const throw() { return _stop_flag; }
@@ -147,25 +161,25 @@ private:
 	//->
 	bool _aio_flag; //enable aio proxy service for thread or not
 	uint32 _aioep_size; //aio events one-way pipe size
-	uint16 _max_fd_count;
+	uint16 _max_fd_count; //max fd_key upperbound which can be managed by aio service 
 	sp_aio_proxy_t _aio_proxy;	
 	//<-
 
 	bool _stop_flag;//notify thread to exit
-	event_t _e_stopped;//notify stop() caller thread this thread has existed
+	event_t _e_stopped;//notify stop() caller thread this thread has exited
 	uint32 _timeout; //milliseconds of time out waiting for thread exit
 	event_slot_t _es; //wait for notifications from other thread when thread is idle
 	bool _is_running; //true means run() is ready; false means run() isn't ready or has exitted
 };
 
-/*[bullet]
+/*[tip]
  *[desc] message-driven thread pool
- *[author] kelvin 2007-4-4
  *[note that]
  *1.for independant message, you always can call assign_thd to get a thread from pool to handle it, otherwise, caller has to
  * be responsible for sending subsequent message to proper assigned thread
  *[history]
- *1.change to non-singleton,2008-6-16, it makes sense that one process want to run more than one specific thread pools
+ * Initialize, 2007-4-4
+ * change to non-singleton,2008-6-16, it makes sense that one process want to run more than one specific thread pools
  */
 class thread_pool_t : public object_id_impl_t,
               	      public ref_cnt_impl_t //thread-safe
@@ -183,7 +197,7 @@ public:
 		virtual void run();
 		
 		//lookup_i
-		void *lookup(uint32 iid) throw();
+		void *lookup(uint32 iid, uint32 pin) throw();
 	protected:
 		_thd_t() : _cs(true), ref_cnt_impl_t(&_cs) { _busy=false; }
 		 void _lazy_init_object_id() throw();	
@@ -212,7 +226,7 @@ public:
 	void stop_all();
 
 	//lookup_it
-	void *lookup(uint32 iid) throw();
+	void *lookup(uint32 iid, uint32 pin) throw();
 protected:
 	void _lazy_init_object_id() throw(){ OID_DEF_IMP("thread_pool"); }	
 private:
@@ -243,7 +257,6 @@ private:
 	uint16 _next_rr_index; //assign_thd next round-robin thread index
 	critical_section_t _cs; //syn ref_cnt_i
 };
-
 
 DECL_FY_NAME_SPACE_END
 

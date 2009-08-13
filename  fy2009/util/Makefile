@@ -20,7 +20,8 @@ OBJS=$(PATH_OBJ)/fy_base.o \
      $(PATH_OBJ)/fy_basex.o \
      $(PATH_OBJ)/fy_trace.o \
      $(PATH_OBJ)/fy_msg.o \
-     $(PATH_OBJ)/fy_aio.o 
+     $(PATH_OBJ)/fy_aio.o \
+     $(PATH_OBJ)/fy_thread.o 
 
 all:chk_lib_path chk_obj_path $(PATH_OUT)/fy_util.a
 
@@ -54,4 +55,6 @@ $(PATH_OBJ)/fy_msg.o:fy_msg.cpp
 	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_msg.cpp
 $(PATH_OBJ)/fy_aio.o:fy_aio.cpp
 	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_aio.cpp
+$(PATH_OBJ)/fy_thread.o:fy_thread.cpp
+	$(CXX) $(DEFAULT_FLAGS) -c $(INC_FLAG) -o $@ fy_thread.cpp
 

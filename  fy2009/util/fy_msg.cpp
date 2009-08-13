@@ -85,6 +85,36 @@ const variant_t& msg_t::get_para(uint16 para_index)
 	return _pv_para[para_index];
 }
 
+void msg_t::set_tc_interval(uint32 tc_interval) throw()
+{
+	if((_flag & MSG_FLAG_POSTED) == MSG_FLAG_POSTED)
+	{
+		FY_XERROR("set_tc_interval, it is posted, not allow change");
+                return;
+	}
+ 
+        user_clock_t *uclk=user_clock_t::instance();
+        FY_ASSERT(uclk);
+
+        uint32 utc_res=get_tick_count_res(uclk);
+        if(utc_res)       
+		_utc_interval = tc_interval/utc_res;
+	else
+		_utc_interval = tc_interval; 
+}
+
+uint32 msg_t::get_tc_interval() const throw()
+{
+        user_clock_t *uclk=user_clock_t::instance();
+        FY_ASSERT(uclk);
+        
+        uint32 utc_res=get_tick_count_res(uclk);
+        if(utc_res)
+		return _utc_interval * utc_res;
+	else
+		return _utc_interval;	
+}
+
 //lookup_i
 void *msg_t::lookup(uint32 iid, uint32 pin) throw()
 {       

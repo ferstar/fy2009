@@ -74,7 +74,7 @@ DWORD WINAPI tf_msg(void *arg)
         msg_proxy->add_reference();
         sp_msg_t msg=msg_t::s_create((uint32)fy_thread_self(),0, 0);
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));
-        msg->set_utc_interval(2000/get_tick_count_res(user_clock_t::instance()));
+        msg->set_tc_interval(2000);
         msg_proxy->post_msg(msg);
         msg_proxy->release_reference();
 
@@ -86,7 +86,7 @@ void test_msg()
         sp_msg_proxy_t msg_proxy=sp_msg_proxy_t(msg_proxy_t::s_tls_instance(),true);
         sp_msg_t msg=msg_t::s_create(888,0,0);
         msg->set_repeat(-1);
-        msg->set_utc_interval(1000/get_tick_count_res(user_clock_t::instance()));
+        msg->set_tc_interval(1000);
         g_rcver=new stub_msg_recver_t();
         g_rcver->add_reference();
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));
@@ -95,7 +95,7 @@ void test_msg()
         //add msg 2
         msg=msg_t::s_create(999,0,0);
         msg->set_repeat(4);
-        msg->set_utc_interval(2000/get_tick_count_res(user_clock_t::instance()));
+        msg->set_tc_interval(2000);
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));
         msg_proxy->post_msg(msg);
 

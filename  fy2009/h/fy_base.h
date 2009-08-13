@@ -71,6 +71,9 @@ typedef pthread_key_t fy_thread_key_t;
 #       define fy_gettid getpid
 #endif
 
+//sleep for milliseconds
+#define fy_msleep(ms) ::usleep((ms)*1000) 
+
 #elif defined(WIN32)
 
 typedef LONGLONG int64; //size is 64 bits
@@ -92,6 +95,9 @@ void fy_thread_join(fy_thread_t thd, void *ignorance);
 }
 
 #define fy_gettid GetCurrentThreadId
+
+//sleep for milliseconds
+#define fy_msleep ::Sleep
 
 #endif //POSIX
 
