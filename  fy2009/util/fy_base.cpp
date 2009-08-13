@@ -50,8 +50,15 @@ critical_section_t::critical_section_t(bool recursive_flag) throw()
         pthread_mutexattr_destroy(&mtx_attr);
 #elif defined(WIN32)
 
-	InitializeCriticalSection(&_cs);
-
+	if(recursive_flag)
+	{
+		InitializeCriticalSection(&_cs);
+		_sem = NULL;
+	}
+	else //non-recursive
+	{
+		_sem = ::CreateSemaphore(NULL,1,1,NULL);
+	}
 #endif //POSIX
 }
 
@@ -63,7 +70,13 @@ critical_section_t::~critical_section_t() throw()
 
 #elif defined(WIN32)
 
-	DeleteCriticalSection(&_cs);
+	if(_sem)
+	{
+		::CloseHandle(_sem);
+		_sem = NULL;
+	}
+	else
+		DeleteCriticalSection(&_cs);
 
 #endif //POSIX
 }
@@ -76,7 +89,12 @@ void critical_section_t::lock() throw()
 
 #elif defined(WIN32)
 
-	EnterCriticalSection(&_cs);
+	if(_sem)
+	{
+		::WaitForSingleObject(_sem, INFINITE);
+	}
+	else
+		EnterCriticalSection(&_cs);
 
 #endif	
 }
@@ -89,7 +107,12 @@ void critical_section_t::unlock() throw()
 
 #elif defined(WIN32)
 
-	LeaveCriticalSection(&_cs);
+	if(_sem)
+	{
+		::ReleaseSemaphore(_sem, 1, NULL);
+	}
+	else
+		LeaveCriticalSection(&_cs);
 
 #endif
 }
@@ -102,7 +125,12 @@ bool critical_section_t::try_lock() throw()
 
 #elif defined(WIN32)
 
-	return TryEnterCriticalSection(&_cs)!=0;
+	if(_sem)
+	{
+		return ::WaitForSingleObject(_sem, 0) == WAIT_OBJECT_0;
+	}
+	else
+		return TryEnterCriticalSection(&_cs)!=0;
 
 #endif
 }

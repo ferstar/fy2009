@@ -106,7 +106,7 @@ public:
 			{ 
 				FY_INFOD("!!!got stop command, no hurry, wait,wait...");
 
-				fy_msleep(5000);
+				//fy_msleep(5000);
 
 				FY_INFOD("ok, I stop on my own");
 				break;
@@ -161,7 +161,7 @@ void test_thd()
 	//send msg to thread
         sp_msg_t msg=msg_t::s_create(888,0,0);
         msg->set_repeat(2);
-        msg->set_tc_interval(10);
+        msg->set_tc_interval(100);
 
         stub_msg_recver_t *rcver=new stub_msg_recver_t();
         rcver->add_reference();

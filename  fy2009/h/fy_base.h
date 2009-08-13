@@ -377,6 +377,7 @@ private:
 #elif defined(WIN32)
 
 	CRITICAL_SECTION _cs;
+	HANDLE _sem; //to implement non-recursivfe critical section
 
 #endif //POSIX
 };
