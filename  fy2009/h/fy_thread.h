@@ -76,7 +76,8 @@ public:
 
 	//stop thread. set _stop_flag=true to notify thread exit,if no response,pthread_cancel will be called 
 	//and wait for at most another timeout, then return directly.
-	void stop(); 
+	//para:timeout:milliseconds of time out waiting for thread exit
+	void stop(uint32 timeout = THD_DEF_TIMEOUT); 
 	
 	inline void enable_trace(uint32 pipe_size=TRACE_DEF_NLP_SIZE,
 			uint32 max_queued_size=TRACE_DEF_MAX_QUEUED_SIZE) throw()
@@ -106,9 +107,6 @@ public:
 		if(_thd) return;
 		_aio_flag=false;
 	}
-	
-	inline void set_timeout(uint32 timeout=THD_DEF_TIMEOUT) throw() { _timeout = timeout; }
-	inline uint32 get_timeout() const throw() { return _timeout; } 		
 	
 	//lookup_it
 	void *lookup(uint32 iid, uint32 pin) throw();
@@ -168,7 +166,6 @@ private:
 
 	bool _stop_flag;//notify thread to exit
 	event_t _e_stopped;//notify stop() caller thread this thread has exited
-	uint32 _timeout; //milliseconds of time out waiting for thread exit
 	event_slot_t _es; //wait for notifications from other thread when thread is idle
 	bool _is_running; //true means run() is ready; false means run() isn't ready or has exitted
 };

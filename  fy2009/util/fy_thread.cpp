@@ -159,7 +159,6 @@ thread_t::thread_t() : _cs(false), _es(THREAD_EVENT_SLOT_COUNT), _e_stopped(fals
 	_max_fd_count=0;
 
 	_stop_flag=false;
-	_timeout=1000;//1 second
 	_is_running=false;
 }
 
@@ -210,24 +209,24 @@ int32 thread_t::start()
 	return ret;
 }
 
-void thread_t::stop()
+void thread_t::stop(uint32 timeout)
 {
 	if(!_thd) return;
 
 	//notify run() to exit,the later should often check this variable by calling is_stopping() 
 	_stop_flag=true;
-	int32 ret=_e_stopped.wait(_timeout);//wait for thread exiting
+	int32 ret=_e_stopped.wait(timeout);//wait for thread exiting
 	if(ret)//thread doesn't exit before timeout expired
 	{
 #ifdef POSIX
 
 		pthread_cancel(_thd); //maybe thread was blocked at cancel-point
-		_e_stopped.wait(_timeout);
+		_e_stopped.wait(timeout);
 
 #elif defined(WIN32)
 
 		//wait for another timeout
-		if(_e_stopped.wait(_timeout)) 
+		if(_e_stopped.wait(timeout)) 
 		{
 			::TerminateThread(_thd, 0);
 			FY_XERROR("stop, thread is terminated abnormally, may fail to free some resources");
