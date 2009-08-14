@@ -108,7 +108,6 @@ DWORD WINAPI thread_t::s_t_f(LPVOID para)
 	}catch(...){
 		//it's important for pthread cancel to throw again, otherwise, pthread cleanup logic will not be called,
 		//and process will be aborted
-FY_INFOD("==caugth unspecified exception");
 		throw; 
   	}
 
