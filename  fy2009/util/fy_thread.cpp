@@ -108,6 +108,7 @@ DWORD WINAPI thread_t::s_t_f(LPVOID para)
 	}catch(...){
 		//it's important for pthread cancel to throw again, otherwise, pthread cleanup logic will not be called,
 		//and process will be aborted
+FY_INFOD("==caugth unspecified exception");
 		throw; 
   	}
 
@@ -226,7 +227,11 @@ void thread_t::stop()
 #elif defined(WIN32)
 
 		//wait for another timeout
-		if(_e_stopped.wait(_timeout)) ::TerminateThread(_thd, 0);
+		if(_e_stopped.wait(_timeout)) 
+		{
+			::TerminateThread(_thd, 0);
+			FY_XERROR("stop, thread is terminated abnormally, may fail to free some resources");
+		}
 
 #endif
 	}
@@ -238,16 +243,6 @@ void thread_t::stop()
 	_thd=0;
 	_thd_id=0;
 } 
-
-void thread_t::_test_cancel()
-{
-#ifdef LINUX
-
-	::pthread_testcancel();
-
-#elif defined(WIN32)
-#endif
-}
 
 bool thread_t::_on_idle(uint32 time_out)
 {

@@ -106,7 +106,9 @@ public:
 			{ 
 				FY_INFOD("!!!got stop command, no hurry, wait,wait...");
 
-				//fy_msleep(5000);
+				//uncomment it to trigger thread cancel logic, otherwise, thread should be
+				//stopped normally
+				fy_msleep(5000);
 
 				FY_INFOD("ok, I stop on my own");
 				break;
