@@ -19,6 +19,7 @@
 
 USING_FY_NAME_SPACE
 
+struct timeval last_tv={0,0};
 class stub_msg_recver_t : public msg_receiver_it,
                           public ref_cnt_impl_t
 {
@@ -26,8 +27,15 @@ public:
         stub_msg_recver_t():_cs(true),ref_cnt_impl_t(&_cs){ _cnt=0; }
         void on_msg(msg_t *msg)
         {
+		if(msg->get_msg() == 888)
+		{
+			struct timeval tv;
+			gettimeofday(&tv,0);
+			printf("==msg 888 interval:%d\n", timeval_util_t::diff_of_timeval_tc(last_tv, tv));
+			last_tv = tv;
+		}
                 ++_cnt;
-                printf("handle a msg[%d]:%d,tc_posted:%d,tc_interval:%d,repeat:%d\n",
+                printf("handle a msg[%d]:%d,tc_posted:%d,utc_interval:%d,repeat:%d\n",
                         _cnt,msg->get_msg(), msg->get_utc_posted(), msg->get_utc_interval(), msg->get_repeat());
 //                usleep(100000); //determine msg proxy heart_beat return busy or interrupted
 /*
@@ -86,7 +94,7 @@ void test_msg()
         sp_msg_proxy_t msg_proxy=sp_msg_proxy_t(msg_proxy_t::s_tls_instance(),true);
         sp_msg_t msg=msg_t::s_create(888,0,0);
         msg->set_repeat(-1);
-        msg->set_tc_interval(1000);
+        msg->set_tc_interval(320);
         g_rcver=new stub_msg_recver_t();
         g_rcver->add_reference();
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));
@@ -111,19 +119,16 @@ void test_msg()
 		thd = ::CreateThread(NULL, 0, tf_msg, (void*)raw_msg_proxy, 0, NULL); 
 #endif
 	}
-
+	uint32 deta_sleep=0;
         while(1)
         {
                 int8 ret=msg_proxy->heart_beat();
                 switch(ret)
                 {
                 case RET_HB_IDLE:
-                        printf("heart_beat ret:RET_HB_IDLE\n");
-#ifdef LINUX
-                        usleep(500000);
-#elif defined(WIN32)
-						Sleep(500);
-#endif
+			deta_sleep=msg_proxy->get_min_delay_interval();
+                        printf("heart_beat ret:RET_HB_IDLE,min_delay:%d\n",deta_sleep);
+			fy_msleep(deta_sleep/4);
                         break;
                 case RET_HB_BUSY:
                         printf("heart_beat ret:RET_HB_BUSY\n");
@@ -142,7 +147,11 @@ void test_msg()
 
 int main(int argc, char **argv)
 {
-	 FY_TRY
+	FY_TRY
+
+	user_clock_t::instance();
+	//pre-heat user_clock 
+	fy_msleep(200);
 
 	test_msg();
 

@@ -16,42 +16,6 @@ USING_FY_NAME_SPACE
 //thread_t
 #ifdef POSIX
 
-void thread_t::s_cleanup_f(void *para)
-{
-	thread_t *p_this=(thread_t *)para;
-	FY_ASSERT(p_this);
-
-	FY_TRY
-
-	p_this->on_cancel();//specific thread cancellation logic
-
-	__INTERNAL_FY_EXCEPTION_TERMINATOR(;);
-
-	//2007-4-6
-        //->	
-	if(p_this->_trace_flag)//trace service is enabled
-	{
-                trace_provider_t *trp=trace_provider_t::instance();
-                trp->unregister_tracer();
-	}
-	//<-
-
-	if(p_this->_msg_flag)//msg service is enabled
-	{
-		msg_proxy_t::s_delete_tls_instance();
-		(p_this->_msg_proxy).attach(0);	
-	}
-
-	//aio support,2008-10-10
-	if(p_this->_aio_flag) //aio proxy is enabled
-	{
-		aio_proxy_t::s_delete_tls_instance();
-		(p_this->_aio_proxy).attach(0);
-	}
-
-	p_this->_e_stopped.signal();//notify stop() calling thread that this thread has exited	
-}
-
 void *thread_t::s_t_f(void *para)
 
 #elif defined(WIN32)
@@ -65,10 +29,6 @@ DWORD WINAPI thread_t::s_t_f(LPVOID para)
 
 	p_this->_thd_id=fy_gettid();
 
-#ifdef POSIX
-	
-	pthread_cleanup_push(s_cleanup_f, para);
-#endif
 	if(p_this->_trace_flag)//enable trace service
 	{
         	trace_provider_t *trp=trace_provider_t::instance();
@@ -99,17 +59,7 @@ DWORD WINAPI thread_t::s_t_f(LPVOID para)
 
 	p_this->run();//run specific thread logic,this virtual fuction should be overwritten by descendant
 
-	}catch(std::exception& e){
-		if(e.what()){
-			__INTERNAL_FY_TRACE(e.what());
-			__INTERNAL_FY_TRACE("\r\n");
-		}else{
-			__INTERNAL_FY_TRACE("Caught a std::exception but what() is empty\r\n");}
-	}catch(...){
-		//it's important for pthread cancel to throw again, otherwise, pthread cleanup logic will not be called,
-		//and process will be aborted
-		throw; 
-  	}
+	__INTERNAL_FY_EXCEPTION_TERMINATOR(;);
 
 	p_this->_is_running=false;
         if(p_this->_trace_flag)
@@ -130,10 +80,6 @@ DWORD WINAPI thread_t::s_t_f(LPVOID para)
 		(p_this->_aio_proxy).attach(0);	
 	}
 
-#ifdef POSIX	
-
-	pthread_cleanup_pop(0);	
-#endif
 	p_this->_e_stopped.signal();//notify stop() requester that this thread has stopped
 
 	return 0;
@@ -217,21 +163,7 @@ void thread_t::stop(uint32 timeout)
 	int32 ret=_e_stopped.wait(timeout);//wait for thread exiting
 	if(ret)//thread doesn't exit before timeout expired
 	{
-#ifdef POSIX
-
-		pthread_cancel(_thd); //maybe thread was blocked at cancel-point
-		_e_stopped.wait(timeout);
-
-#elif defined(WIN32)
-
-		//wait for another timeout
-		if(_e_stopped.wait(timeout)) 
-		{
-			::TerminateThread(_thd, 0);
-			FY_XERROR("stop, thread is terminated abnormally, may fail to free some resources");
-		}
-
-#endif
+		FY_XERROR("stop, thread doesn't exit before timeout elapsed, thread-relasted resources will be leak");
 	}
 
 #ifdef WIN32
@@ -352,6 +284,8 @@ void thread_t::_handle_aio_on_idle()
 //_thd_t
 void thread_pool_t::_thd_t::run()
 {
+	FY_DECL_EXCEPTION_CTX_EX("run");
+
 	msg_proxy_t *msg_proxy=get_msg_proxy();
 	aio_proxy_t *aio_proxy=get_aio_proxy();
 
@@ -374,12 +308,18 @@ void thread_pool_t::_thd_t::run()
 
 		//wait for signal and try to write pending trace and receive msg and receiving aio events
 		//as both msg_proxy and aio_proxy are idle
-		if(!_busy) _busy=_on_idle(400); //tim-out: 400ms, should less than thread stop time-out(1000ms)
-
+		if(!_busy) 
+		{
+			uint32 ms_timeout=(msg_proxy? msg_proxy->get_min_delay_interval()/2 : 400);
+			if(!ms_timeout) ms_timeout = 1;	
+			_busy=_on_idle(ms_timeout);
+//88
+printf("==_on_idle==,ms_timeout:%d\n",ms_timeout); 
+		}
 		if(_is_stopping()) break;
 	}
 
-	FY_EXCEPTION_XTERMINATOR(;);
+	FY_CATCH_N_THROW_AGAIN_EX("tpt-run-term","cnta",;);
 }
 
 void thread_pool_t::_thd_t::_lazy_init_object_id() throw()

@@ -139,7 +139,7 @@ fy_thread_key_t msg_proxy_t::_s_tls_key=fy_thread_key_t();
 
 bool msg_proxy_t::_s_key_created=false;
 critical_section_t msg_proxy_t::_s_cs=critical_section_t(true);
-uint32 msg_proxy_t::_s_local_mq_bound[MPXY_LOCAL_MQ_CNT]={8,64,512,4096,32768};//unit:user tick-count
+uint32 msg_proxy_t::_s_local_mq_bound[MPXY_LOCAL_MQ_CNT]={};//unit:user tick-count
 
 msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 					event_slot_t *es_notfull, uint16 esi_notfull,
@@ -158,6 +158,17 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
  
                                 return 0;
                         }
+			//initialize _s_local_mq_bound
+			uint32 utc_res=get_tick_count_res(user_clock_t::instance());
+			uint32 bound_base=(utc_res? 20/utc_res : 2);
+			if(bound_base<2) bound_base = 2;
+	
+			for(int i=0; i<MPXY_LOCAL_MQ_CNT; ++i)
+			{
+				_s_local_mq_bound[i] = bound_base<<i;
+//88
+printf("_s_localmq_bound[%d]=%d\n", i, _s_local_mq_bound[i]);
+			}
                         _s_key_created=true;
                 }
 
@@ -207,6 +218,7 @@ msg_proxy_t::msg_proxy_t(uint32 mp_size,
 	
 	_es_notempty = es_notempty;
 	_esi_notempty = esi_notempty;	
+	_utc_min_delay_interval = 10000;//10s(windows),100s(linux)
 }
 
 //it's forbidden to call IMsg_Sink.OnMsg with this function,otherwise,
@@ -234,7 +246,7 @@ int8 msg_proxy_t::_poll_local_mq(uint32 utc_start, uint8 start_idx, uint8 end_id
         {
                 //always poll _local_mq[0] as often as possible
                 if(i && !tc_util_t::is_over_tc_end(_utc_lastpoll[i],
-                                msg_proxy_t::_s_local_mq_bound[i-1],
+                                (i>1? msg_proxy_t::_s_local_mq_bound[i-2] : 1),
                                 get_tick_count(usr_clk))) continue;
 
                 //poll _local_mq[i]
@@ -335,6 +347,9 @@ void msg_proxy_t::_push_to_local_mq(sp_msg_t& msg)
 	uint32 utc_interval=msg->get_utc_interval();
         if(utc_interval) //delay msg
         {
+		//2009-8-17
+		if(utc_interval < _utc_min_delay_interval) _utc_min_delay_interval = utc_interval;
+
                 for(int i=0; i< MPXY_LOCAL_MQ_CNT - 1 ; ++i)
                 {
                 	if(utc_interval < msg_proxy_t::_s_local_mq_bound[i])
@@ -534,6 +549,12 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 	}
 
 	FY_EXCEPTION_XTERMINATOR(;);		
+}
+
+uint32 msg_proxy_t::get_min_delay_interval() const throw()
+{
+	uint32 utc_res=get_tick_count_res(user_clock_t::instance());
+	return _utc_min_delay_interval * utc_res;	
 }
 
 void msg_proxy_t::on_destroy(const int8 *buf, uint32 buf_len)

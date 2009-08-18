@@ -345,7 +345,8 @@ typedef buffer_tt<int8> bb_t; //byte buffer type
  *[desc] it has similar sematic with the counterpart in windows OS. 
  *
  *[memo]
- * according to ctor para,it can be recursive(default) or not, recursive is slight efficient than non-recursive.
+ * according to ctor para,it can be recursive(default) or not, recursive is slight efficient than non-recursive 
+ * on linux, but reverse on windows.
  * it should be sealed
  *
  *[history] 

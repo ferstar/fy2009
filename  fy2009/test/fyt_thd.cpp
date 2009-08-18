@@ -32,6 +32,7 @@
 
 USING_FY_NAME_SPACE
 
+struct timeval last_tv={0,0};
 class stub_msg_recver_t : public msg_receiver_it,
                           public ref_cnt_impl_t
 {
@@ -40,11 +41,18 @@ public:
         void on_msg(msg_t *msg)
         {
                 ++_cnt;
+//88
+struct timeval tv;
+gettimeofday(&tv, 0);
+uint32 tc=timeval_util_t::diff_of_timeval_tc(last_tv, tv);
+last_tv=tv;
+FY_INFOD("==handle a msg,tc:"<<tc);
+//99		
                 FY_INFOD("handle a msg["<<_cnt<<"]:"<<msg->get_msg()<<",utc_posted:"<<msg->get_utc_posted()
 			<<",tc_interval:"<<msg->get_tc_interval()<<",repeat:"<<msg->get_repeat());
 
 		fy_msleep(100);
-
+/*
                 if(_cnt == 2)
                 {
                         sp_msg_proxy_t msg_proxy=sp_msg_proxy_t(msg_proxy_t::s_tls_instance(),true);
@@ -55,6 +63,7 @@ public:
                         FY_INFOD("post a REMOVE_MSG");
                         msg_proxy->post_msg(msg);
                 }
+*/
 
         }
         void *lookup(uint32 iid, uint32 pin) throw()
@@ -141,10 +150,6 @@ public:
 
 		}
 	}
-	void on_cancel()
-	{
-		FY_INFOD("thread has been canceled, on_cancel is called");
-	}
 };
 
 void test_thd()
@@ -183,56 +188,44 @@ void test_thd()
 	
 	rcver->release_reference();
 }
-/*
+
 //test thread pool
 void test_thd_pool()
 {
         trace_provider_t *trace_prvd=trace_provider_t::instance();
-        trace_prvd->register_trace_stream(0, sp_trace_stream_t(), REG_TRACE_STM_OPT_ALL); //remove default trace stream(STDOUT)
-
-        sp_trace_stream_t tr_stm_detail;
-        for(uint8 i=0; i<MAX_TRACE_LEVEL_COUNT; ++i)
-        {
-                sp_trace_stream_t tr_stm=trace_file_t::s_create(i);
-                trace_prvd->register_trace_stream(i, tr_stm, REG_TRACE_STM_OPT_EQ);
-                if(i == TRACE_LEVEL_INFOD) tr_stm_detail=tr_stm;
-        }
-        trace_prvd->register_trace_stream(TRACE_LEVEL_INFOD, tr_stm_detail,
-                                REG_TRACE_STM_OPT_LT|REG_TRACE_STM_OPT_GT);
-
         trace_prvd->open();
 
         trace_prvd->register_tracer();
 
-	sp_tpool_t thd_pool=thread_pool_t::s_create(3);//pool_size=3
+	sp_tpool_t thd_pool=thread_pool_t::s_create(1);//pool_size=3
 	uint16 thd_idx=0; 
-	for(int i=0;i<10;++i)
+	for(int i=0;i<1;++i)
 	{
 
-	sp_thd_t sp_thd=thd_pool->assign_thd(&thd_idx);
-	if(!sp_thd.is_null())
-		printf("assigned a thread from pool,idx=%d\n",thd_idx);
-	else
-	{
-		printf("assign thread failed\n");
-		continue;
-	}
-	//send a message to assigned thread
-        sp_msg_t msg=msg_t::s_create(thd_idx+100,0);
-        msg->set_repeat(i);
-        msg->set_tc_interval(10);
-        msg->set_receiver(sp_msg_rcver_t(new stub_msg_recver_t(),true));
-	msg_proxy_t *msg_proxy=sp_thd->get_msg_proxy();
-        if(msg_proxy) msg_proxy->post_msg(msg);	
+		sp_thd_t sp_thd=thd_pool->assign_thd(&thd_idx);
+		if(!sp_thd.is_null())
+			FY_INFOD("assigned a thread from pool,idx="<<thd_idx);
+		else
+		{
+			FY_INFOD("assign thread failed");
+			continue;
+		}
+		//send a message to assigned thread
+        	sp_msg_t msg=msg_t::s_create(i+100,0,0);
+        	msg->set_repeat(i+5);
+        	msg->set_tc_interval(20);
+        	msg->set_receiver(sp_msg_rcver_t(new stub_msg_recver_t(),true));
+		msg_proxy_t *msg_proxy=sp_thd->get_msg_proxy();
+        	if(msg_proxy) msg_proxy->post_msg(msg);	
 	}
 
-	usleep(10000000);//10s
+	fy_msleep(10000);
 	thd_pool->stop_all();
 
 	trace_prvd->unregister_tracer();
         trace_prvd->close();
 }
-*/
+
 
 int main(int argc,char **argv)
 {
@@ -258,8 +251,8 @@ int main(int argc,char **argv)
 
 	FY_TRY
 
-        test_thd();
-        //test_thd_pool();
+        //test_thd();
+        test_thd_pool();
 
 	FY_EXCEPTION_TERMINATOR("thd-main",;);
 

@@ -162,7 +162,7 @@ public:
  * Initialize: 2007-3-23
  * revise 2008-6-4
  */
-uint32 const MPXY_LOCAL_MQ_CNT=5;
+uint32 const MPXY_LOCAL_MQ_CNT=10;
 uint32 const MPXY_DEF_MP_SIZE=128;
 
 //max slice of once heart_beat,unit:user tick-count(10ms)
@@ -200,6 +200,9 @@ public:
 
 	//it's thread-safe, can be called by multi thread simultaneously
 	void post_msg(sp_msg_t& msg);//post message to owner thread
+
+	//unit:ms
+	uint32 get_min_delay_interval() const throw();
 
 	//oneway_pipe_sink_it
 	void on_destroy(const int8 *buf, uint32 buf_len);
@@ -255,7 +258,11 @@ private:
 	//_mp, owner thread can wait on _es_notempty if it's idle
 	//caller should ensure it's always idle during whole lifecycle of message proxy
 	event_slot_t *_es_notempty;
-	uint16 _esi_notempty;	
+	uint16 _esi_notempty;
+	//by checking _es_notempty, owner thread can respond to instant message immediately, but for delay/repeat message
+	//no any signal can be probed, a proper event_slot_t::wait timeout is needed to avoid too late response or too
+	//much cpu waste,2009-8-17
+	uint32 _utc_min_delay_interval;
 };
 
 /*[tip]

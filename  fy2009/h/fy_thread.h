@@ -35,6 +35,9 @@ typedef smart_pointer_tt<thread_pool_t> sp_tpool_t;
  *[history] 
  * Initialize 2008-6-16
  * add aio proxy support,2008-10-10
+ * remove thread cancellation logic, because it can't be supported by current exception macro(it requires catch(...)
+ * clause must be terminated with throw statement,on the other hand, windows doesn't support thread cancellation. it's
+ * not a necessary logic, to simplify many things, decide to remove it, 2009-8-17
  */
 //default time out to wait for thread exit(unit:ms)
 #define THD_DEF_TIMEOUT 1000
@@ -52,7 +55,6 @@ public:
 #ifdef POSIX
 
 	static void *s_t_f(void *para);//universal thread function,specific logic is in run().
-	static void s_cleanup_f(void *para);//universal thread cleanup function,specific logic is in on_cancel().
 
 #elif defined(WIN32)
 
@@ -66,10 +68,6 @@ public:
 
 	//specific thread logic,should be overwritten by descendant
 	virtual void run()=0;
-
-	//when thread was cancelled by pthread_cancel(e.g. run() doesn't respond to stop command),
-	//this logic will be called,can be overwritten by descendant
-	virtual void on_cancel(){} 	
 
 	//create a detached thread,return the return value of pthread_create
 	int32 start();//start to run thread
@@ -134,7 +132,8 @@ protected:
 
 	//if thread is idle, run() should call it to handle trace or message service etc.
 	//this call may be blocked until event occurred (return true) or time out expired (return false)
-	bool _on_idle(uint32 time_out); //time-out unit:tick-count
+	//if there exist any periodical message, time_out should not be greater than its interval
+	bool _on_idle(uint32 time_out); //time-out unit:ms
 private:
 	void _lazy_init_object_id() throw();
 
