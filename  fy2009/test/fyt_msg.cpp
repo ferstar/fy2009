@@ -108,7 +108,7 @@ void test_msg()
         sp_msg_proxy_t msg_proxy=sp_msg_proxy_t(msg_proxy_t::s_tls_instance(),true);
         sp_msg_t msg=msg_t::s_create(888,0,0);
         msg->set_repeat(-1);
-        msg->set_tc_interval(1000);
+        msg->set_tc_interval(40);
         g_rcver=new stub_msg_recver_t();
         g_rcver->add_reference();
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));

@@ -3,100 +3,14 @@
 <pre>
 <h1>Build Log</h1>
 <h3>
---------------------Configuration: fy2009_util_windows - Win32 Debug--------------------
-</h3>
-<h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA98.tmp" with contents
-[
-/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "__ENABLE_COMPLETION_PORT__" /D "FY_TRACE_ENABLE_IO" /Fp"Debug/fy2009_util_windows.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"F:\fy2009\util\fy_aio.cpp"
-"F:\fy2009\util\fy_base.cpp"
-"F:\fy2009\util\fy_basex.cpp"
-"F:\fy2009\util\fy_msg.cpp"
-"F:\fy2009\util\fy_stream.cpp"
-"F:\fy2009\util\fy_thread.cpp"
-"F:\fy2009\util\fy_trace.cpp"
-]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA98.tmp" 
-Creating command line "link.exe -lib /nologo /out:"Debug\fy_util.lib "  .\Debug\fy_aio.obj .\Debug\fy_base.obj .\Debug\fy_basex.obj .\Debug\fy_msg.obj .\Debug\fy_stream.obj .\Debug\fy_thread.obj .\Debug\fy_trace.obj "
-<h3>Output Window</h3>
-Compiling...
-fy_base.cpp
-fy_aio.cpp
-f:\fy2009\h\fy_basex.h(30) : warning C4305: 'initializing' : truncation from 'const int' to 'const char'
-f:\fy2009\h\fy_basex.h(30) : warning C4309: 'initializing' : truncation of constant value
-f:\fy2009\h\fy_basex.h(58) : warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::const_iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> const &,fy2009::smart_pointer_tt<fy2009::msg_t> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> &,fy2009::smart_pointer_tt<fy2009::msg_t> *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
-fy_basex.cpp
-f:\fy2009\h\fy_basex.h(30) : warning C4305: 'initializing' : truncation from 'const int' to 'const char'
-f:\fy2009\h\fy_basex.h(30) : warning C4309: 'initializing' : truncation of constant value
-f:\fy2009\h\fy_basex.h(58) : warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
-f:\fy2009\util\fy_basex.cpp(117) : warning C4800: 'void ** ' : forcing value to bool 'true' or 'false' (performance warning)
-f:\fy2009\util\fy_basex.cpp(178) : warning C4800: 'void ** ' : forcing value to bool 'true' or 'false' (performance warning)
-fy_msg.cpp
-f:\fy2009\h\fy_basex.h(30) : warning C4305: 'initializing' : truncation from 'const int' to 'const char'
-f:\fy2009\h\fy_basex.h(30) : warning C4309: 'initializing' : truncation of constant value
-f:\fy2009\h\fy_basex.h(58) : warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
-f:\fy2009\util\fy_msg.cpp(210) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::const_iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> const &,fy2009::smart_pointer_tt<fy2009::msg_t> const *,int>' : identifier was truncated to '255' characters in the debug information
-f:\fy2009\util\fy_msg.cpp(210) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> &,fy2009::smart_pointer_tt<fy2009::msg_t> *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
-fy_stream.cpp
-fy_thread.cpp
-f:\fy2009\h\fy_basex.h(30) : warning C4305: 'initializing' : truncation from 'const int' to 'const char'
-f:\fy2009\h\fy_basex.h(30) : warning C4309: 'initializing' : truncation of constant value
-f:\fy2009\h\fy_basex.h(58) : warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::const_iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> const &,fy2009::smart_pointer_tt<fy2009::msg_t> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> &,fy2009::smart_pointer_tt<fy2009::msg_t> *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
-fy_trace.cpp
-f:\fy2009\util\fy_trace.cpp(443) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\deque(191) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
-        d:\program files\microsoft visual studio\vc98\include\deque(188) : while compiling class-template member function '__thiscall std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >(const std::allocator<fy2009::trace_provider_t::_piece_t> &)'
-d:\program files\microsoft visual studio\vc98\include\vector(39) : warning C4786: 'std::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\vector(60) : warning C4786: 'std::vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >::~vector<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,std::allocator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> > >' : identifier was truncated to '255' characters in the debug information
-Creating library...
-<h3>
 --------------------Configuration: fy2009_test - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA99.tmp" with contents
-[
-/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "FY_ENABLE_ASSERT" /D "FY_TEST_THD" /D "FY_TRACE_ENABLE_IO" /Fp"Debug/fy2009_test.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"F:\fy2009\test\fyt_thd.cpp"
-]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA99.tmp" 
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA9A.tmp" with contents
-[
-kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/fy2009_test.pdb" /debug /machine:I386 /out:"Debug/fy2009_test.exe" /pdbtype:sept 
-.\Debug\fyt_aio.obj
-.\Debug\fyt_base.obj
-.\Debug\fyt_msg.obj
-.\Debug\fyt_stream.obj
-.\Debug\fyt_thd.obj
-\fy2009\fy2009_windows\fy2009_util_windows\Debug\fy_util.lib
-]
-Creating command line "link.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA9A.tmp"
-<h3>Output Window</h3>
-Compiling...
-fyt_thd.cpp
-f:\fy2009\h\fy_basex.h(30) : warning C4305: 'initializing' : truncation from 'const int' to 'const char'
-f:\fy2009\h\fy_basex.h(30) : warning C4309: 'initializing' : truncation of constant value
-f:\fy2009\h\fy_basex.h(58) : warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it>,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const &,fy2009::smart_pointer_lu_tt<fy2009::trace_stream_it> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::const_iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> const &,fy2009::smart_pointer_tt<fy2009::msg_t> const *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::smart_pointer_tt<fy2009::msg_t>,std::allocator<fy2009::smart_pointer_tt<fy2009::msg_t> > >::iterator,fy2009::smart_pointer_tt<fy2009::msg_t>,fy2009::smart_pointer_tt<fy2009::msg_t> &,fy2009::smart_pointer_tt<fy2009::msg_t> *,int>' : identifier was truncated to '255' characters in the debug information
-d:\program files\microsoft visual studio\vc98\include\utility(21) : warning C4786: 'std::reverse_iterator<std::deque<fy2009::trace_provider_t::_piece_t,std::allocator<fy2009::trace_provider_t::_piece_t> >::const_iterator,fy2009::trace_provider_t::_piece_t,fy2009::trace_provider_t::_piece_t const &,fy2009::trace_provider_t::_piece_t const *,int>' : identifier was truncated to '255' characters in the debug information
-Linking...
 
 
 
 <h3>Results</h3>
-fy2009_test.exe - 0 error(s), 37 warning(s)
+fy2009_test.exe - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>
