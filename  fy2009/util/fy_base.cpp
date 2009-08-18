@@ -299,9 +299,11 @@ int32 event_slot_t::wait(slot_vec_t& signalled_vec, uint32 ms_timeout)
 }
 
 //tc_util_t
-bool tc_util_t::is_over_tc_end(uint32 tc_start, uint32 tc_deta, uint32 tc_cur) throw()
+bool tc_util_t::is_over_tc_end(uint32 tc_start, uint32 tc_deta, uint32 tc_cur, bool include_equal) throw()
 {
         uint32 tc_end=tc_start + tc_deta;
+
+	if(include_equal && tc_end == tc_cur) return true;
 
         //none of tc_end and tc_start overflow
         if(tc_end >= tc_start)

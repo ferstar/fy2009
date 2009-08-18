@@ -19,7 +19,15 @@
 
 USING_FY_NAME_SPACE
 
+#ifdef LINUX
+
 struct timeval last_tv={0,0};
+
+#elif defined(WIN32)
+
+uint32 last_tc=0;
+
+#endif
 class stub_msg_recver_t : public msg_receiver_it,
                           public ref_cnt_impl_t
 {
@@ -29,15 +37,21 @@ public:
         {
 		if(msg->get_msg() == 888)
 		{
+#ifdef LINUX
 			struct timeval tv;
 			gettimeofday(&tv,0);
 			printf("==msg 888 interval:%d\n", timeval_util_t::diff_of_timeval_tc(last_tv, tv));
 			last_tv = tv;
+#elif defined(WIN32)
+			uint32 tc = GetTickCount();
+			printf("==msg 888 interval:%d\n", tc - last_tc);
+			last_tc = tc;
+#endif
 		}
                 ++_cnt;
                 printf("handle a msg[%d]:%d,tc_posted:%d,utc_interval:%d,repeat:%d\n",
                         _cnt,msg->get_msg(), msg->get_utc_posted(), msg->get_utc_interval(), msg->get_repeat());
-//                usleep(100000); //determine msg proxy heart_beat return busy or interrupted
+//                fy_msleep(100); //determine msg proxy heart_beat return busy or interrupted
 /*
                 if(_cnt == 2)
                 {
@@ -94,7 +108,7 @@ void test_msg()
         sp_msg_proxy_t msg_proxy=sp_msg_proxy_t(msg_proxy_t::s_tls_instance(),true);
         sp_msg_t msg=msg_t::s_create(888,0,0);
         msg->set_repeat(-1);
-        msg->set_tc_interval(320);
+        msg->set_tc_interval(1000);
         g_rcver=new stub_msg_recver_t();
         g_rcver->add_reference();
         msg->set_receiver(sp_msg_rcver_t(g_rcver,true));

@@ -508,8 +508,14 @@ public:
       history:	2007-3-12   
     */
     static bool is_over_tc_end(uint32 tc_start, uint32 tc_deta,
-		uint32 tc_cur) throw(); 
-		
+		uint32 tc_cur, bool include_equal=false) throw(); 
+
+    /*function: it's similar to is_over_tc_end but including equal
+     history: 2009-8-18
+    */
+    static bool is_over_or_reach_tc_end(uint32 tc_start, uint32 tc_deta,
+                uint32 tc_cur) throw();	
+
     /*function: calculate difference between two tick-count
       history: 2007-3-15
     */

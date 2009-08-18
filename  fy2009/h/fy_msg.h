@@ -162,7 +162,7 @@ public:
  * Initialize: 2007-3-23
  * revise 2008-6-4
  */
-uint32 const MPXY_LOCAL_MQ_CNT=10;
+uint32 const MPXY_LOCAL_MQ_CNT=12;
 uint32 const MPXY_DEF_MP_SIZE=128;
 
 //max slice of once heart_beat,unit:user tick-count(10ms)
