@@ -32,7 +32,12 @@
 
 USING_FY_NAME_SPACE
 
+#ifdef LINUX
 struct timeval last_tv={0,0};
+#elif defined(WIN32)
+uint32 last_tc=0;
+#endif
+
 class stub_msg_recver_t : public msg_receiver_it,
                           public ref_cnt_impl_t
 {
@@ -41,17 +46,20 @@ public:
         void on_msg(msg_t *msg)
         {
                 ++_cnt;
-//88
-struct timeval tv;
-gettimeofday(&tv, 0);
-uint32 tc=timeval_util_t::diff_of_timeval_tc(last_tv, tv);
-last_tv=tv;
-FY_INFOD("==handle a msg,tc:"<<tc);
-//99		
-                FY_INFOD("handle a msg["<<_cnt<<"]:"<<msg->get_msg()<<",utc_posted:"<<msg->get_utc_posted()
-			<<",tc_interval:"<<msg->get_tc_interval()<<",repeat:"<<msg->get_repeat());
 
-		fy_msleep(100);
+#ifdef LINUX
+	struct timeval tv;
+	gettimeofday(&tv, 0);
+	uint32 tc=timeval_util_t::diff_of_timeval_tc(last_tv, tv);
+	last_tv=tv;
+#elif defined(WIN32)
+	uint32 tc_cur=GetTickCount();
+	uint32 tc = tc_cur - last_tc;
+	last_tc = tc_cur;	
+#endif
+                FY_INFOD("handle a msg["<<_cnt<<"]:"<<msg->get_msg()<<",utc_posted:"<<msg->get_utc_posted()
+			<<",tc_interval:"<<msg->get_tc_interval()<<",real interval:"<<tc<<",repeat:"<<msg->get_repeat());
+
 /*
                 if(_cnt == 2)
                 {
@@ -101,14 +109,14 @@ public:
 		FY_INFOD("<<<<end initializing test thread");
 
 		_unlock_start();
-
+/*
 		//send a msg to itself.
         	sp_msg_t msg=msg_t::s_create(999, 0, 0);
         	msg->set_repeat(0);
         	msg->set_tc_interval(100);	
 		msg->set_receiver(sp_msg_rcver_t(new stub_msg_recver_t(),true));
 		if(msg_proxy) msg_proxy->post_msg(msg);
-		
+*/		
 		while(true)
 		{
 			if(_is_stopping())
@@ -117,7 +125,7 @@ public:
 
 				//uncomment it to trigger thread cancel logic, otherwise, thread should be
 				//stopped normally
-				fy_msleep(5000);
+				//fy_msleep(5000);
 
 				FY_INFOD("ok, I stop on my own");
 				break;
@@ -140,12 +148,13 @@ public:
 			{
 				if(msg_proxy->heart_beat() == RET_HB_IDLE) 
 				{
-					_on_idle(1000);
+					uint32 idle_deta=msg_proxy->get_min_delay_interval()/2;
+					_on_idle(idle_deta);
 				}
 			}
 			else
 			{
-				_on_idle(1000);
+				_on_idle(200);
 			}
 
 		}
@@ -167,8 +176,8 @@ void test_thd()
 	
 	//send msg to thread
         sp_msg_t msg=msg_t::s_create(888,0,0);
-        msg->set_repeat(2);
-        msg->set_tc_interval(100);
+        msg->set_repeat(-1);
+        msg->set_tc_interval(20);
 
         stub_msg_recver_t *rcver=new stub_msg_recver_t();
         rcver->add_reference();
@@ -197,9 +206,9 @@ void test_thd_pool()
 
         trace_prvd->register_tracer();
 
-	sp_tpool_t thd_pool=thread_pool_t::s_create(1);//pool_size=3
+	sp_tpool_t thd_pool=thread_pool_t::s_create(3);//pool_size=3
 	uint16 thd_idx=0; 
-	for(int i=0;i<1;++i)
+	for(int i=0;i<8;++i)
 	{
 
 		sp_thd_t sp_thd=thd_pool->assign_thd(&thd_idx);

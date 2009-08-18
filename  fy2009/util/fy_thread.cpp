@@ -163,7 +163,7 @@ void thread_t::stop(uint32 timeout)
 	int32 ret=_e_stopped.wait(timeout);//wait for thread exiting
 	if(ret)//thread doesn't exit before timeout expired
 	{
-		FY_XERROR("stop, thread doesn't exit before timeout elapsed, thread-relasted resources will be leak");
+		FY_XERROR("stop, thread doesn't exit before timeout elapsed, thread-related resources may be leak");
 	}
 
 #ifdef WIN32
@@ -298,6 +298,8 @@ void thread_pool_t::_thd_t::run()
 	_busy=true;
 	while(1)
 	{
+		if(_is_stopping()) break;
+
 		if(msg_proxy) hb_ret_msg=msg_proxy->heart_beat();//enabled msg service 
 		if(aio_proxy) hb_ret_aio=aio_proxy->heart_beat();//enabled aio service
 
@@ -310,13 +312,12 @@ void thread_pool_t::_thd_t::run()
 		//as both msg_proxy and aio_proxy are idle
 		if(!_busy) 
 		{
+			if(_is_stopping()) break;
+
 			uint32 ms_timeout=(msg_proxy? msg_proxy->get_min_delay_interval()/2 : 400);
 			if(!ms_timeout) ms_timeout = 1;	
 			_busy=_on_idle(ms_timeout);
-//88
-printf("==_on_idle==,ms_timeout:%d\n",ms_timeout); 
 		}
-		if(_is_stopping()) break;
 	}
 
 	FY_CATCH_N_THROW_AGAIN_EX("tpt-run-term","cnta",;);
