@@ -31,7 +31,7 @@ extern "C" int32 fy_thread_setspecific(fy_thread_key_t thd_key, void *arg)
 	return (::TlsSetValue(thd_key, arg)? 0 : -1);
 }
 
-extern "C" void fy_thread_join(fy_thread_t thd, void *ignorance)
+extern "C" void fy_thread_join(fy_thd_t thd, void *ignorance)
 {
 	::WaitForSingleObject(thd,INFINITE);
 }

@@ -222,7 +222,7 @@ void test_thd_pool()
 		//send a message to assigned thread
         	sp_msg_t msg=msg_t::s_create(i+100,0,0);
         	msg->set_repeat(i+5);
-        	msg->set_tc_interval(20);
+        	msg->set_tc_interval(10);
         	msg->set_receiver(sp_msg_rcver_t(new stub_msg_recver_t(),true));
 		msg_proxy_t *msg_proxy=sp_thd->get_msg_proxy();
         	if(msg_proxy) msg_proxy->post_msg(msg);	
