@@ -413,7 +413,7 @@ int16 trace_provider_t::_poll_once()
                 int8 tmp_buf[128];
                 sprintf(tmp_buf, "<ts=%04d-%02d-%02d %02d:%02d:%02d.%03d><tid=%lu>",
                         ts.tm_year,ts.tm_mon,ts.tm_mday,
-                        ts.tm_hour,ts.tm_min,ts.tm_sec,tc,(uint32)(pipe->get_w_thd()));
+                        ts.tm_hour,ts.tm_min,ts.tm_sec,tc,pipe->get_w_tid());
 
                 uint32 len_prefix=::strlen(tmp_buf);
 
@@ -480,7 +480,7 @@ void trace_provider_t::open()
         //create read thread
         _s_cs_rtf_read.lock();//wait for read thread unlock it while ready to read
 
-        fy_thread_t tmp_thd=0;
+        fy_thd_t tmp_thd=0;
 #ifdef POSIX
         if(pthread_create(&tmp_thd,0,_thd_r_f,(void *)this))
 #elif defined(WIN32)
@@ -510,6 +510,7 @@ void trace_provider_t::close()
 
         _stop_flag=true;//notify read thread to stop
         fy_thread_join(_r_thd,0);//wait read thread exit
+	fy_close_thread_handle(_r_thd);	
         _r_thd=0;
 }
 
@@ -586,7 +587,7 @@ void trace_provider_t::unregister_tracer()
         if(!ret) return; //never registered
         fy_thread_setspecific(_tls_key,(void *)0);//reset thread local storage
 
-        fy_thread_t thd=fy_thread_self();
+        uint32 tid=fy_gettid();
         smart_lock_t slock(&_s_cs);
 
         for(uint16 i=0;i<_filled_len;i++)
@@ -594,7 +595,7 @@ void trace_provider_t::unregister_tracer()
                 if(!_vec_tracer[i]) continue; //empty slot
 
                 sp_owp_t sp_pip=_vec_tracer[i]->get_pipe();
-                if(sp_pip->get_w_thd()!=thd) continue;//not attached to this thread
+                if(sp_pip->get_w_tid()!=tid) continue;//not attached to this thread
 
                 //found current thread matched tracer
                 _vec_tracer[i]->stop_write();//notify read thread writting has been stopped
@@ -623,10 +624,10 @@ void trace_provider_t::unregister_tracer()
 trace_provider_t::tracer_t *trace_provider_t::get_thd_tracer()
 {
         void *ret=fy_thread_getspecific(_tls_key);
-	uint32 tmp_thd=(uint32)fy_thread_self();
+	uint32 tmp_tid=fy_gettid();
         if(ret) return (tracer_t *)ret;
 
-        __INTERNAL_FY_TRACE_EX("trace_provider_t::get_thd_tracer,error, thread(tid="<<tmp_thd \
+        __INTERNAL_FY_TRACE_EX("trace_provider_t::get_thd_tracer,error, thread(tid="<<tmp_tid \
                 <<") hasn't register for tracer\n");
 
         return 0;

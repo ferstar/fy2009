@@ -262,7 +262,7 @@ private:
         tracer_t * _dead_vec_tracer[TRACE_PROVIDER_CAPACITY];
 
         bool _stop_flag; //notify read thread to stop
-        fy_thread_t _r_thd;//read thread
+        fy_thd_t _r_thd;//read thread
         critical_section_t _s_cs_rtf_read;//when read thread is ready will unlock it
 
         //trace dispatching table,suffix is trace level

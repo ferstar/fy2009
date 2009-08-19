@@ -187,7 +187,7 @@ msg_proxy_t *msg_proxy_t::s_tls_instance(uint32 mp_size,
 	msg_proxy->add_reference();
         int32 ret_set=fy_thread_setspecific(_s_tls_key,(void *)msg_proxy);
         FY_ASSERT(ret_set == 0);
-	msg_proxy->_thd=fy_thread_self();
+	msg_proxy->_tid=fy_gettid();
 
         return msg_proxy;
 }
@@ -374,7 +374,7 @@ void msg_proxy_t::_lazy_init_object_id() throw()
 	FY_TRY
 
  	string_builder_t sb;
- 	sb<<"msg_proxy_"<<(void*)this<<"_thd"<<(uint32)_thd;
+ 	sb<<"msg_proxy_"<<(void*)this<<"_tid"<<_tid;
  	sb.build(_object_id);
  
 	__INTERNAL_FY_EXCEPTION_TERMINATOR(;);
@@ -494,7 +494,7 @@ void msg_proxy_t::post_msg(sp_msg_t& msg)
 	FY_XFUNC("post_msg,msg:"<<msg->get_msg());
 
 	FY_TRY
-	if(_thd == fy_thread_self()) //owner thread is destination
+	if(_tid == fy_gettid()) //owner thread is destination
 	{
 		if(msg.is_null()) return; 
 

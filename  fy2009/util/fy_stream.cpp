@@ -1349,10 +1349,10 @@ oneway_pipe_t::oneway_pipe_t(uint32 buf_size) : _cs_reg(true), _cs_r(true), _cs_
         if(_len_buf) _buf=new int8[_len_buf];
         _r_pos=0;
         _r_pos_c=0;
-        _r_thd=0;
+        _r_tid=0;
         _w_pos=0;
         _w_pos_c=0;
-        _w_thd=0;
+        _w_tid=0;
 
         this->set_lock(&_cs_reg); //ensure add/release reference thread-safe
 }
@@ -1402,17 +1402,17 @@ void *oneway_pipe_t::lookup(uint32 iid, uint32 pin) throw()
 bool oneway_pipe_t::register_read()
 {
         smart_lock_t slock(&_cs_reg);
-        fy_thread_t thd_self=fy_thread_self();
-        if(_r_thd)
+        uint32 tid_self=fy_gettid();
+        if(_r_tid)
         {
-                if(_r_thd==thd_self)
+                if(_r_tid==tid_self)
                         return true;
                 else
                         return false;
         }
-        else //_r_thd==0
+        else //_r_tid==0
         {
-                _r_thd=thd_self;
+                _r_tid=tid_self;
                 return true;
         }
         return false;
@@ -1421,23 +1421,23 @@ bool oneway_pipe_t::register_read()
 void oneway_pipe_t::unregister_read()
 {
         smart_lock_t slock(&_cs_reg);
-        if(_r_thd==fy_thread_self()) _r_thd=0;
+        if(_r_tid==fy_gettid()) _r_tid=0;
 }
 
 bool oneway_pipe_t::register_write()
 {
         smart_lock_t slock(&_cs_reg);
-        fy_thread_t thd_self=fy_thread_self();
-        if(_w_thd)
+        uint32 tid_self=fy_gettid();
+        if(_w_tid)
         {
-                if(_w_thd==thd_self)
+                if(_w_tid==tid_self)
                         return true;
                 else
                         return false;
         }
-        else //_w_thd==0
+        else //_w_tid==0
         {
-                _w_thd=thd_self;
+                _w_tid=tid_self;
                 return true;
         }
         return false;
@@ -1446,7 +1446,7 @@ bool oneway_pipe_t::register_write()
 void oneway_pipe_t::unregister_write()
 {
         smart_lock_t slock(&_cs_reg);
-        if(_w_thd==fy_thread_self()) _w_thd=0;
+        if(_w_tid==fy_gettid()) _w_tid=0;
 }
 
 uint32 oneway_pipe_t::get_w_size() const
@@ -1472,9 +1472,9 @@ uint32 oneway_pipe_t::get_r_size() const
 uint32 oneway_pipe_t::read(int8* buf,uint32 len, bool auto_commit)
 {
         FY_ASSERT(buf && len);
-	FY_ASSERT(0==_r_thd ||  _r_thd==fy_thread_self());
+	FY_ASSERT(0==_r_tid ||  _r_tid==fy_gettid());
 
-        smart_lock_t slock(_r_thd? 0: &_cs_r);
+        smart_lock_t slock(_r_tid? 0: &_cs_r);
 
         //keep a snap shot of _w_pos_c to avoid multi-thread conflict
         uint32 snap_w_pos_c=_w_pos_c;
@@ -1517,9 +1517,9 @@ uint32 oneway_pipe_t::read(int8* buf,uint32 len, bool auto_commit)
 uint32 oneway_pipe_t::write(const int8* buf,uint32 len,bool auto_commit)
 {
         FY_ASSERT(buf && len );
-	FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
+	FY_ASSERT(0 == _w_tid || _w_tid == fy_gettid());
 
-        smart_lock_t slock(_w_thd? 0 : &_cs_w);
+        smart_lock_t slock(_w_tid? 0 : &_cs_w);
 
         //keep a snap shot of _r_pos_c to avoid multi-thread conflict
         uint32 snap_r_pos_c=_r_pos_c;
@@ -1568,9 +1568,9 @@ uint32 oneway_pipe_t::write(const int8* buf,uint32 len,bool auto_commit)
 //only write thread can commit write
 void oneway_pipe_t::commit_w()
 {
-        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
+        FY_ASSERT(0 == _w_tid || _w_tid == fy_gettid());
 
-        smart_lock_t slock(_w_thd? 0 : &_cs_w);
+        smart_lock_t slock(_w_tid? 0 : &_cs_w);
 
         _w_pos_c=_w_pos;
 }
@@ -1578,9 +1578,9 @@ void oneway_pipe_t::commit_w()
 //only write thread can rollback write
 void oneway_pipe_t::rollback_w()
 {
-        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
+        FY_ASSERT(0 == _w_tid || _w_tid == fy_gettid());
 
-        smart_lock_t slock(_w_thd? 0 : &_cs_w);
+        smart_lock_t slock(_w_tid? 0 : &_cs_w);
 
         _w_pos=_w_pos_c;
 }
@@ -1588,9 +1588,9 @@ void oneway_pipe_t::rollback_w()
 //only read thread can commit read
 void oneway_pipe_t::commit_r()
 {
-        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
+        FY_ASSERT(0 == _w_tid || _w_tid == fy_gettid());
 
-        smart_lock_t slock(_r_thd? 0 : &_cs_r);
+        smart_lock_t slock(_r_tid? 0 : &_cs_r);
 
         _r_pos_c=_r_pos;
 }
@@ -1598,9 +1598,9 @@ void oneway_pipe_t::commit_r()
 //only read thread can rollback read
 void oneway_pipe_t::rollback_r()
 {
-        FY_ASSERT(0 == _w_thd || _w_thd == fy_thread_self());
+        FY_ASSERT(0 == _w_tid || _w_tid == fy_gettid());
 
-        smart_lock_t slock(_r_thd? 0 : &_cs_r);
+        smart_lock_t slock(_r_tid? 0 : &_cs_r);
 
         _r_pos=_r_pos_c;
 }

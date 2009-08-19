@@ -55,7 +55,8 @@ DECL_FY_NAME_SPACE_BEGIN
 
 typedef long long int64; //size is 64 bits
 typedef unsigned long long uint64; //size is 64 bits
-typedef pthread_t fy_thread_t;
+typedef pthread_t fy_thd_t;
+//reutrn type: fy_thd_t
 #define fy_thread_self pthread_self
 
 typedef pthread_key_t fy_thread_key_t;
@@ -64,8 +65,13 @@ typedef pthread_key_t fy_thread_key_t;
 #define fy_thread_setspecific pthread_setspecific
 #define fy_thread_key_delete pthread_key_delete
 #define fy_thread_join pthread_join
+//do nothing in linux
+#define fy_close_thread_handle
 
-#define fy_gettid getpid
+//return type: uint32
+#define fy_getpid getpid
+//return type: uint32
+#define fy_gettid pthread_self
 
 //sleep for milliseconds
 #define fy_msleep(ms) ::usleep((ms)*1000) 
@@ -74,7 +80,11 @@ typedef pthread_key_t fy_thread_key_t;
 
 typedef LONGLONG int64; //size is 64 bits
 typedef ULONGLONG uint64; //size is 64 bits
-typedef HANDLE fy_thread_t;
+typedef HANDLE fy_thd_t;
+
+//return type: fy_thd_t
+//in windows, GetCurrentThread only returns a pseudo thread handle, that is, it only can refer to calling thread
+//within itself, in fact, it always returns a same constant value:0xfffffffe
 #define fy_thread_self GetCurrentThread
 
 typedef DWORD fy_thread_key_t;
@@ -86,10 +96,15 @@ extern "C" {
 
 int32 fy_thread_key_create(fy_thread_key_t *p_thd_key, void *ignorance);
 int32 fy_thread_setspecific(fy_thread_key_t thd_key, void *arg);
-void fy_thread_join(fy_thread_t thd, void *ignorance);
+void fy_thread_join(fy_thd_t thd, void *ignorance);
+//para:fy_thd_t
+#define fy_close_thread_handle ::CloseHandle 
 
 }
 
+//return type:uint32
+#define fy_getpid GetCurrentProcessId
+//return type:uint32
 #define fy_gettid GetCurrentThreadId
 
 //sleep for milliseconds

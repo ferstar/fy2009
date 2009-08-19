@@ -123,7 +123,7 @@ void test_msg()
 
 
 	//test cross-thread message
-        fy_thread_t thd;
+        fy_thd_t thd;
         msg_proxy_t *raw_msg_proxy=(msg_proxy_t*)msg_proxy;
         for(int i=0;i<10;++i) 
 	{

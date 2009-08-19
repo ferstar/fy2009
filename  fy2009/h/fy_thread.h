@@ -109,7 +109,7 @@ public:
 	//lookup_it
 	void *lookup(uint32 iid, uint32 pin) throw();
 	
-	inline fy_thread_t get_thd() const throw() { return _thd; }
+	inline fy_thd_t get_thd() const throw() { return _thd; }
 	inline uint32 get_thd_id() const throw() { return _thd_id; }
 	
 	inline msg_proxy_t *get_msg_proxy() throw() { return (msg_proxy_t *)_msg_proxy; }
@@ -141,7 +141,7 @@ private:
 	void _handle_msg_on_idle();   //try to handle msg reaching this thread from _on_idle()
 	void _handle_aio_on_idle();  //try to handle aio event reaching this thread from _on_idle()
 private:
-	fy_thread_t _thd;
+	fy_thd_t _thd;
 	uint32 _thd_id;
 	critical_section_t _cs;//indicate start() calling has been completed
 

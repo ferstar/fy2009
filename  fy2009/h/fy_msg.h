@@ -185,7 +185,7 @@ public:
 						event_slot_t *es_notempty=0, uint16 esi_notempty=0);
         static void s_delete_tls_instance(); //destroyed instance attached to current thread	
 public:
-	inline fy_thread_t get_owner_thread() const throw() { return _thd; }
+	inline uint32 get_owner_tid() const throw() { return _tid; }
 
 	//heart_beat_it
 	//periodically try to receive messages
@@ -245,7 +245,7 @@ private:
 	uint32 _utc_lastpoll[MPXY_LOCAL_MQ_CNT]; //record last poll user tick-count for each _local_mq
 	uint8 _idx_nextpoll;//hold _local_mq suffix from which  next _poll_local_mq will start 
 	uint32 _max_slice; //max slice length expected once heart_beat calling,unit:user tick-count
-	fy_thread_t _thd; //owner thread
+	uint32 _tid; //owner thread id
 	critical_section_t _cs; //lock/unlock post_msg
 
         //signal it with _esi_notfull after reading a message from _mp, notify one of message writer threads to write

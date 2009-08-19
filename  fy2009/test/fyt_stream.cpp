@@ -985,7 +985,7 @@ void test_itc_with_nlpipe_performance()
         printf("***********itc with lock***********\n");
         {
         ITC_Area *itca=new ITC_Area();
-        fy_thread_t thd;
+        fy_thd_t thd;
         itca->no_data=false;
         itca->cs_ready.lock();
 #ifdef POSIX
@@ -1022,7 +1022,7 @@ void test_itc_with_nlpipe_performance()
         sp_owp_t sp_nlp=oneway_pipe_t::s_create(524287);
         sp_nlp->register_write();
         char buf[]={'K'};
-        fy_thread_t thd;
+        fy_thd_t thd;
         g_cs_thd_ready.lock();
 #ifdef POSIX
         pthread_create(&thd,0,tf_itc_nlp,(void *)(oneway_pipe_t*)sp_nlp);

@@ -215,8 +215,8 @@ public:
 	//on the other hand, set heart beat thread
 	void init_hb_thd();
 
-	//get its owner thread, i.e. heart beat thread
-	fy_thread_t get_hb_thread() { return _hb_thread; }
+	//get its owner thread id, i.e. heart beat thread
+	uint32 get_hb_tid() { return _hb_tid; }
 
 	//heart_beat_i,ensure it's only called by one thread
         virtual int8 heart_beat(); //drive aio service and monitor aio events
@@ -239,7 +239,7 @@ private:
 	sp_aioeh_t *_ehs; //registered event handler, which subfix is file descriptor
 	uint32 _max_fd_count; //size of _ehs
 	critical_section_t _cs;
-	fy_thread_t _hb_thread;
+	uint32 _hb_tid; //heart beat thread id
 
 #ifdef LINUX
 #if defined(__ENABLE_EPOLL__)
@@ -353,7 +353,7 @@ public:
 public: 
 	~aio_proxy_t();
 
-        inline fy_thread_t get_owner_thread() const throw() { return _thd; }
+        inline uint32 get_owner_tid() const throw() { return _tid; }
 
 	//for dignosis
 	//->
@@ -419,7 +419,7 @@ private:
         static critical_section_t _s_cs;
 private:
 	sp_owp_t _ep; //event format in pipe: fd(int32)+aio events(uint32)
-	fy_thread_t _thd; //owner thread
+	uint32 _tid; //owner thread id
 	uint32 _utc_max_slice; //max slice length expected once heart_beat calling,uint:ms
         _reg_item_t *_items; //registered item, whose subfix is file descriptor
         uint32 _max_fd_count; //size of _ehs	

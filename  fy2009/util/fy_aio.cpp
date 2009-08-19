@@ -85,7 +85,7 @@ aio_provider_t::aio_provider_t(uint16 max_fd_count) : _cs(true)
 	else
 		_utc_max_slice=AIOP_HB_MAX_SLICE;
 
-	_hb_thread=0;
+	_hb_tid=0;
 
 #ifdef LINUX	
 #if defined(__ENABLE_EPOLL__)
@@ -165,7 +165,7 @@ uint32 aio_provider_t::get_max_slice() const throw()
 
 void aio_provider_t::init_hb_thd()
 {
-	_hb_thread = fy_thread_self();
+	_hb_tid = fy_gettid();
 
 #ifdef LINUX
 	signal(SIGPIPE, SIG_IGN);
@@ -592,7 +592,7 @@ aio_proxy_t *aio_proxy_t::s_tls_instance(uint32 ep_size, uint16 max_fd_count, ev
 	aio_proxy->add_reference();
 	int ret_set=fy_thread_setspecific(_s_tls_key,(void *)aio_proxy);
 	FY_ASSERT(ret_set == 0);
-	aio_proxy->_thd=fy_thread_self();
+	aio_proxy->_tid=fy_gettid();
 	aio_proxy->_msg_proxy = sp_msg_proxy_t(msg_proxy_t::s_tls_instance(), true);
 	aio_proxy->_es_notempty = es_notempty;
 	aio_proxy->_esi_notempty = esi_notempty;
@@ -847,7 +847,7 @@ void aio_proxy_t::_lazy_init_object_id() throw()
         FY_TRY
 
         string_builder_t sb;
-        sb<<"aio_proxy_thd"<<(uint32)_thd<<"_"<<(void*)this;
+        sb<<"aio_proxy_tid"<<_tid<<"_"<<(void*)this;
         sb.build(_object_id);
 
         __INTERNAL_FY_EXCEPTION_TERMINATOR(;);

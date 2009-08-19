@@ -564,10 +564,10 @@ public:
         bool register_write();
         void unregister_write();
 
-        inline bool is_write_registered() const throw() { return _w_thd!=0; }
-        inline bool is_read_registered() const throw() { return _r_thd!=0; }
-        inline fy_thread_t get_r_thd() const throw(){ return _r_thd; }
-        inline fy_thread_t get_w_thd() const throw(){ return _w_thd; }
+        inline bool is_write_registered() const throw() { return _w_tid!=0; }
+        inline bool is_read_registered() const throw() { return _r_tid!=0; }
+        inline uint32 get_r_tid() const throw(){ return _r_tid; }
+        inline uint32 get_w_tid() const throw(){ return _w_tid; }
         uint32 read(int8* buf,uint32 len, bool auto_commit=true);
         uint32 write(const int8* buf,uint32 len, bool auto_commit=true);
         void commit_w();//commit write,uncommited data will cann't be read
@@ -592,8 +592,8 @@ private:
         uint32 _len_buf;
         volatile uint32 _r_pos; //next read position
         volatile uint32 _r_pos_c; //committed read position,2008-4-1
-        fy_thread_t _r_thd; //read thread
-        fy_thread_t _w_thd; //write thread
+        uint32 _r_tid; //read thread id
+        uint32 _w_tid; //write thread id
         volatile uint32 _w_pos; //next write position
         volatile uint32 _w_pos_c;//committed write position
         critical_section_t _cs_reg;//for register read/write

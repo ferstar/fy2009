@@ -166,10 +166,7 @@ void thread_t::stop(uint32 timeout)
 		FY_XERROR("stop, thread doesn't exit before timeout elapsed, thread-related resources may be leak");
 	}
 
-#ifdef WIN32
-
-	::CloseHandle(_thd);	
-#endif
+	fy_close_thread_handle(_thd);
 	_thd=0;
 	_thd_id=0;
 } 
@@ -253,7 +250,7 @@ void thread_t::_lazy_init_object_id() throw()
         FY_TRY
 
         string_builder_t sb;
-        sb<<"thread_"<<(void*)this<<"_thd"<<(uint32)_thd;
+        sb<<"thread_"<<(void*)this<<"_tid"<<(uint32)_thd_id;
         sb.build(_object_id);
 
         __INTERNAL_FY_EXCEPTION_TERMINATOR(;);
@@ -328,7 +325,7 @@ void thread_pool_t::_thd_t::_lazy_init_object_id() throw()
         FY_TRY
 
         string_builder_t sb;
-        sb<<"thread_pool_t::_thd_"<<(void*)this<<"_thd"<<(uint32)get_thd();
+        sb<<"thread_pool_t::_thd_"<<(void*)this<<"_tid"<<get_thd_id();
         sb.build(_object_id);
 
         __INTERNAL_FY_EXCEPTION_TERMINATOR(;);
