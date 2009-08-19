@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <exception>
-#include <sys/types.h>
 #include <vector>
 #include <queue>
 #include "fy_iid.h"
@@ -25,6 +24,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <sys/time.h>
 #include <pthread.h>
 
@@ -65,11 +65,7 @@ typedef pthread_key_t fy_thread_key_t;
 #define fy_thread_key_delete pthread_key_delete
 #define fy_thread_join pthread_join
 
-#if defined(__GETTID_AVAILABLE__) //linux version is above 2.5
-#       define fy_gettid gettid
-#else
-#       define fy_gettid getpid
-#endif
+#define fy_gettid getpid
 
 //sleep for milliseconds
 #define fy_msleep(ms) ::usleep((ms)*1000) 
