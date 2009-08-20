@@ -82,7 +82,21 @@ typedef smart_pointer_lu_tt<random_stream_it> sp_rstream_t;
  *[history] 
  * Initialize: 2008-10-28
  */
- #ifdef LINUX
+#ifdef WIN32
+
+/*[tip] simulate WSABUF with iovec
+ *[desc]it must have same memory layout with WSABUF type to ensure it instead WSABUF to be used by
+ * windows system functions
+ *[history]
+ * Initialize 2009-8-20
+ */
+typedef struct iovec
+{
+	u_long   iov_len;
+	char FAR *iov_base;	
+};
+
+#endif
 
 class iovec_it : public lookup_it
 {
@@ -101,7 +115,6 @@ public:
 
 typedef smart_pointer_lu_tt<iovec_it> sp_iovec_t;
 
-#endif //LINUX
 
 /*[tip] adaptor to stream_it
  *[desc] change access interface of stream_it,always use it as stack object but never heap object
