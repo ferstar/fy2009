@@ -93,7 +93,7 @@ const uint8 REG_TRACE_STM_OPT_ALL = REG_TRACE_STM_OPT_EQ | REG_TRACE_STM_OPT_LT 
  */
 class trace_provider_t
 {
-#ifdef POSIX
+#ifdef LINUX
 private:
 #elif defined(WIN32)
 public:
@@ -239,7 +239,7 @@ private:
         typedef std::vector<sp_trace_stream_t> _stream_vec_t;
 private:
         //thread function,to read trace from pipes and write them to trace file
-#ifdef POSIX
+#ifdef LINUX
         static void *_thd_r_f(void * arg);
 #elif defined(WIN32)
 	static DWORD WINAPI _thd_r_f(LPVOID arg);
@@ -301,7 +301,7 @@ private:
         void _check_file(uint32 want_size);
 private:
         static critical_section_t _s_cs;
-#ifdef POSIX
+#ifdef LINUX
         static uint32 _s_pid; //process id
 #elif defined(WIN32)
 		static DWORD _s_pid;

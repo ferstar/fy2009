@@ -41,7 +41,7 @@ extern "C" void fy_thread_join(fy_thd_t thd, void *ignorance)
 //critical_section_t
 critical_section_t::critical_section_t(bool recursive_flag) throw()
 {
-#ifdef POSIX
+#ifdef LINUX
 
         pthread_mutexattr_t mtx_attr;
         pthread_mutexattr_init(&mtx_attr);
@@ -59,12 +59,12 @@ critical_section_t::critical_section_t(bool recursive_flag) throw()
 	{
 		_sem = ::CreateSemaphore(NULL,1,1,NULL);
 	}
-#endif //POSIX
+#endif //LINUX
 }
 
 critical_section_t::~critical_section_t() throw()
 {
-#ifdef POSIX
+#ifdef LINUX
 
         pthread_mutex_destroy(&_mtx);
 
@@ -78,12 +78,12 @@ critical_section_t::~critical_section_t() throw()
 	else
 		DeleteCriticalSection(&_cs);
 
-#endif //POSIX
+#endif //LINUX
 }
 
 void critical_section_t::lock() throw()
 {
-#ifdef POSIX
+#ifdef LINUX
 	
 	pthread_mutex_lock(&_mtx);
 
@@ -101,7 +101,7 @@ void critical_section_t::lock() throw()
 
 void critical_section_t::unlock() throw() 
 { 
-#ifdef POSIX
+#ifdef LINUX
 
 	pthread_mutex_unlock(&_mtx); 
 
@@ -119,7 +119,7 @@ void critical_section_t::unlock() throw()
 
 bool critical_section_t::try_lock() throw() 
 { 
-#ifdef POSIX
+#ifdef LINUX
 
 	return pthread_mutex_trylock(&_mtx)==0; 
 
@@ -137,7 +137,7 @@ bool critical_section_t::try_lock() throw()
 //event_t
 event_t::event_t(bool initial_signalled)
 {
-#ifdef POSIX
+#ifdef LINUX
 
         pthread_cond_init(&_cnd,0);
         _signalled=initial_signalled;
@@ -147,12 +147,12 @@ event_t::event_t(bool initial_signalled)
 	//it's resetted automatically
 	_he = ::CreateEvent(NULL, FALSE, initial_signalled, NULL);
 	
-#endif //POSIX
+#endif //LINUX
 }
 
 event_t::~event_t()
 {
-#ifdef POSIX
+#ifdef LINUX
 
         pthread_cond_destroy(&_cnd);
 
@@ -168,7 +168,7 @@ event_t::~event_t()
 
 void event_t::signal()
 {
-#ifdef POSIX
+#ifdef LINUX
 
         if(_signalled) return; //only lock on demand
 
@@ -188,7 +188,7 @@ int32 event_t::wait(uint32 ms_timeout)
 {
         int32 ret=0;
 
-#ifdef POSIX
+#ifdef LINUX
 
         smart_lock_t slock(&_cs);
 
@@ -225,7 +225,7 @@ int32 event_t::wait(uint32 ms_timeout)
 	else //time out
 		return -1;
 
-#endif //POSIX
+#endif //LINUX
 
         return ret;
 }
@@ -326,7 +326,7 @@ uint32 tc_util_t::diff_of_tc(uint32 tc_start, uint32 tc_end) throw()
         return 0xffffffff - tc_start + tc_end;
 }
 
-#ifdef POSIX
+#ifdef LINUX
 
 //timeval_util_t
 struct timeval timeval_util_t::diff_of_timeval(const struct timeval& tv1,const struct timeval& tv2) throw()
@@ -582,7 +582,7 @@ uint32 user_clock_t::get_localtime(struct tm *lt) throw()
 	return _local_time.tv_usec/1000;
 }
 
-#endif //POSIX
+#endif //LINUX
 
 //string_util_t
 bool string_util_t::_s_is_ws(int8 c)

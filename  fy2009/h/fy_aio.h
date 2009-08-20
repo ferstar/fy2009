@@ -21,12 +21,12 @@
  */
 #include "fy_msg.h"
 
-#ifdef POSIX
+#ifdef LINUX
 
 #include <signal.h>
 #include <fcntl.h>
 
-#endif //POSIX
+#endif //LINUX
 #include <list>
 
 DECL_FY_NAME_SPACE_BEGIN
@@ -168,7 +168,7 @@ uint32 const AIOP_HB_MAX_SLICE=100; //unit:ms
 //epoll_wait can polled max events count for each call
 int const EPOLL_WAIT_SIZE=512;
 
-#ifdef POSIX
+#ifdef LINUX
 
 #define AIO_SOCKET_TO_KEY(fd) (fd)
 #define AIO_KEY_TO_SOCKET(key) (key)

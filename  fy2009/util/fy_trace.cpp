@@ -31,7 +31,7 @@ sp_trace_stream_t trace_provider_t::_std_trace_stream_t::s_create()
 
 uint32 trace_provider_t::_std_trace_stream_t::write(const int8* buf, uint32 len, bool trace_start)
 {
-#ifdef POSIX
+#ifdef LINUX
         return ::write(STDOUT_FILENO, buf, len);
 #elif defined(WIN32)
 		printf("%s",buf);
@@ -280,7 +280,7 @@ trace_provider_t *trace_provider_t::instance()
 }
 
 //poll to read trace from pipes and write it to trace file
-#ifdef POSIX
+#ifdef LINUX
 
 void *trace_provider_t::_thd_r_f(void *arg)
 
@@ -481,7 +481,7 @@ void trace_provider_t::open()
         _s_cs_rtf_read.lock();//wait for read thread unlock it while ready to read
 
         fy_thd_t tmp_thd=0;
-#ifdef POSIX
+#ifdef LINUX
         if(pthread_create(&tmp_thd,0,_thd_r_f,(void *)this))
 #elif defined(WIN32)
 	tmp_thd=::CreateThread(NULL, 0, _thd_r_f, (void*)this, 0, NULL);
@@ -700,7 +700,7 @@ void trace_file_t::_s_lazy_init()
         if(_s_pid) return; //has initialized
 
         smart_lock_t slock(&_s_cs);
-#ifdef POSIX
+#ifdef LINUX
         uint32 pid=(uint32)::getpid();
 #elif defined(WIN32)
 		DWORD pid=::GetCurrentProcessId();
@@ -725,7 +725,7 @@ void trace_file_t::_s_lazy_init()
 
         for(int16 i=ret; i>=0; i--)
         {
-#ifdef POSIX
+#ifdef LINUX
                 if(_s_exe_name[i]=='/')
 #elif defined(WIN32)
 				if(_s_exe_name[i] == '\\')

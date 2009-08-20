@@ -6,7 +6,7 @@
 --------------------Configuration: fy2009_util_windows - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8C.tmp" with contents
+Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA2E.tmp" with contents
 [
 /nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "__ENABLE_COMPLETION_PORT__" /D "FY_TRACE_ENABLE_IO" /Fp"Debug/fy2009_util_windows.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
 "F:\fy2009\util\fy_aio.cpp"
@@ -17,7 +17,7 @@ Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8C.tmp" with cont
 "F:\fy2009\util\fy_thread.cpp"
 "F:\fy2009\util\fy_trace.cpp"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8C.tmp" 
+Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA2E.tmp" 
 Creating command line "link.exe -lib /nologo /out:"Debug\fy_util.lib "  .\Debug\fy_aio.obj .\Debug\fy_base.obj .\Debug\fy_basex.obj .\Debug\fy_msg.obj .\Debug\fy_stream.obj .\Debug\fy_thread.obj .\Debug\fy_trace.obj "
 <h3>Output Window</h3>
 Compiling...
@@ -64,7 +64,7 @@ Creating library...
 --------------------Configuration: fy2009_test - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8D.tmp" with contents
+Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA2F.tmp" with contents
 [
 /nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "FY_ENABLE_ASSERT" /D "FY_TEST_THD" /D "FY_TRACE_ENABLE_IO" /Fp"Debug/fy2009_test.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
 "F:\fy2009\test\fyt_aio.cpp"
@@ -73,8 +73,8 @@ Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8D.tmp" with cont
 "F:\fy2009\test\fyt_stream.cpp"
 "F:\fy2009\test\fyt_thd.cpp"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8D.tmp" 
-Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8E.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA2F.tmp" 
+Creating temporary file "C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA30.tmp" with contents
 [
 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/fy2009_test.pdb" /debug /machine:I386 /out:"Debug/fy2009_test.exe" /pdbtype:sept 
 .\Debug\fyt_aio.obj
@@ -84,7 +84,7 @@ kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32
 .\Debug\fyt_thd.obj
 \fy2009\fy2009_windows\fy2009_util_windows\Debug\fy_util.lib
 ]
-Creating command line "link.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA8E.tmp"
+Creating command line "link.exe @C:\DOCUME~1\kelvinz\LOCALS~1\Temp\RSPA30.tmp"
 <h3>Output Window</h3>
 Compiling...
 fyt_aio.cpp

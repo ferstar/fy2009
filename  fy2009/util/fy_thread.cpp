@@ -14,7 +14,7 @@
 USING_FY_NAME_SPACE
 
 //thread_t
-#ifdef POSIX
+#ifdef LINUX
 
 void *thread_t::s_t_f(void *para)
 
@@ -117,7 +117,7 @@ int32 thread_t::start()
 	if(_thd) return 0; //has started
 	_stop_flag=false;
 
-#ifdef POSIX
+#ifdef LINUX
 
     	pthread_attr_t attr;
     	pthread_attr_init(&attr);
@@ -127,7 +127,7 @@ int32 thread_t::start()
 #endif   
 	_cs.lock();
 
-#ifdef POSIX
+#ifdef LINUX
 
     	int32 ret=pthread_create(&_thd, &attr, thread_t::s_t_f, this);
 
@@ -146,7 +146,7 @@ int32 thread_t::start()
 		_cs.unlock();
 	}
 
-#ifdef POSIX
+#ifdef LINUX
 
     	pthread_attr_destroy(&attr);
 

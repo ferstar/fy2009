@@ -844,7 +844,7 @@ public:
 };
 int ITC_Area_Nolock::BUF_SIZE=1048576;
 
-#ifdef POSIX
+#ifdef LINUX
 
 void *tf_itc(void *para)
 
@@ -881,7 +881,7 @@ DWORD WINAPI tf_itc(void *para)
                 itc_a->cs.unlock();
                 if(itc_a->no_data)
                 {
-#ifdef POSIX
+#ifdef LINUX
                         gettimeofday(&(itc_a->tve),0);
 #elif defined(WIN32)
 			itc_a->tce=::GetTickCount();
@@ -896,7 +896,7 @@ DWORD WINAPI tf_itc(void *para)
 }
 
 critical_section_t g_cs_thd_ready;
-#ifdef POSIX
+#ifdef LINUX
 
 struct timeval g_tvs;
 struct timeval g_tve;
@@ -939,7 +939,7 @@ DWORD WINAPI tf_itc_nlp(void *para)
                 }
                 if(!sp_nlp->is_write_registered())
                 {
-#ifdef POSIX
+#ifdef LINUX
                         gettimeofday(&(g_tve),0);
 #elif defined(WIN32)
 			g_tce = ::GetTickCount();
@@ -960,20 +960,20 @@ DWORD WINAPI tf_itc_nlp(void *para)
 void test_itc_with_nlpipe_performance()
 {
         uint32 len=1048576;
-#ifdef POSIX
+#ifdef LINUX
         struct timeval tv1,tv2;
 #elif defined(WIN32)
 	long tc1;
 #endif
         printf("*********base over head**************\n");
         {
-#ifdef POSIX
+#ifdef LINUX
         gettimeofday(&tv1,0);
 #elif defined(WIN32)
 	tc1=::GetTickCount();
 #endif
         for(uint32 i=0;i<len;i++){}
-#ifdef POSIX
+#ifdef LINUX
         gettimeofday(&tv2,0);
         int32 tc=timeval_util_t::diff_of_timeval_tc(tv1,tv2);
 #elif defined(WIN32)
@@ -988,13 +988,13 @@ void test_itc_with_nlpipe_performance()
         fy_thd_t thd;
         itca->no_data=false;
         itca->cs_ready.lock();
-#ifdef POSIX
+#ifdef LINUX
         pthread_create(&thd,0,tf_itc,(void *)itca);
 #elif defined(WIN32)
 	thd=::CreateThread(0,0,tf_itc, (void*)itca, 0,0);
 #endif
         itca->cs_ready.lock();
-#ifdef POSIX
+#ifdef LINUX
         gettimeofday(&(itca->tvs),0);
 #elif defined(WIN32)
 	itca->tcs=::GetTickCount();
@@ -1008,7 +1008,7 @@ void test_itc_with_nlpipe_performance()
         itca->no_data=true;
 
         fy_thread_join(thd,0);
-#ifdef POSIX
+#ifdef LINUX
         int32 tc=timeval_util_t::diff_of_timeval_tc(itca->tvs,itca->tve);
 #elif defined(WIN32)
 	int32 tc=itca->tce - itca->tcs;
@@ -1024,13 +1024,13 @@ void test_itc_with_nlpipe_performance()
         char buf[]={'K'};
         fy_thd_t thd;
         g_cs_thd_ready.lock();
-#ifdef POSIX
+#ifdef LINUX
         pthread_create(&thd,0,tf_itc_nlp,(void *)(oneway_pipe_t*)sp_nlp);
 #elif defined(WIN32)
 	thd=::CreateThread(0,0, tf_itc_nlp, (void*)(oneway_pipe_t*)sp_nlp,0,0);
 #endif
         g_cs_thd_ready.lock();
-#ifdef POSIX
+#ifdef LINUX
         gettimeofday(&(g_tvs),0);
 #elif defined(WIN32)
 	g_tcs=::GetTickCount();
@@ -1048,7 +1048,7 @@ void test_itc_with_nlpipe_performance()
         es_r.signal(1);
 
         fy_thread_join(thd,0);
-#ifdef POSIX
+#ifdef LINUX
         int32 tc=timeval_util_t::diff_of_timeval_tc(g_tvs,g_tve);
 #elif defined(WIN32)
 	int32 tc=g_tce - g_tcs;
@@ -1101,7 +1101,7 @@ void test_trace_provider()
         trace_prvd->open();
         trace_provider_t::tracer_t *tracer=trace_prvd->register_tracer();
         uint8 level=0;
-#ifdef POSIX
+#ifdef LINUX
 	usleep(100000);
 #elif defined(WIN32)
 	Sleep(100);
@@ -1110,7 +1110,7 @@ void test_trace_provider()
         { 
                 tracer->prepare_trace_prefix(level,__FILE__,__LINE__)<<"hello, from trace provider test \r\n";
 				tracer->write_trace(level);
-#ifdef POSIX
+#ifdef LINUX
                 usleep(10000);
 #elif defined(WIN32)
 		Sleep(10);

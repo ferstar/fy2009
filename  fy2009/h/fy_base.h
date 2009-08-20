@@ -20,7 +20,7 @@
 #include <queue>
 #include "fy_iid.h"
 
-#ifdef POSIX
+#ifdef LINUX
 
 #include <errno.h>
 #include <unistd.h>
@@ -42,7 +42,7 @@
 #include <windows.h>
 #include <time.h>
 
-#endif //POSIX
+#endif //LINUX
 
 DECL_FY_NAME_SPACE_BEGIN
 
@@ -51,7 +51,7 @@ DECL_FY_NAME_SPACE_BEGIN
  *[history]
  * Initialize: 2009-6-16
  */
-#ifdef POSIX
+#ifdef LINUX
 
 typedef long long int64; //size is 64 bits
 typedef unsigned long long uint64; //size is 64 bits
@@ -110,7 +110,7 @@ void fy_thread_join(fy_thd_t thd, void *ignorance);
 //sleep for milliseconds
 #define fy_msleep ::Sleep
 
-#endif //POSIX
+#endif //LINUX
 
 /*[tip] buffer type template
  *[desc] 
@@ -325,7 +325,7 @@ typedef buffer_tt<int8> bb_t; //byte buffer type
  *[history]
  * Initialize: 2008-4-2
  */
-#ifdef POSIX
+#ifdef LINUX
 
 #	define __INTERNAL_FY_TRACE(sz_str) ::write(STDERR_FILENO, sz_str, ::strlen(sz_str))
 
@@ -333,7 +333,7 @@ typedef buffer_tt<int8> bb_t; //byte buffer type
 
 #	define __INTERNAL_FY_TRACE(sz_str) ::printf("%s",sz_str)
 
-#endif //POSIX
+#endif //LINUX
 
 /*[tip] internal exception handler 
  *[desc] some basic service functions are not allowed to throw exception, but you can't make sure if the functions 
@@ -373,16 +373,16 @@ public:
         void unlock() throw();
         bool try_lock() throw();
 
-#ifdef POSIX
+#ifdef LINUX
 
         //2008-3-28
         inline pthread_mutex_t& get_mutex() throw() { return _mtx; }
 
-#endif //POSIX
+#endif //LINUX
 
 private:
 
-#ifdef POSIX
+#ifdef LINUX
 
         pthread_mutex_t _mtx;
 
@@ -391,7 +391,7 @@ private:
 	CRITICAL_SECTION _cs;
 	HANDLE _sem; //to implement non-recursivfe critical section
 
-#endif //POSIX
+#endif //LINUX
 };
 
 /*[tip]smart lock
@@ -454,7 +454,7 @@ public:
 private:
         critical_section_t _cs;
 
-#ifdef POSIX
+#ifdef LINUX
 
         pthread_cond_t  _cnd;
         volatile bool _signalled;
@@ -463,7 +463,7 @@ private:
 
 	HANDLE _he;
 
-#endif //POSIX
+#endif //LINUX
 };
 
 /*[tip]event slot, inter-thread synchronization device
@@ -533,7 +533,7 @@ public:
     static uint32 diff_of_tc(uint32 tc_start, uint32 tc_end) throw();
 };
 
-#ifdef POSIX
+#ifdef LINUX
 
 /*[tip]struct timeval utility services
  *[desc] provide some common operations about struct timeval
@@ -665,7 +665,7 @@ public:
 #	define get_tick_count_res(user_clock) (1)
 #	define get_local_time(lt,user_clock) user_clock->get_localtime(lt)
 
-#endif //POSIX
+#endif //LINUX
 
 /*[tip]root interface for dynamic type discovery
  *[desc] it's often important for serveral interfaces implemented by one class to dynamically discover each other.
@@ -831,7 +831,7 @@ private:
  * Initialize: 2008-4-23
  * Revise:     2009-5-13
  */
-#ifdef POSIX
+#ifdef LINUX
 
 #define __INTERNAL_FY_TRACE_EX(desc) do{ string_builder_t sb; sb<<desc; bb_t bb; sb.build(bb);\
            ::write(STDERR_FILENO, (int8*)bb, ::strlen((int8*)bb)); }while(false)
@@ -841,7 +841,7 @@ private:
 #define __INTERNAL_FY_TRACE_EX(desc) do{ string_builder_t sb; sb<<desc; bb_t bb; sb.build(bb);\
            ::printf("%s",(int8*)bb); }while(false)
 
-#endif //POSIX
+#endif //LINUX
 
 /*[tip] exception service
  *[desc] The effective exception process is always important to make program robust.

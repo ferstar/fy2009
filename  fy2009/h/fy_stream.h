@@ -82,7 +82,7 @@ typedef smart_pointer_lu_tt<random_stream_it> sp_rstream_t;
  *[history] 
  * Initialize: 2008-10-28
  */
- #ifdef POSIX
+ #ifdef LINUX
 
 class iovec_it : public lookup_it
 {
@@ -101,7 +101,7 @@ public:
 
 typedef smart_pointer_lu_tt<iovec_it> sp_iovec_t;
 
-#endif //POSIX
+#endif //LINUX
 
 /*[tip] adaptor to stream_it
  *[desc] change access interface of stream_it,always use it as stack object but never heap object
@@ -342,7 +342,7 @@ public:
         static sp_mstream_t s_create(bool rcts_flag=false);
 public:
 
-#ifdef POSIX
+#ifdef LINUX
 
         //wrapp this object's memory buffers to struct iovec for socket fucntion writev to avoid extra data copy,2008-3-25
         class iovec_box_t
@@ -364,7 +364,7 @@ public:
                 ref_cnt_it *_ref_mstm; //referred memory_stream_t object
         };
 
-#endif //POSIX
+#endif //LINUX
 
 public:
         virtual ~memory_stream_t();
@@ -376,13 +376,13 @@ public:
         uint32 copy_to(bb_t& bb);//2008-4-14
         uint32 copy_to(int8v_t& i8v);
 
-#ifdef POSIX
+#ifdef LINUX
 
         //map memory blocks to struct iovec for writev() socket function
         //return total bytes,if detach_flag is true, memory blocks will be detached from memory stream object,
         uint32 get_iovec(iovec_box_t& iov_box, bool detach_flag=false);
 
-#endif //POSIX
+#endif //LINUX
 
         //explicitly pre-alloc buffer for stream for better performance
         void prealloc_buffer(uint32 siz);

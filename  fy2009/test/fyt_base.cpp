@@ -110,7 +110,7 @@ void test_bb_t(argv_t& argv)
 void test_user_clock()
 {
 	user_clock_t *usr_clk=user_clock_t::instance();
-#ifdef POSIX
+#ifdef LINUX
 	sleep(1);
 #elif defined(WIN32)
 	Sleep(1);
@@ -211,7 +211,7 @@ void test_localtime_performance_win()
 
 #endif
 
-#ifdef POSIX
+#ifdef LINUX
 
 void *test_event_thd_fun(void * pParam)
 {
@@ -284,7 +284,7 @@ void test_event_win()
 
 #endif
 
-#ifdef POSIX
+#ifdef LINUX
 
 //2008-4-18,passed test
 //2009-5-12, passed re-test
@@ -381,7 +381,7 @@ void test_event_slot_win()
 
 #define test_event_slot test_event_slot_win
 
-#endif //POSIX
+#endif //LINUX
 
 void test_string_builder(void)
 {

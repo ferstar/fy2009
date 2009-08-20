@@ -722,7 +722,7 @@ stream_adaptor_t& stream_adaptor_t::operator >>(raw_str_t& raw_str)
         return *this;
 }
 
-#ifdef POSIX
+#ifdef LINUX
 
 //memory_stream_t::iovec_box_t
 memory_stream_t::iovec_box_t::iovec_box_t()
@@ -763,7 +763,7 @@ void memory_stream_t::iovec_box_t::_set_ref_mstm(ref_cnt_it *ref_mstm)
         if(_ref_mstm) _ref_mstm->add_reference();
 }
 
-#endif //POSIX
+#endif //LINUX
 
 //memory_stream_t
 sp_mstream_t memory_stream_t::s_create(bool rcts_flag)
@@ -835,7 +835,7 @@ uint32 memory_stream_t::copy_to(int8v_t& i8v)
         return _len_written;
 }
 
-#ifdef POSIX
+#ifdef LINUX
 
 uint32 memory_stream_t::get_iovec(iovec_box_t& iov_box, bool detach_flag)
 {
@@ -881,7 +881,7 @@ uint32 memory_stream_t::get_iovec(iovec_box_t& iov_box, bool detach_flag)
         return _len_written;
 }
 
-#endif //POSIX
+#endif //LINUX
 
 void memory_stream_t::prealloc_buffer(uint32 siz)
 {

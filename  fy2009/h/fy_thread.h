@@ -52,7 +52,7 @@ uint16 const THD_ESI_AIO=2; //event slot index for aio service, if aio event com
 class thread_t : public object_id_impl_t
 {
 public:
-#ifdef POSIX
+#ifdef LINUX
 
 	static void *s_t_f(void *para);//universal thread function,specific logic is in run().
 
