@@ -90,7 +90,7 @@ typedef smart_pointer_lu_tt<random_stream_it> sp_rstream_t;
  *[history]
  * Initialize 2009-8-20
  */
-typedef struct iovec
+struct iovec
 {
 	u_long   iov_len;
 	char FAR *iov_base;	

@@ -36,8 +36,11 @@ typedef smart_pointer_tt<socket_listener_t> sp_listener_t;
 class socket_connection_t;
 typedef smart_pointer_tt<socket_connection_t> sp_conn_t;
 
+#ifndef INVALID_SOCKET
+
 #define INVALID_SOCKET INVALID_FD
 
+#endif
 /*[tip]
  *[desc] tool functions for socket
  *[history]
@@ -48,6 +51,10 @@ typedef int8 mac_addr_t[MAC_ADDR_LEN];
 
 //readable MAC address format: AA:BB:CC:DD:EE:FF
 const uint16 MAC_ADDR_STRING_LEN = 17;
+
+#ifdef WIN32
+typedef uint32 in_addr_t;
+#endif
 
 class socket_util_t 
 {
@@ -69,6 +76,7 @@ public:
         //--pass test,2007-2-13
         static const int8 *s_ip_address_parse_inplace(const int8 *ip_addr, in_addr_t *p_ip, uint16 *p_port);
 
+#ifdef LINUX
 	//get network interface card name list
 	//list all network interface cards installed and filled out_ifnames with all found (or as many as 
 	//out_ifnames_size) device's name, return count of all found network cards 
@@ -76,13 +84,13 @@ public:
 
 	//get MTU (Maximum Transfer Unit) of specified device, return -1 on error
 	static int32 s_ifr_get_mtu(const int8 *if_name);
-
 	//get MAC address of specified device, return 0 for success, otherwise non-zero
 	static int s_ifr_get_mac_addr(const int8 *if_name, mac_addr_t out_mac_addr);
 
 	//convert MAC address to readable format or reverse
 	//return 0 for success, otheerwise non-zero
 	static int s_convert_mac_addr(mac_addr_t mac_addr, bb_t& mac_addr_string, bool to_string_flag);
+#endif
 };
 
 /*[tip]
@@ -90,6 +98,7 @@ public:
  *[history] 
  *Initialize 2008-11-20
  */
+#ifdef LINUX
 #ifdef __ENABLE_UUID__
 
 #include <uuid/uuid.h>
@@ -101,28 +110,36 @@ typedef unsigned char uuid_t[UUID_LEN];
 
 #endif //__ENABLE_UUID__
 
+#elif defined(WIN32)
+
+#include <rpc.h>
+#pragma comment(lib,"Rpcrt4.lib")
+#pragma comment(lib,"ws2_32.lib")
+
+#endif //LINUX
 class uuid_util_t
 {
 public:
-	static void uuid_generate(uuid_t out_uuid);	
-	static void uuid_clear(uuid_t uu);
-	static void uuid_copy(uuid_t dst, const uuid_t src);
-	static int uuid_compare(const uuid_t uu1, const uuid_t uu2);
+	static void uuid_generate(uuid_t& out_uuid);	
+	static void uuid_clear(uuid_t& uu);
+	static void uuid_copy(uuid_t& dst, const uuid_t& src);
+	static int uuid_compare(const uuid_t& uu1, const uuid_t& uu2);
 
 	//is null, return true, otherwise, return 0
-	static int uuid_is_null(const uuid_t uu);
+	static int uuid_is_null(const uuid_t& uu);
 
 	//convert uuid string into uuid_t	
-	static int uuid_parse( char *in, uuid_t uu);
+	static int uuid_parse( char *in, uuid_t& uu);
 
 	//convert uuid into readable uuid string format
-	static void uuid_unparse(uuid_t uu, char *out);
+	static void uuid_unparse(const uuid_t& uu, char *out);
 private:
 	static critical_section_t _s_cs;
 	static int _s_state;
 	static mac_addr_t _s_mac_addr; 
 };
-
+//888
+#ifdef LINUX
 /*[tip]
  *[desc] provide asynchronous tcp listening service for any upper layer based on tcp,integrate with aio service, message service
  *       and provide control strategy support, concrete upper layer implementation based on socket can iherit from this and
@@ -457,7 +474,8 @@ private:
 
 #endif //__FY_DEBUG_RECONNECT__
 };
- 
+//999
+#endif //LINUX
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_SOCKET_DREAMFREELANCER_20080926_H__

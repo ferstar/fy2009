@@ -162,6 +162,7 @@ const int8 *socket_util_t::s_ip_address_parse_inplace(const int8 *ip_addr,in_add
                         //parse url
                         struct hostent he;
                         struct hostent* phe=0;
+#ifdef LINUX
                         int herr=0;
                         int8 tmp_buf[1024]; //test indicates 512 bytes can work
 
@@ -170,13 +171,22 @@ const int8 *socket_util_t::s_ip_address_parse_inplace(const int8 *ip_addr,in_add
                         {
                                 FY_THROW("sokuti-invurl", "parse url:"<<url_str<<" error:"<<(int32)herr);
                         }
-
+#elif defined(WIN32)
+						phe = gethostbyname(url_str); //it returns a pointer to a TLS buffer
+						if(!phe)
+						{
+							FY_THROW("sokuti-invurl", "parse url:"<<url_str<<" error:"<<(int32)WSAGetLastError());
+						}
+						::memcpy(&he, phe, sizeof(he));//copy result from TLS buffer to application buffer
+#endif //LINUX
                         *p_ip=reinterpret_cast<struct in_addr *>(he.h_addr_list[0])->s_addr;
                 }
         }
 
         return rest_str;
 }
+
+#ifdef LINUX
 
 uint16 socket_util_t::s_ifr_get_name_list(bb_t *out_ifnames, uint16 out_ifnames_size)
 {
@@ -270,51 +280,54 @@ int socket_util_t::s_convert_mac_addr(mac_addr_t mac_addr, bb_t& mac_addr_string
 	return 0;	
 }
 
+#endif //LINUX
+
 //uuid_util_t
 critical_section_t uuid_util_t::_s_cs=critical_section_t(true);
 int uuid_util_t::_s_state = 0;
 mac_addr_t uuid_util_t::_s_mac_addr;
 
+#ifdef LINUX
 #ifdef __ENABLE_UUID__
 
-void uuid_util_t::uuid_generate(uuid_t out_uuid)
+void uuid_util_t::uuid_generate(uuid_t& out_uuid)
 {
 	::uuid_generate(out_uuid);
 }
 
-void uuid_util_t::uuid_clear(uuid_t uu)
+void uuid_util_t::uuid_clear(uuid_t& uu)
 {
 	::uuid_clear(uu);
 }
 
-void uuid_util_t::uuid_copy(uuid_t dst, const uuid_t src)
+void uuid_util_t::uuid_copy(uuid_t& dst, const uuid_t& src)
 {
 	::uuid_copy(dst, src);
 }
 
-int uuid_util_t::uuid_compare(const uuid_t uu1, const uuid_t uu2)
+int uuid_util_t::uuid_compare(const uuid_t& uu1, const uuid_t& uu2)
 {
 	return ::uuid_compare(uu1, uu2);
 }
 
-int uuid_util_t::uuid_is_null(const uuid_t uu)
+int uuid_util_t::uuid_is_null(const uuid_t& uu)
 {
 	return ::uuid_is_null(uu);
 }
 
-int uuid_util_t::uuid_parse( char *in, uuid_t uu)
+int uuid_util_t::uuid_parse( char *in, uuid_t& uu)
 {
 	return ::uuid_parse(in, uu);	
 }
 
-void uuid_util_t::uuid_unparse(uuid_t uu, char *out)
+void uuid_util_t::uuid_unparse(uuid_t& uu, char *out)
 {
 	uuid_unparse(uu, out);
 }
 
 #else // __ENABLE_UUID__
 
-void uuid_util_t::uuid_generate(uuid_t out_uuid)
+void uuid_util_t::uuid_generate(uuid_t& out_uuid)
 {
 	struct timeval tv;
 	::gettimeofday(&tv,0);	
@@ -349,17 +362,17 @@ void uuid_util_t::uuid_generate(uuid_t out_uuid)
 	::MD5_Final(out_uuid, &md5_ctx); 	
 }
 
-void uuid_util_t::uuid_clear(uuid_t uu)
+void uuid_util_t::uuid_clear(uuid_t& uu)
 {
 	::memset(uu, 0, UUID_LEN);
 }
 
-void uuid_util_t::uuid_copy(uuid_t dst, const uuid_t src)
+void uuid_util_t::uuid_copy(uuid_t& dst, const uuid_t& src)
 {
 	::memcpy(dst, src, UUID_LEN);
 }
 
-int uuid_util_t::uuid_compare(const uuid_t uu1, const uuid_t uu2)
+int uuid_util_t::uuid_compare(const uuid_t& uu1, const uuid_t& uu2)
 {
 	for(int i=0; i<UUID_LEN; ++i)
 	{
@@ -369,7 +382,7 @@ int uuid_util_t::uuid_compare(const uuid_t uu1, const uuid_t uu2)
 	return 0;
 }
 
-int uuid_util_t::uuid_is_null(const uuid_t uu)
+int uuid_util_t::uuid_is_null(const uuid_t& uu)
 {
 	for(int i=0; i<UUID_LEN; ++i)
 	{
@@ -378,7 +391,7 @@ int uuid_util_t::uuid_is_null(const uuid_t uu)
 	return 1;
 }
 
-int uuid_util_t::uuid_parse( char *in, uuid_t uu)
+int uuid_util_t::uuid_parse( char *in, uuid_t& uu)
 {       
 	if(!in) return -1;
 
@@ -394,7 +407,7 @@ int uuid_util_t::uuid_parse( char *in, uuid_t uu)
 	return 0;	
 }               
         
-void uuid_util_t::uuid_unparse(uuid_t uu, char *out)
+void uuid_util_t::uuid_unparse(uuid_t& uu, char *out)
 {
 	if(!out) return;
 	::sprintf(out, "%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
@@ -407,7 +420,54 @@ void uuid_util_t::uuid_unparse(uuid_t uu, char *out)
 }
 
 #endif //__ENABLE_UUID__
+#elif defined(WIN32)
 
+void uuid_util_t::uuid_generate(uuid_t& out_uuid)
+{
+	::UuidCreate(&out_uuid);
+}
+
+void uuid_util_t::uuid_clear(uuid_t& uu)
+{
+	::memset(&uu, 0, sizeof(uuid_t));
+}
+
+void uuid_util_t::uuid_copy(uuid_t& dst, const uuid_t& src)
+{
+	::memcpy(&dst, &src, sizeof(uuid_t));
+}
+
+int uuid_util_t::uuid_compare(const uuid_t& uu1, const uuid_t& uu2)
+{
+	RPC_STATUS  status;
+	return ::UuidCompare(const_cast<uuid_t*>(&uu1), const_cast<uuid_t*>(&uu2), &status);
+}
+
+int uuid_util_t::uuid_is_null(const uuid_t& uu)
+{
+	const uuid_t null_uuid={0L,0,0,{0,0,0,0,0,0,0,0}};
+	return uuid_compare(uu, null_uuid) == 0;
+}
+
+int uuid_util_t::uuid_parse( char *in, uuid_t& uu)
+{
+	return UuidFromString((unsigned char*)in, &uu);	
+}
+
+void uuid_util_t::uuid_unparse(const uuid_t& uu, char *out)
+{
+	unsigned char *uuid_str=NULL;
+	::UuidToString(const_cast<uuid_t*>(&uu), &uuid_str);
+	if(uuid_str)
+	{
+		if(out) strcpy(out, (const char*)uuid_str);
+		:: RpcStringFree(&uuid_str);
+	}
+}
+
+#endif //LINUX
+//888
+#ifdef LINUX
 //socket_listener_t
 sp_listener_t socket_listener_t::s_create(bool rcts_flag)
 {
@@ -1969,6 +2029,7 @@ void socket_connection_t::__dump_iovec(const struct iovec *vector, int32 count, 
 
 	FY_XTRACE_IO("__dump_iovec--"<<hint_msg<<", byte_count:"<<byte_count<<",bytes:"<<bb_bytes);
 }
-
+//999
+#endif //LINUX
 #endif //__FY_DEBUG_DUMP_IO__
 

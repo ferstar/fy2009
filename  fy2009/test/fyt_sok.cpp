@@ -312,6 +312,8 @@ private:
 */ 
 bool g_stop_flag=false;
 
+#ifdef LINUX
+
 void sig_usr2(int sig)
 {
 	switch(sig)
@@ -349,7 +351,8 @@ void test_ifr_get_mac()
 		return;
 	}
 	printf("==MAC address==\n");
-	for(int i=0; i<MAC_ADDR_LEN; ++i) printf("MAC[%d]=%d\n",i, mac[i]);
+	int i=0;
+	for(i=0; i<MAC_ADDR_LEN; ++i) printf("MAC[%d]=%d\n",i, mac[i]);
 
 	bb_t mac_str;
 	if(socket_util_t::s_convert_mac_addr(mac, mac_str, true))
@@ -365,7 +368,7 @@ void test_ifr_get_mac()
 		return;
 	}
 	printf("==reverse to convert MAC address from string==\n");
-	for(int i=0; i<MAC_ADDR_LEN; ++i) printf("rMAC[%d]=%d\n",i, mac_1[i]);
+	for(i=0; i<MAC_ADDR_LEN; ++i) printf("rMAC[%d]=%d\n",i, mac_1[i]);
 
 	bb_t mac_str_1;
         if(socket_util_t::s_convert_mac_addr(mac_1, mac_str_1, true))
@@ -375,6 +378,7 @@ void test_ifr_get_mac()
         }
         printf("repeat convert MAC address string:%s\n", mac_str_1.get_buf());	
 }
+#endif//LINUX
 
 void test_uuid()
 {
@@ -398,12 +402,14 @@ void test_uuid()
 
 int main(int argc,char **argv)
 {
+#ifdef LINUX
 	//test ifr
 	//->
 	//test_ifr_get_name_list(); //pass, 2008-11-21
 	//test_ifr_get_mtu(); //pass, 2008-11-21
 	//test_ifr_get_mac(); //pass, 2008-11-21
-	//test_uuid(); //pass, 2008-11-21
+#endif//LINUX
+	test_uuid(); //pass, 2008-11-21
 
 	return 0;
 	//<-

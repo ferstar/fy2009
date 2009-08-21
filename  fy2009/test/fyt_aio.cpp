@@ -28,6 +28,7 @@ USING_FY_NAME_SPACE
 #define fy_close_sok close
 
 #elif defined(WIN32)
+#pragma comment(lib,"ws2_32.lib")
 
 #define fy_close_sok closesocket
 
