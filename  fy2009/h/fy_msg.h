@@ -81,7 +81,9 @@ public:
 
 	//specify interval(unit:ms) in which message will be delayed doing or repeated doing
         void set_tc_interval(uint32 tc_interval) throw();
-	uint32 get_tc_interval() const throw(); //unit:ms 
+	//similar with set_tc_interval, unit:utc
+	void set_utc_interval(uint32 utc_interval) throw();
+	uint32 get_tc_interval() const throw(); //unit:ms
         inline uint32 get_utc_interval() const throw() { return _utc_interval; } 
 
 	//indicate this message will be done specified times or infinitely(_repeat == -1),

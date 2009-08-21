@@ -106,6 +106,16 @@ void msg_t::set_tc_interval(uint32 tc_interval) throw()
 		_utc_interval = tc_interval; 
 }
 
+void msg_t::set_utc_interval(uint32 utc_interval) throw()
+{
+        if((_flag & MSG_FLAG_POSTED) == MSG_FLAG_POSTED)
+        {
+                FY_XERROR("set_utc_interval, it is posted, not allow change");
+                return;
+        }
+	_utc_interval = utc_interval;
+}
+
 uint32 msg_t::get_tc_interval() const throw()
 {
         user_clock_t *uclk=user_clock_t::instance();

@@ -466,8 +466,7 @@ void uuid_util_t::uuid_unparse(const uuid_t& uu, char *out)
 }
 
 #endif //LINUX
-//888
-#ifdef LINUX
+
 //socket_listener_t
 sp_listener_t socket_listener_t::s_create(bool rcts_flag)
 {
@@ -483,7 +482,7 @@ socket_listener_t::socket_listener_t() : _cs(true)
 	_port=0;
 	_sock_fd=INVALID_SOCKET;
 	_max_incoming_cnt_inwin=DEFAULT_MAX_INCOMING_CNT_INWIN;
-	_ctrl_window = 0; 
+	_utc_ctrl_window = 0; 
 	_incoming_cnt_inwin=0;
 	_ctrl_timer_is_active=false;
 }
@@ -497,17 +496,46 @@ void socket_listener_t::set_ctrl_window(uint32 ctrl_window)
 {
 	FY_XFUNC("set_ctrl_window");
 	FY_XINFOD("set_ctrl_window,ctrl_window:"<<ctrl_window);
- 
-	if(ctrl_window == _ctrl_window) return; 
 
-	_ctrl_window = ctrl_window; 
+	uint32 utc_res=get_tick_count_res(user_clock_t::instance());
+	uint32 new_utc;
+	if(utc_res)
+		new_utc = ctrl_window/utc_res;
+	else
+		new_utc = ctrl_window;
+	 
+	if(new_utc == _utc_ctrl_window) return; //no change 
+
+	_utc_ctrl_window = new_utc; 
 	if(_ctrl_timer_is_active) 
 	{
 		_post_remove_msg(MSG_SOKLISNER_CTRL_TIMER); //remove old timer
 
 		//set new timer
-		_post_msg_nopara(MSG_SOKLISNER_CTRL_TIMER, _ctrl_window, -1);
+		_post_msg_nopara(MSG_SOKLISNER_CTRL_TIMER, MSG_PIN_SOKLISNER_CTRL_TIMER, _utc_ctrl_window, -1);
 	}
+}
+
+void socket_listener_t::set_utc_ctrl_window(uint32 utc_ctrl_window)
+{
+        FY_XFUNC("set_utc_ctrl_window");
+        FY_XINFOD("set_utc_ctrl_window,utc_ctrl_window:"<<utc_ctrl_window);
+	
+	if(utc_ctrl_window == _utc_ctrl_window) return; //no change
+
+	_utc_ctrl_window = utc_ctrl_window;
+        if(_ctrl_timer_is_active)
+        {
+                _post_remove_msg(MSG_SOKLISNER_CTRL_TIMER); //remove old timer
+
+                //set new timer
+                _post_msg_nopara(MSG_SOKLISNER_CTRL_TIMER, MSG_PIN_SOKLISNER_CTRL_TIMER, _utc_ctrl_window, -1);
+        }	
+}
+
+uint32 socket_listener_t::get_ctrl_window() const throw()
+{
+	return _utc_ctrl_window * get_tick_count_res(user_clock_t::instance());
 }
 
 int32 socket_listener_t::listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_addr_t listen_inaddr, uint16 port) 
@@ -567,11 +595,11 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_ad
 	_aio_sap=aio_sap;
 	_sock_fd = tmp_sock_fd;
 
-	if(_ctrl_window)
+	if(_utc_ctrl_window)
 	{
 		//trigger control check timer
 		_ctrl_timer_is_active =true;
-		_post_msg_nopara(MSG_SOKLISNER_CTRL_TIMER, _ctrl_window, -1);
+		_post_msg_nopara(MSG_SOKLISNER_CTRL_TIMER, MSG_PIN_SOKLISNER_CTRL_TIMER, _utc_ctrl_window, -1);
 	}
 	FY_CATCH_N_THROW_AGAIN_EX("soklsn-ta","fail to listen", if(reg_fd_result) aio_sap->unregister_fd(tmp_sock_fd);\
 				if(INVALID_SOCKET!=tmp_sock_fd) ::close(tmp_sock_fd); return INVALID_SOCKET;);	
@@ -599,7 +627,7 @@ void socket_listener_t::post_listen(sp_thd_t owner_thd, sp_aiosap_t dest_sap, in
 	msg_proxy_t *raw_msg_proxy=owner_thd->get_msg_proxy();
 	if(!raw_msg_proxy) FY_THROW_EX("sokplsn-thd", "owner thread hasn't enabled msg service");
 	
-	sp_msg_t msg=msg_t::s_create(MSG_SOKLISNER_POST_LISTEN, 3, true);
+	sp_msg_t msg=msg_t::s_create(MSG_SOKLISNER_POST_LISTEN, MSG_PIN_SOKLISNER_POST_LISTEN, 3, true);
 	lookup_it *obj_sap=(lookup_it*)dest_sap->lookup(IID_lookup, PIN_lookup);
 	FY_ASSERT(obj_sap);
 
@@ -695,12 +723,12 @@ void socket_listener_t::on_aio_events(int32 fd, uint32 aio_events, pointer_box_t
 	if((aio_events & AIO_POLLERR) == AIO_POLLERR)
 	{
 		FY_XERROR("on_aio_events, receive an AIO_POLLERR event");
-		_post_msg_nopara(MSG_SOKLISNER_POLLERR);
+		_post_msg_nopara(MSG_SOKLISNER_POLLERR, MSG_PIN_SOKLISNER_POLLERR);
 	}
 	if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
 	{
 		FY_XERROR("on_aio_events, receive an AIO_POLLHUP event");
-		_post_msg_nopara(MSG_SOKLISNER_POLLHUP);
+		_post_msg_nopara(MSG_SOKLISNER_POLLHUP, MSG_PIN_SOKLISNER_POLLHUP);
 	} 	
 
 	FY_CATCH_N_THROW_AGAIN_EX("lsnaioe-ta","on_aio_events fail",);	
@@ -717,10 +745,15 @@ void socket_listener_t::on_msg(msg_t *msg)
 
 	FY_ASSERT(msg);
 
+	uint32 pin_msg = msg->get_pin();
 	switch(msg->get_msg())
 	{
 	case MSG_SOKLISNER_INCOMING_LIMIT:
-		if(_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
+		if(MSG_PIN_SOKLISNER_INCOMING_LIMIT != pin_msg)
+		{
+			FY_XERROR("on_msg,mismatch MSG_PIN_SOKLISNER_INCOMING_LIMIT");
+		}
+		else if(_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
 		{
 			FY_ASSERT(!_msg_proxy.is_null());
 		
@@ -734,7 +767,11 @@ void socket_listener_t::on_msg(msg_t *msg)
 		break;
 
 	case MSG_SOKLISNER_CTRL_TIMER:
-		if(_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
+		if(MSG_PIN_SOKLISNER_CTRL_TIMER != pin_msg)
+		{
+			FY_XERROR("on_msg, mismatch MSG_PIN_SOKLISNER_CTRL_TIMER");
+		}
+		else if(_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
 		{
 			FY_XINFOD("on_msg, full incoming count is reset:"<<_incoming_cnt_inwin);
 		}
@@ -743,6 +780,11 @@ void socket_listener_t::on_msg(msg_t *msg)
 		break;
 
 	case MSG_SOKLISNER_POST_LISTEN:
+		if(MSG_PIN_SOKLISNER_POST_LISTEN != pin_msg)
+		{
+			FY_XERROR("on_msg, mismatch MSG_PIN_SOKLISNER_POST_LISTEN");
+		}
+		else 
 		{
 			variant_t v_obj=msg->get_para(0);
 			lookup_it *obj=v_obj.get_obj();
@@ -769,15 +811,29 @@ void socket_listener_t::on_msg(msg_t *msg)
 		break;
 
 	case MSG_SOKLISNER_POLLERR:
-		_on_msg_pollerr();
+		if(MSG_PIN_SOKLISNER_POLLERR != pin_msg)
+		{
+			FY_XERROR("on_msg, mismatch MSG_PIN_SOKLISNER_POLLERR");
+		}
+		else
+		{
+			_on_msg_pollerr();
+		}
 		break;
 
 	case MSG_SOKLISNER_POLLHUP:
-		_on_msg_pollhup();
+		if(MSG_PIN_SOKLISNER_POLLHUP != pin_msg)
+		{
+			FY_XERROR("on_msg, mismatch MSG_PIN_SOKLISNER_POLLHUP");
+		}
+		else
+		{
+			_on_msg_pollhup();
+		}
 		break; 
 
         default:
-                FY_XWARNING("on_msg, unknown msg type:"<<msg->get_msg());
+                FY_XWARNING("on_msg, unknown msg type:"<<msg->get_msg()<<",pin:"<<pin_msg);
 	}
 
 	FY_CATCH_N_THROW_AGAIN_EX("lsnmsg-ta","on_msg fail",);	
@@ -818,7 +874,7 @@ void socket_listener_t::_accept()
                 _on_incoming(ret_sock, ((sockaddr_in&)sock_addr).sin_addr.s_addr, ntohs(((sockaddr_in&)sock_addr).sin_port),
                                         _ip_inaddr, _port);
 
-                if(_ctrl_window && ++_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
+                if(_utc_ctrl_window && ++_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
                 {
                 	FY_XTRACE_IO("_accept, incoming count has reach ceiling:"<<_max_incoming_cnt_inwin);
 
@@ -826,11 +882,11 @@ void socket_listener_t::_accept()
                         FY_ASSERT(!_msg_proxy.is_null());
 
                         //this msg is in same thread, thread-safe is unnecsssary
-                        sp_msg_t msg=msg_t::s_create(MSG_SOKLISNER_INCOMING_LIMIT, 0, false);
+                        sp_msg_t msg=msg_t::s_create(MSG_SOKLISNER_INCOMING_LIMIT, MSG_PIN_SOKLISNER_INCOMING_LIMIT,0, false);
 
                         msg->set_receiver(sp_msg_rcver_t((msg_receiver_it*)this,true));
-                        uint32 tmp_delay=_ctrl_window>>2;
-                        msg->set_tc_interval(tmp_delay? tmp_delay:1);
+                        uint32 tmp_delay=_utc_ctrl_window>>2;
+                        msg->set_utc_interval(tmp_delay? tmp_delay:1);
 
                         _msg_proxy->post_msg(msg);
 
@@ -853,10 +909,11 @@ void socket_listener_t::_post_remove_msg(int32 msg_type)
 	_msg_proxy->post_msg(rm_msg);	
 }
 
-void socket_listener_t::_post_msg_nopara(uint32 msg_type, uint32 utc_interval, int32 repeat)
+void socket_listener_t::_post_msg_nopara(uint32 msg_type, uint32 msg_pin, uint32 utc_interval, int32 repeat)
 {
 	FY_XFUNC("_post_msg_nopara");
-	FY_XINFOD("_post_msg_nopara,msg_type:"<<msg_type<<", utc_interval:"<<utc_interval<<",repeat:"<<repeat);
+	FY_XINFOD("_post_msg_nopara,msg_type:"<<msg_type<<",msg_pin:"<<msg_pin<<", utc_interval:"<<utc_interval
+		<<",repeat:"<<repeat);
 
         if(_msg_proxy.is_null())
         {
@@ -867,8 +924,8 @@ void socket_listener_t::_post_msg_nopara(uint32 msg_type, uint32 utc_interval, i
         }
 
         //this msg is in same thread, thread-safe is unnecsssary
-        sp_msg_t msg=msg_t::s_create(msg_type, 0, false);
-	if(utc_interval) msg->set_tc_interval(utc_interval);
+        sp_msg_t msg=msg_t::s_create(msg_type, msg_pin, 0, false);
+	if(utc_interval) msg->set_utc_interval(utc_interval);
 	if(repeat) msg->set_repeat(repeat);
 
         msg->set_receiver(sp_msg_rcver_t((msg_receiver_it*)this->lookup(IID_msg_receiver, PIN_msg_receiver),true));
@@ -2029,7 +2086,6 @@ void socket_connection_t::__dump_iovec(const struct iovec *vector, int32 count, 
 
 	FY_XTRACE_IO("__dump_iovec--"<<hint_msg<<", byte_count:"<<byte_count<<",bytes:"<<bb_bytes);
 }
-//999
-#endif //LINUX
+
 #endif //__FY_DEBUG_DUMP_IO__
 

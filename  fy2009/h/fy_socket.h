@@ -138,12 +138,13 @@ private:
 	static int _s_state;
 	static mac_addr_t _s_mac_addr; 
 };
-//888
-#ifdef LINUX
-/*[tip]
+
+/*[tip] socket listener which is intergrated with message and aio services.
  *[desc] provide asynchronous tcp listening service for any upper layer based on tcp,integrate with aio service, message service
- *       and provide control strategy support, concrete upper layer implementation based on socket can iherit from this and
- *       overwrite _on_incoming and _on_msg_pollerr, _on_msg_pollhup if needed
+ *       and provide control strategy support, concrete upper layer implementation based on socket can inherit from this and
+ *       overwrite _on_incoming and _on_msg_pollerr, _on_msg_pollhup if needed.
+ *	 It's assumed that listener has a owner thread, which is determined by related aio_sap, most member functions are called
+ *	 from this thread, except few members(e.g. listen)
  *[history] 
  * Initialize 2008-9-26
  */
@@ -151,21 +152,26 @@ const uint32 DEFAULT_MAX_INCOMING_CNT_INWIN=0xffffffff;
 
 //socket listener reachs incoming rate limit
 uint32 const MSG_SOKLISNER_INCOMING_LIMIT=MSG_USER;
+uint32 const MSG_PIN_SOKLISNER_INCOMING_LIMIT= 0x5c96a854;
 
 //socket listener incoming control timer
 uint32 const MSG_SOKLISNER_CTRL_TIMER=MSG_USER + 1;
+uint32 const MSG_PIN_SOKLISNER_CTRL_TIMER=0xc82eaee8;
 
 //post listen message
 uint32 const MSG_SOKLISNER_POST_LISTEN=MSG_USER + 2;
+uint32 const MSG_PIN_SOKLISNER_POST_LISTEN=0xd3c9b9c8;
 //para_0:aio_sap_it *, dest aio_provider
 //para_1:int32(in_addr_t), listen address
 //para_2:int16, listen port
 
 //post a msg to notify upper layer that an AIO_POLLERR is received
 uint32 const MSG_SOKLISNER_POLLERR = MSG_USER + 3;
+uint32 const MSG_PIN_SOKLISNER_POLLERR=0xf76c3b7a;
 
 //post a msg to notify upper layer that an AIO_POLLHUP is received
 uint32 const MSG_SOKLISNER_POLLHUP = MSG_USER + 4;
+uint32 const MSG_PIN_SOKLISNER_POLLHUP=0xeecefb9c;
 
 //--add any socket listener message, it should be changed at the same time
 //2009-1-6
@@ -181,11 +187,15 @@ public:
 public:
 	~socket_listener_t();
 
-	//listener will do incoming rate check periodically, here, set check interval user tick-count	
+	//listener will do incoming rate check periodically, here, set check interval(unit:ms)	
 	//ctrl window == 0 means no incoming rate control check
 	//--it must be called before listening, otherwise, it does nothing
 	void set_ctrl_window(uint32 ctrl_window);
-	uint32 get_ctrl_window() const throw() { return _ctrl_window; }
+	//similar with set_ctrl_window, unit:utc
+	void set_utc_ctrl_window(uint32 utc_ctrl_window);
+	uint32 get_ctrl_window() const throw(); 
+	//get ctrl window with utc unit
+	uint32 get_utc_ctrl_window() const throw() { return _utc_ctrl_window; }
  
 	//set incoming rate threshold
 	void set_max_incoming_cnt_inwin(uint32 max_cnt) 
@@ -197,14 +207,15 @@ public:
 	//listen on ip address and socket port,return socket fd
 	//aio_sap can be aio_provider_t or aio_proxy_t depending on thread-mode,
 	//dest_sap is destination aio_provider_t, if aio_sap is aio_proxy_t, it's useful, otherwise it's ignored
-	//--it's thread safe, i.e. it can be called from listener's owner thread or not
+	//--it's thread safe, i.e. it can be called from listener's owner thread(determined by aio_sap parameter)
+	// or not
 	int32 listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_addr_t listen_addr, uint16 port);
 	
 	//post a listen command to aio_proxy-aware destination thread, then, listen() will be called within this thread
 	void post_listen(sp_thd_t owner_thd, sp_aiosap_t dest_sap, in_addr_t listen_addr, uint16 port);
 
 	//it should be called explicity to avoid memory leak caused by circular refering
-	//stop listen and uncouple circular reference between this object and aio _aio_sap
+	//stop listen and uncouple circular reference between this object and _aio_sap
 	//--it's thread safe
 	inline void stop_listen(){ _reset(); }  
 
@@ -226,12 +237,14 @@ protected:
 	inline void _post_remove_msg(int32 msg_type);
 
 	//post a msg without parameter,
-	void _post_msg_nopara(uint32 msg_type, uint32 utc_interval=1, int32 repeat=0);
+	void _post_msg_nopara(uint32 msg_type, uint32 msg_pin, uint32 utc_interval=1, int32 repeat=0);
 
 	//descendent can overwrite it
 	virtual void _on_incoming(int32 incoming_fd, in_addr_t remote_addr, uint16 remote_port,
 				 	in_addr_t local_addr, uint16 local_port); 
 
+	//pollerr and pollhup indicates upper layer that tcp connection has broken, it can be important for some implementations of
+	// tcp-based application protocols.
 	//in general, upper layer will call stop_listen within them
 	//--transfer aio event to msg to avoid potential calling a aio_proxy method within another aio_proxy method 
 	//->
@@ -245,7 +258,7 @@ protected:
 	sp_aiosap_t _aio_sap;
 	critical_section_t _cs;
 	uint32 _max_incoming_cnt_inwin; //max allowable incoming count within control window
-	uint32 _ctrl_window; //incoming control check interval
+	uint32 _utc_ctrl_window; //incoming control check interval(unit:utc)
 	bool _ctrl_timer_is_active;
 
 	//accumulate incoming count within control window, it will be reset by timer
@@ -474,8 +487,7 @@ private:
 
 #endif //__FY_DEBUG_RECONNECT__
 };
-//999
-#endif //LINUX
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_SOCKET_DREAMFREELANCER_20080926_H__

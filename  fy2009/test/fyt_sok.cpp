@@ -35,7 +35,7 @@ public:
                 in_addr_t lisn_addr=(in_addr_t)htonl(INADDR_ANY);
 
 		//******test proves incoming rate control works well, 2008-10-10
-		_lisner->set_ctrl_window(20);
+		_lisner->set_ctrl_window(200);
                 _lisner->set_max_incoming_cnt_inwin(50);
 
 		aio_proxy_t *raw_aio_proxy=get_aio_proxy();
@@ -413,9 +413,9 @@ int main(int argc,char **argv)
 
 	return 0;
 	//<-
-/*
+#ifdef LINUX
 	signal(SIGUSR2,sig_usr2);
-
+#endif
         bool is_svr=true;
         int conn_cnt=0;
 
@@ -448,9 +448,7 @@ int main(int argc,char **argv)
 	sp_tpool_t thd_pool;
 	if(is_svr)
 	{
-*/
-/*
-		printf("==single thread listener==\n");
+/*		printf("==single thread listener==\n");
 		//->
 		sok_lisner=socket_listener_t::s_create();
 		in_addr_t lisn_addr=(in_addr_t)htonl(INADDR_ANY);
