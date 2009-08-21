@@ -407,7 +407,7 @@ int uuid_util_t::uuid_parse( char *in, uuid_t& uu)
 	return 0;	
 }               
         
-void uuid_util_t::uuid_unparse(uuid_t& uu, char *out)
+void uuid_util_t::uuid_unparse(const uuid_t& uu, char *out)
 {
 	if(!out) return;
 	::sprintf(out, "%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
