@@ -186,6 +186,7 @@ uint32 const MAX_FD_COUNT_LOWER_BOUND_WIN32=512;
 
 class aio_provider_t : public aio_sap_it,
 		       public heart_beat_it,
+			public owner_thread_it, //2009-8-26
 		       public object_id_impl_t,
 			public ref_cnt_impl_t
 {
@@ -215,8 +216,9 @@ public:
 	//on the other hand, set heart beat thread
 	void init_hb_thd();
 
+	//owner_thread_it
 	//get its owner thread id, i.e. heart beat thread
-	uint32 get_hb_tid() { return _hb_tid; }
+	uint32 get_owner_tid() { return _hb_tid; }
 
 	//heart_beat_i,ensure it's only called by one thread
         virtual int8 heart_beat(); //drive aio service and monitor aio events
@@ -339,6 +341,7 @@ uint32 const AIOEHPXY_HB_MAX_SLICE=80;
 class aio_proxy_t : public aio_sap_it,
 		    public heart_beat_it,
 		    public msg_receiver_it, //handle overflow aio event
+		    public owner_thread_it, //2009-8-26
 		    public object_id_impl_t,
 		    public ref_cnt_impl_t //thread-safe
 {
@@ -353,7 +356,8 @@ public:
 public: 
 	~aio_proxy_t();
 
-        inline uint32 get_owner_tid() const throw() { return _tid; }
+	//owner_thread_it
+        uint32 get_owner_tid() { return _tid; }
 
 	//for dignosis
 	//->

@@ -431,6 +431,10 @@ void *aio_provider_t::lookup(uint32 iid, uint32 pin) throw()
 		if(pin != PIN_heart_beat) return 0;
                 return static_cast<heart_beat_it*>(this);
 
+	case IID_owner_thread:
+		if(pin != PIN_owner_thread) return 0;
+		return static_cast<owner_thread_it*>(this);
+
         case IID_object_id:
                 return object_id_impl_t::lookup(iid, pin);
 
@@ -696,6 +700,10 @@ void *aio_proxy_t::lookup(uint32 iid, uint32 pin) throw()
 	case IID_heart_beat:
 		if(pin != PIN_heart_beat) return 0;
 		return static_cast<heart_beat_it*>(this);
+
+	case IID_owner_thread:
+		if(pin != PIN_owner_thread) return 0;
+		return static_cast<owner_thread_it*>(this);
 
 	case IID_object_id:
 		return object_id_impl_t::lookup(iid, pin);

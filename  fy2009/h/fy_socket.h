@@ -143,8 +143,8 @@ private:
  *[desc] provide asynchronous tcp listening service for any upper layer based on tcp,integrate with aio service, message service
  *       and provide control strategy support, concrete upper layer implementation based on socket can inherit from this and
  *       overwrite _on_incoming and _on_msg_pollerr, _on_msg_pollhup if needed.
- *	 It's assumed that listener has a owner thread, which is determined by related aio_sap, most member functions are called
- *	 from this thread, except few members(e.g. listen)
+ *	 It's assumed that listener has a owner thread, which is listen calling thread
+ *	 from this thread
  *[history] 
  * Initialize 2008-9-26
  */
@@ -177,8 +177,17 @@ uint32 const MSG_PIN_SOKLISNER_POLLHUP=0xeecefb9c;
 //2009-1-6
 uint32 const MSG_SOKLISNER_MAX_RANGE = MSG_SOKLISNER_POLLHUP;
 
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+const uint32 LISTENER_OVLP_COUNT=3;
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
+ 
 class socket_listener_t : public aio_event_handler_it,
 			  public msg_receiver_it,
+			  public owner_thread_it, //2009-8-26
 			  public object_id_impl_t,
 			  public ref_cnt_impl_t  
 {
@@ -205,11 +214,8 @@ public:
 	uint32 get_max_incoming_cnt_inwin() const throw() { return _max_incoming_cnt_inwin;}
 		
 	//listen on ip address and socket port,return socket fd
-	//aio_sap can be aio_provider_t or aio_proxy_t depending on thread-mode,
-	//dest_sap is destination aio_provider_t, if aio_sap is aio_proxy_t, it's useful, otherwise it's ignored
-	//--it's thread safe, i.e. it can be called from listener's owner thread(determined by aio_sap parameter)
-	// or not
-	int32 listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_addr_t listen_addr, uint16 port);
+	//,its calling thread is the owner thread of this object
+	int32 listen(sp_aiosap_t aio_prvd, in_addr_t listen_addr, uint16 port);
 	
 	//post a listen command to aio_proxy-aware destination thread, then, listen() will be called within this thread
 	void post_listen(sp_thd_t owner_thd, sp_aiosap_t dest_sap, in_addr_t listen_addr, uint16 port);
@@ -227,18 +233,33 @@ public:
 
 	//msg_receiver_it
 	void on_msg(msg_t *msg);
+
+	//owner_thread_it
+	uint32 get_owner_tid();
 protected:
 	socket_listener_t();
 	void _reset();
 	void _lazy_init_object_id() throw();
 
-	void _accept();
+	void _accept(pointer_box_t ex_para);
 
 	inline void _post_remove_msg(int32 msg_type);
 
 	//post a msg without parameter,
 	void _post_msg_nopara(uint32 msg_type, uint32 msg_pin, uint32 utc_interval=1, int32 repeat=0);
 
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+	//return zero on success, otherwise, return erro code
+	int32 _post_asyn_accept();
+	
+	//simulate systemic socket function accept behavior
+	int32 _iocp_accept(pointer_box_t ex_para, sockaddr* peer_addr, socklen_t *peer_addr_len);
+ 
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
+ 
 	//descendent can overwrite it
 	virtual void _on_incoming(int32 incoming_fd, in_addr_t remote_addr, uint16 remote_port,
 				 	in_addr_t local_addr, uint16 local_port); 
@@ -256,6 +277,9 @@ protected:
         uint16 _port;
         int32 _sock_fd; //isn't INVALID_SOCKET means is listening
 	sp_aiosap_t _aio_sap;
+	//if above _aio_sap referes to aio_proxy, _aio_prvd will refer to a aio_provider,
+	//otherwise, it is null
+	sp_aiosap_t _aio_prvd;
 	critical_section_t _cs;
 	uint32 _max_incoming_cnt_inwin; //max allowable incoming count within control window
 	uint32 _utc_ctrl_window; //incoming control check interval(unit:utc)
@@ -264,6 +288,17 @@ protected:
 	//accumulate incoming count within control window, it will be reset by timer
 	uint32 _incoming_cnt_inwin; 
 	sp_msg_proxy_t _msg_proxy;
+
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+	LPFN_ACCEPTEX _lpfnAcceptEx;
+	GUID _GuidAcceptEx;
+	uint32 _pending_accept_cnt;
+	std::deque<pointer_box_t> _delayed_accept_q;
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32 
 };
 
 /*[bullet]

@@ -1472,6 +1472,19 @@ public:
         //otherwise, means expected interval user tick-count between two calling
         virtual uint32 get_expected_interval() const throw() =0;
 };
+typedef smart_pointer_lu_tt<heart_beat_it> sp_hb_t;
+
+/*[tip]owner thread
+ *[desc] an object can only be owned by one thread at a same time is a good compromise between flexibility and simplicity
+ *[hitory]
+ * Initialize: 2009-8-26
+ */
+class owner_thread_it : public lookup_it
+{
+public:
+	virtual uint32 get_owner_tid()=0;
+};
+typedef smart_pointer_lu_tt<owner_thread_it> sp_ownthd_t;
 
 DECL_FY_NAME_SPACE_END
 

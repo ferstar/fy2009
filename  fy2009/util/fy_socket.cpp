@@ -485,6 +485,15 @@ socket_listener_t::socket_listener_t() : _cs(true)
 	_utc_ctrl_window = 0; 
 	_incoming_cnt_inwin=0;
 	_ctrl_timer_is_active=false;
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+	_lpfnAcceptEx = NULL;
+	_GuidAcceptEx = WSAID_ACCEPTEX;
+	_pending_accept_cnt = 0;
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
 }
 
 socket_listener_t::~socket_listener_t()
@@ -538,7 +547,7 @@ uint32 socket_listener_t::get_ctrl_window() const throw()
 	return _utc_ctrl_window * get_tick_count_res(user_clock_t::instance());
 }
 
-int32 socket_listener_t::listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_addr_t listen_inaddr, uint16 port) 
+int32 socket_listener_t::listen(sp_aiosap_t aio_prvd, in_addr_t listen_inaddr, uint16 port) 
 {
 	FY_XFUNC("listen");
 	FY_XINFOI("listen,listen_inaddr:"<<(uint32)listen_inaddr<<",port:"<<port);
@@ -552,7 +561,7 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_ad
 
 	FY_TRY
 
-	if(aio_sap.is_null()) FY_THROW_EX("soklsn-aio","no valid aio sap");
+	if(aio_prvd.is_null()) FY_THROW_EX("soklsn-aio","invalid aio provider");
 
 	smart_lock_t slock(&_cs); //thread-safe
 
@@ -576,9 +585,24 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_ad
 
 	//register socket fd to aio service
 	sp_aioeh_t tmp_aioeh(this,true);
-	aio_sap_it *raw_dest_sap=(dest_sap.is_null()? 0: (aio_sap_it*)dest_sap->lookup(IID_aio_sap, PIN_aio_sap));
 
-	reg_fd_result=aio_sap->register_fd(raw_dest_sap, tmp_sock_fd, tmp_aioeh);
+	sp_ownthd_t sp_owt=SP_LU_CAST(owner_thread_it, IID_owner_thread, PIN_owner_thread, aio_prvd);	
+	if(fy_gettid() == sp_owt->get_owner_tid()) //aio_prvd and this object share same owner thread
+	{
+		reg_fd_result=aio_prvd->register_fd(0, tmp_sock_fd, tmp_aioeh);
+		_aio_sap = aio_prvd;
+	}
+	else
+	{
+		aio_sap_it *raw_dest_sap=(aio_sap_it*)aio_prvd->lookup(IID_aio_sap, PIN_aio_sap);
+		aio_proxy_t *raw_aio_proxy= aio_proxy_t::s_tls_instance();
+		FY_ASSERT(raw_aio_proxy);
+
+		_aio_sap =sp_aiosap_t((aio_sap_it*)raw_aio_proxy, true);
+		_aio_prvd = aio_prvd;
+		reg_fd_result=raw_aio_proxy->register_fd(raw_dest_sap, tmp_sock_fd, tmp_aioeh);
+	}
+
 	if(!reg_fd_result) FY_THROW_EX("soklsn-reg","register to aio service failure");
 
         int32 ret = ::bind(tmp_sock_fd, (const sockaddr*)&sock_addr, sizeof(sockaddr_in));
@@ -590,10 +614,45 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_ad
 
 	bb_t nd_listen_addr;
 	socket_util_t::s_in_addr_to_nd(listen_inaddr, nd_listen_addr);
-        FY_XINFOI("listen, listen successfuly on: address:"<<nd_listen_addr<<",port:"<<port);
+        FY_XINFOI("listen successfuly on: address:"<<nd_listen_addr<<",port:"<<port);
 
-	_aio_sap=aio_sap;
 	_sock_fd = tmp_sock_fd;
+
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+	DWORD dwBytes;
+	int ret=WSAIoctl(_sock_fd,
+			SIO_GET_EXTENSION_FUNCTION_POINTER,
+			&_GuidAcceptEx,
+			sizeof(_GuidAcceptEx),
+			&_lpfnAcceptEx,
+			sizeof(_lpfnAcceptEx),
+			&dwBytes, NULL, NULL);
+
+	if(INVALID_SOCKET == ret)
+	{
+		int err=WSAGetLastError();
+		switch(err)
+		{
+		case WSANOTINITIALISED:
+			FY_THROW_EX("soklsn-ioctl", "WSAIoctl fail, WSAStartup must be called before");
+			break;
+
+		case WSAENOTSOCK:
+			FY_THROW_EX("soklsn-ioctl1","WSAIoctl fail, invalid socket handle");
+			break;
+		default:
+			FY_THROW_EX("soklsn-ioctldef","WSAIoctl fail, unspecified error");
+			break;	
+		}
+	}
+
+	//pre post a batch of asynchronous accept request
+	for(uint32 i = 0; i<LISTENER_OVLP_COUNT; ++i) _post_asyn_accept(); 
+ 
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
 
 	if(_utc_ctrl_window)
 	{
@@ -601,7 +660,7 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in_ad
 		_ctrl_timer_is_active =true;
 		_post_msg_nopara(MSG_SOKLISNER_CTRL_TIMER, MSG_PIN_SOKLISNER_CTRL_TIMER, _utc_ctrl_window, -1);
 	}
-	FY_CATCH_N_THROW_AGAIN_EX("soklsn-ta","fail to listen", if(reg_fd_result) aio_sap->unregister_fd(tmp_sock_fd);\
+	FY_CATCH_N_THROW_AGAIN_EX("soklsn-ta","fail to listen", if(reg_fd_result) _aio_sap->unregister_fd(tmp_sock_fd);\
 				if(INVALID_SOCKET!=tmp_sock_fd) ::close(tmp_sock_fd); return INVALID_SOCKET;);	
 
         return _sock_fd;
@@ -618,9 +677,9 @@ void socket_listener_t::post_listen(sp_thd_t owner_thd, sp_aiosap_t dest_sap, in
 
 	FY_ASSERT(!dest_sap.is_null());
 
-	if(owner_thd.is_null()) 
+	if(owner_thd.is_null()) //listen from current thread 
 	{
-		listen(dest_sap, dest_sap, listen_inaddr, port);
+		listen(dest_sap, listen_inaddr, port);
 		return;
 	}
 
@@ -717,8 +776,18 @@ void socket_listener_t::on_aio_events(int32 fd, uint32 aio_events, pointer_box_t
 
 	if((aio_events & AIO_POLLIN) == AIO_POLLIN)
 	{
-		if(_incoming_cnt_inwin >= _max_incoming_cnt_inwin) return; //still on ceiling
-		_accept();
+		if(_utc_ctrl_window && _incoming_cnt_inwin >= _max_incoming_cnt_inwin) 
+		{
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+			_delayed_accept_q.push_back(ex_para);
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
+			return; //still on ceiling
+		}
+		_accept(ex_para);
 	}
 	if((aio_events & AIO_POLLERR) == AIO_POLLERR)
 	{
@@ -758,11 +827,11 @@ void socket_listener_t::on_msg(msg_t *msg)
 			FY_ASSERT(!_msg_proxy.is_null());
 		
 			sp_msg_t sp_msg(msg, true);	
-			_msg_proxy->post_msg(sp_msg);//check again
+			_msg_proxy->post_msg(sp_msg);//still on ceiling, check again later
 		}
 		else //_incoming_cnt_inwin has been reset,accept subsequent incoming connections
 		{
-			_accept();
+			_accept(0);
 		}
 		break;
 
@@ -798,11 +867,7 @@ void socket_listener_t::on_msg(msg_t *msg)
 			variant_t v_listen_port=msg->get_para(2);
 			uint16 listen_port=(uint16)v_listen_port.get_i16();
 
-			aio_proxy_t *raw_aio_proxy= aio_proxy_t::s_tls_instance();
-			FY_ASSERT(raw_aio_proxy);
-			sp_aiosap_t aio_proxy((aio_sap_it*)raw_aio_proxy, true);
-
-			if(listen(aio_proxy, dest_sap, listen_addr, listen_port) == INVALID_SOCKET)
+			if(listen(dest_sap, listen_addr, listen_port) == INVALID_SOCKET)
 			{
 				FY_XERROR("on_msg(MSG_SOKLISNER_POST_LISTEN), fail to listen on addr:"<<(int32)listen_addr
 					<<",port:"<<listen_port);
@@ -839,6 +904,14 @@ void socket_listener_t::on_msg(msg_t *msg)
 	FY_CATCH_N_THROW_AGAIN_EX("lsnmsg-ta","on_msg fail",);	
 }
 
+uint32 socket_listener_t::get_owner_tid()
+{
+	if(_aio_sap.is_null()) return 0;
+	owner_thread_it *owner = (owner_thread_it*)_aio_sap->lookup(IID_owner_thread, PIN_owner_thread);
+	if(!owner) return 0;
+	return owner->get_owner_tid();	
+}
+
 void socket_listener_t::_on_incoming(int32 incoming_fd, in_addr_t remote_addr, uint16 remote_port,
 					in_addr_t local_addr, uint16 local_port)
 {
@@ -860,14 +933,25 @@ void socket_listener_t::_lazy_init_object_id() throw()
         __INTERNAL_FY_EXCEPTION_TERMINATOR();
 }
 
-void socket_listener_t::_accept()
+void socket_listener_t::_accept(pointer_box_t ex_para)
 {
 	FY_XFUNC("_accept");
 
 	sockaddr sock_addr;
         socklen_t len = sizeof(sockaddr);
 
+#ifdef LINUX
+
         int32 ret_sock = ::accept(_sock_fd, &sock_addr, &len);
+
+#elif defined(WIN32)            
+#ifdef __ENABLE_COMPLETION_PORT__  
+
+	int32 ret_sock = _iocp_accept(ex_para, &sock_addr, &len);
+
+#endif //__ENABLE_COMPLETION_PORT__ 
+#endif //LINUX
+
         while(ret_sock != INVALID_SOCKET)
         {
         	//accepted an incoming connection request
@@ -889,12 +973,20 @@ void socket_listener_t::_accept()
                         msg->set_utc_interval(tmp_delay? tmp_delay:1);
 
                         _msg_proxy->post_msg(msg);
-
+			
                         return;
                 }
-
+#ifdef LINUX
                 //try to accept next incoming connection
                 ret_sock= ::accept(_sock_fd, &sock_addr, &len);
+
+#elif defined WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+		ret_sock = _iocp_accept(NULL, &sock_addr, &len);	
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //LINUX
         }
 }
 
@@ -908,6 +1000,103 @@ void socket_listener_t::_post_remove_msg(int32 msg_type)
 	sp_msg_t rm_msg = msg_util_t::s_build_remove_msg(msg_type, (msg_receiver_it*)this, false);
 	_msg_proxy->post_msg(rm_msg);	
 }
+
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+int32 socket_listener_t::_post_asyn_accept()
+{
+	FY_XFUNC("_post_asyn_accept");
+
+	FY_OVERLAPPED ovlp= new FY_OVERLAPPED();
+	::memset(&ovlp, 0, sizeof(FY_OVERLAPPED));
+	
+	ovlp->fd = ::WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	ovlp->aio_events = AIO_POLLIN;
+
+	if(INVALID_SOCKET == ovlp->fd)
+	{
+		delete ovlp;
+
+		FY_XERROR("_post_asyn_accept, WSASocket fail");
+		return -1;
+	}
+	_aio_sap->register_fd((aio_sap_it *)_aio_prvd, ovlp->fd, sp_aioeh_t(this, true));
+
+	uint32 bytes;
+	if(NULL == _lpfnAcceptEx)
+	{
+		FY_XERROR("_post_asyn_accept, invalid _lpfnAcceptEx");
+		delete ovlp;
+		return -2;
+	}
+	if(_lpfnAcceptEx(_sock_fd, ovlp->fd, NULL, 0,
+                        sizeof(sockaddr_in) + 16,
+                        sizeof(sockaddr_in) + 16,
+                        &bytes,
+                        &(ovlp->overlapped)) == 0)
+	{
+		int32 err_num=WSAGetLastError();
+		if (err_num != ERROR_IO_PENDING)
+                {
+                	FY_XERROR("AcceptEx fail,unspecified error");
+			delete ovlp;
+
+               		return err_num; 
+                }
+	}
+	++_pending_accept_cnt;
+
+	return 0;      
+}
+
+int32 socket_listener_t::_iocp_accept(pointer_box_t ex_para, sockaddr* peer_addr, socklen_t *peer_addr_len)
+{
+	LPFY_OVERLAPPED ovlp=NULL;
+
+	if(!_delayed_accept_q.empty())
+	{
+		if(ex_para) _delayed_accept_q.push_back(ex_para);
+		pointer_box_t ovlp_box=_delayed_accept_q.front();
+		_delayed_accept_q.pop_front();
+
+		FY_ASSERT(ovlp_box);
+
+		ovlp=(LPFY_OVERLAPPED)ovlp_box;
+	}
+	else if(ex_para)
+	{
+		ovlp = (LPFY_OVERLAPPED)ex_para;
+	}
+	else
+	{
+		return INVALID_SOCKET;
+	}
+	int32 ret_sok = ovlp->fd;
+		
+	FY_ASSERT(_sock_fd != INVALID_SOCKET);
+
+	//sync properties of listening socket to accepted one
+	int32 err = ::setsockopt( ret_sok, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
+                        (char *)&_sock_fd, sizeof(_sock_fd) );
+
+        if(err == SOCKET_ERROR)
+        {
+                int32 wsa_err=WSAGetLastError();
+                FY_XWARNING("_accept, setsockopt failed, err:"<<wsa_err);
+        }
+        ::getpeername(ret_sok, peer_addr, peer_addr_len);
+	
+	delete ovlp; //ovlp.wsa_buf.buf must be NULL
+
+        FY_ASSERT(_pending_accept_cnt);
+        --_pending_accept_cnt;
+	
+	return ret_sok;			
+}
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
 
 void socket_listener_t::_post_msg_nopara(uint32 msg_type, uint32 msg_pin, uint32 utc_interval, int32 repeat)
 {

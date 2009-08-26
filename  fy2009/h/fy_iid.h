@@ -92,6 +92,9 @@ const uint32 PIN_tp_connection_indication_sink=0xfcea534a;
 const uint32 IID_crypto =24;
 const uint32 PIN_crypto = 0x8e647b1f;
 
+const uint32 IID_owner_thread = 25;
+const uint32 PIN_owner_thread = 0xede7bf03;
+ 
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_IID_DREAMFREELANCER_20090513_H__
