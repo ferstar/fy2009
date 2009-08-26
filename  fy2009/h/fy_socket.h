@@ -187,7 +187,7 @@ uint32 const MSG_SOKLISNER_MAX_RANGE = MSG_SOKLISNER_POLLHUP;
 #ifdef WIN32
 #ifdef __ENABLE_COMPLETION_PORT__
 
-const uint32 LISTENER_OVLP_COUNT=3;
+const uint32 LISTENER_OVLP_COUNT=5;
 typedef uint32 socklen_t;
 
 #endif //__ENABLE_COMPLETION_PORT__
@@ -302,7 +302,6 @@ protected:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;
 	static GUID _s_GuidAcceptEx;
-	uint32 _pending_accept_cnt;
 	std::deque<pointer_box_t> _delayed_accept_q;
 
 #endif //__ENABLE_COMPLETION_PORT__

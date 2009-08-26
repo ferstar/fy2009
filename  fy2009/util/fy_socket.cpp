@@ -497,7 +497,6 @@ socket_listener_t::socket_listener_t() : _cs(true)
 #ifdef __ENABLE_COMPLETION_PORT__
 
 	_lpfnAcceptEx = NULL;
-	_pending_accept_cnt = 0;
 
 #endif //__ENABLE_COMPLETION_PORT__
 #endif //WIN32
@@ -581,8 +580,8 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_prvd, in_addr_t listen_inaddr, u
         int32 opt_reuse=1;
         ::setsockopt(tmp_sock_fd, SOL_SOCKET, SO_REUSEADDR, (void*)&opt_reuse, sizeof(int32));
 #endif //LINUX
-		_ip_inaddr = listen_inaddr;
-		_port=port;
+	_ip_inaddr = listen_inaddr;
+	_port=port;
         sockaddr_in sock_addr;
         if(0 == _ip_inaddr) //ANY_ADDR
                 sock_addr.sin_addr.s_addr = ::htonl(INADDR_ANY);
@@ -797,12 +796,12 @@ void socket_listener_t::on_aio_events(int32 fd, uint32 aio_events, pointer_box_t
 		}
 		_accept(ex_para);
 	}
-	if((aio_events & AIO_POLLERR) == AIO_POLLERR)
+	else if((aio_events & AIO_POLLERR) == AIO_POLLERR)
 	{
 		FY_XERROR("on_aio_events, receive an AIO_POLLERR event");
 		_post_msg_nopara(MSG_SOKLISNER_POLLERR, MSG_PIN_SOKLISNER_POLLERR);
 	}
-	if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
+	else if((aio_events & AIO_POLLHUP) == AIO_POLLHUP)
 	{
 		FY_XERROR("on_aio_events, receive an AIO_POLLHUP event");
 		_post_msg_nopara(MSG_SOKLISNER_POLLHUP, MSG_PIN_SOKLISNER_POLLHUP);
@@ -1053,7 +1052,6 @@ int32 socket_listener_t::_post_asyn_accept()
                		return err_num; 
                 }
 	}
-	++_pending_accept_cnt;
 
 	return 0;      
 }
@@ -1097,9 +1095,6 @@ int32 socket_listener_t::_iocp_accept(pointer_box_t ex_para, sockaddr* peer_addr
 	
 	delete ovlp; //ovlp.wsa_buf.buf must be NULL
 
-        FY_ASSERT(_pending_accept_cnt);
-        --_pending_accept_cnt;
-	
 	return ret_sok;			
 }
 
