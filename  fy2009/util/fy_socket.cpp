@@ -200,13 +200,13 @@ uint16 socket_util_t::s_ifr_get_name_list(bb_t *out_ifnames, uint16 out_ifnames_
 		ifr.ifr_ifindex = i;
 		if (-1==ioctl(sock, SIOCGIFNAME, &ifr)) 
 		{
-			::close(sock);
+			fy_close_sok(sock);
 			return i-1;
 		}
 		if(!out_ifnames) continue;
 		out_ifnames[i-1].fill_from(ifr.ifr_name, ::strlen(ifr.ifr_name) + 1, 0);
 	}
-	::close(sock);
+	fy_close_sok(sock);
 	return i;	
 }
 
@@ -220,10 +220,10 @@ int32 socket_util_t::s_ifr_get_mtu(const int8 *if_name)
 	
 	if(-1==ioctl(sock, SIOCGIFMTU, &ifr))
 	{
-		::close(sock);
+		fy_close_sok(sock);
 		return -1;
 	}
-	::close(sock);
+	fy_close_sok(sock);
 
 	return ifr.ifr_mtu;		
 }
@@ -238,11 +238,11 @@ int socket_util_t::s_ifr_get_mac_addr(const int8 *if_name, mac_addr_t out_mac_ad
 
         if(-1==ioctl(sock, SIOCGIFHWADDR, &ifr))
         {
-                ::close(sock);
+                fy_close_sok(sock);
                 return -1;
         }
-	::memcpy(out_mac_addr, ifr.ifr_hwaddr.sa_data, MAC_ADDR_LEN);
-        ::close(sock);
+		::memcpy(out_mac_addr, ifr.ifr_hwaddr.sa_data, MAC_ADDR_LEN);
+        fy_close_sok(sock);
 
 	return 0;
 }
@@ -468,6 +468,14 @@ void uuid_util_t::uuid_unparse(const uuid_t& uu, char *out)
 #endif //LINUX
 
 //socket_listener_t
+#ifdef WIN32
+#ifdef __ENABLE_COMPLETION_PORT__
+
+GUID socket_listener_t::_s_GuidAcceptEx = WSAID_ACCEPTEX;
+
+#endif //__ENABLE_COMPLETION_PORT__
+#endif //WIN32
+
 sp_listener_t socket_listener_t::s_create(bool rcts_flag)
 {
         socket_listener_t *raw_lisner=new socket_listener_t();
@@ -489,7 +497,6 @@ socket_listener_t::socket_listener_t() : _cs(true)
 #ifdef __ENABLE_COMPLETION_PORT__
 
 	_lpfnAcceptEx = NULL;
-	_GuidAcceptEx = WSAID_ACCEPTEX;
 	_pending_accept_cnt = 0;
 
 #endif //__ENABLE_COMPLETION_PORT__
@@ -569,12 +576,13 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_prvd, in_addr_t listen_inaddr, u
         tmp_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
         if(tmp_sock_fd == INVALID_SOCKET) FY_THROW_EX("soklsn-sok", "socket() fail");
 
+#ifdef LINUX
         //this option must be set, otherwise, re-listen on same port will fail after closing former listening socket
         int32 opt_reuse=1;
         ::setsockopt(tmp_sock_fd, SOL_SOCKET, SO_REUSEADDR, (void*)&opt_reuse, sizeof(int32));
-
-	_ip_inaddr = listen_inaddr;
-	_port=port;
+#endif //LINUX
+		_ip_inaddr = listen_inaddr;
+		_port=port;
         sockaddr_in sock_addr;
         if(0 == _ip_inaddr) //ANY_ADDR
                 sock_addr.sin_addr.s_addr = ::htonl(INADDR_ANY);
@@ -622,15 +630,15 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_prvd, in_addr_t listen_inaddr, u
 #ifdef __ENABLE_COMPLETION_PORT__
 
 	DWORD dwBytes;
-	int ret=WSAIoctl(_sock_fd,
+	int ret_wsa=WSAIoctl(_sock_fd,
 			SIO_GET_EXTENSION_FUNCTION_POINTER,
-			&_GuidAcceptEx,
-			sizeof(_GuidAcceptEx),
+			&_s_GuidAcceptEx,
+			sizeof(_s_GuidAcceptEx),
 			&_lpfnAcceptEx,
 			sizeof(_lpfnAcceptEx),
 			&dwBytes, NULL, NULL);
 
-	if(INVALID_SOCKET == ret)
+	if(INVALID_SOCKET == ret_wsa)
 	{
 		int err=WSAGetLastError();
 		switch(err)
@@ -661,7 +669,7 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_prvd, in_addr_t listen_inaddr, u
 		_post_msg_nopara(MSG_SOKLISNER_CTRL_TIMER, MSG_PIN_SOKLISNER_CTRL_TIMER, _utc_ctrl_window, -1);
 	}
 	FY_CATCH_N_THROW_AGAIN_EX("soklsn-ta","fail to listen", if(reg_fd_result) _aio_sap->unregister_fd(tmp_sock_fd);\
-				if(INVALID_SOCKET!=tmp_sock_fd) ::close(tmp_sock_fd); return INVALID_SOCKET;);	
+				if(INVALID_SOCKET!=tmp_sock_fd) fy_close_sok(tmp_sock_fd); return INVALID_SOCKET;);	
 
         return _sock_fd;
 }
@@ -704,7 +712,7 @@ void socket_listener_t::post_listen(sp_thd_t owner_thd, sp_aiosap_t dest_sap, in
 
 	raw_msg_proxy->post_msg(msg);	
 	
-	FY_CATCH_N_THROW_AGAIN_EX("sokplsn-ta","fail to post_listen",);
+	FY_CATCH_N_THROW_AGAIN_EX("sokplsn-ta","fail to post_listen",;);
 }
 
 void socket_listener_t::_reset()
@@ -713,7 +721,7 @@ void socket_listener_t::_reset()
 
 	if(INVALID_SOCKET != _sock_fd)
 	{
-		::close(_sock_fd);
+		fy_close_sok(_sock_fd);
 
 		FY_ASSERT(!_aio_sap.is_null());
 		_aio_sap->unregister_fd(_sock_fd);//unregister sock_fd from aio service.
@@ -800,7 +808,7 @@ void socket_listener_t::on_aio_events(int32 fd, uint32 aio_events, pointer_box_t
 		_post_msg_nopara(MSG_SOKLISNER_POLLHUP, MSG_PIN_SOKLISNER_POLLHUP);
 	} 	
 
-	FY_CATCH_N_THROW_AGAIN_EX("lsnaioe-ta","on_aio_events fail",);	
+	FY_CATCH_N_THROW_AGAIN_EX("lsnaioe-ta","on_aio_events fail",;);	
 }
 
 //msg_receiver_it
@@ -901,7 +909,7 @@ void socket_listener_t::on_msg(msg_t *msg)
                 FY_XWARNING("on_msg, unknown msg type:"<<msg->get_msg()<<",pin:"<<pin_msg);
 	}
 
-	FY_CATCH_N_THROW_AGAIN_EX("lsnmsg-ta","on_msg fail",);	
+	FY_CATCH_N_THROW_AGAIN_EX("lsnmsg-ta","on_msg fail",;);	
 }
 
 uint32 socket_listener_t::get_owner_tid()
@@ -919,7 +927,7 @@ void socket_listener_t::_on_incoming(int32 incoming_fd, in_addr_t remote_addr, u
 	FY_XINFOD("_on_incoming, incoming_fd:"<<incoming_fd<<",remote addr:"<<(uint32)remote_addr<<",remote port:"<<remote_port\
              <<",local_addr:"<<(uint32)local_addr<<",local_port:"<<local_port);
 
-	::close(incoming_fd);
+	fy_close_sok(incoming_fd);
 }
 
 void socket_listener_t::_lazy_init_object_id() throw()
@@ -930,7 +938,7 @@ void socket_listener_t::_lazy_init_object_id() throw()
         sb<<"socket_listener_fd"<<_sock_fd<<"_"<<(void*)this;
         sb.build(_object_id);
 
-        __INTERNAL_FY_EXCEPTION_TERMINATOR();
+        __INTERNAL_FY_EXCEPTION_TERMINATOR(;);
 }
 
 void socket_listener_t::_accept(pointer_box_t ex_para)
@@ -1008,7 +1016,7 @@ int32 socket_listener_t::_post_asyn_accept()
 {
 	FY_XFUNC("_post_asyn_accept");
 
-	FY_OVERLAPPED ovlp= new FY_OVERLAPPED();
+	LPFY_OVERLAPPED ovlp= new FY_OVERLAPPED();
 	::memset(&ovlp, 0, sizeof(FY_OVERLAPPED));
 	
 	ovlp->fd = ::WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
@@ -1085,7 +1093,7 @@ int32 socket_listener_t::_iocp_accept(pointer_box_t ex_para, sockaddr* peer_addr
                 int32 wsa_err=WSAGetLastError();
                 FY_XWARNING("_accept, setsockopt failed, err:"<<wsa_err);
         }
-        ::getpeername(ret_sok, peer_addr, peer_addr_len);
+        ::getpeername(ret_sok, peer_addr, (int*)peer_addr_len);
 	
 	delete ovlp; //ovlp.wsa_buf.buf must be NULL
 
@@ -1131,6 +1139,7 @@ void socket_listener_t::_on_msg_pollhup()
         FY_XFUNC("_on_msg_pollhup");
 }
 
+#ifdef LINUX //88888888
 //socket_connection_t
 sp_conn_t socket_connection_t::s_create(bool rcts_flag)
 {
@@ -1414,7 +1423,7 @@ int32 socket_connection_t::connect(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in
                 default:
                         FY_XERROR("connect, ::connect error,errno="<<(uint32)errno<<",fd="<<conn_fd);
 			detach();
-			::close(conn_fd);
+			fy_close_sok(conn_fd);
  
 			return INVALID_SOCKET;
                         break;
@@ -1424,7 +1433,7 @@ int32 socket_connection_t::connect(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, in
 		<<(uint32)_local_addr<<":"<<_local_port);
 
 	FY_CATCH_N_THROW_AGAIN_EX("ccn-ta","fail to connect",detach();\
-                if(INVALID_SOCKET!=conn_fd) ::close(conn_fd);  return INVALID_SOCKET);
+                if(INVALID_SOCKET!=conn_fd) fy_close_sok(conn_fd);  return INVALID_SOCKET);
 
 	return _fd;
 }
@@ -2103,33 +2112,33 @@ void socket_connection_t::_reset(bool half_reset)
 
 	if(INVALID_SOCKET != _fd)
 	{
-		::close(_fd);
+		fy_close_sok(_fd);
 
-                FY_ASSERT(!_aio_sap.is_null());
-                _aio_sap->unregister_fd(_fd);//unregister _fd from aio service.
+		FY_ASSERT(!_aio_sap.is_null());
+		_aio_sap->unregister_fd(_fd);//unregister _fd from aio service.
 
-                _fd = INVALID_SOCKET;		
+		_fd = INVALID_SOCKET;		
 	}
 
-        if(!_msg_proxy.is_null()) //remove all messages posted to this object 
-        {
-                //this msg is in same thread, thread-safe is unnecsssary
-                sp_msg_t msg= msg_util_t::s_build_remove_msg(0, (msg_receiver_it*)this, false);
+	if(!_msg_proxy.is_null()) //remove all messages posted to this object 
+	{
+		//this msg is in same thread, thread-safe is unnecsssary
+		sp_msg_t msg= msg_util_t::s_build_remove_msg(0, (msg_receiver_it*)this, false);
 
-                _msg_proxy->post_msg(msg);
+		_msg_proxy->post_msg(msg);
 
-                _msg_proxy.attach(0);
+		_msg_proxy.attach(0);
 		_ctrl_timer_is_active=false;
-        }
-        _aio_sap.attach(0);
+	}
+	_aio_sap.attach(0);
 
 	if(!half_reset) //for tp_connection re-connect
 	{
-        	_max_in_bytes_inwin = SOKCONN_DEF_MAX_IN_BYTES_INWIN;
-        	_max_out_bytes_inwin = SOKCONN_DEF_MAX_OUT_BYTES_INWIN;
-        	_ctrl_window = 0;
-        	_in_bytes_inwin=0;
-        	_out_bytes_inwin=0;
+		_max_in_bytes_inwin = SOKCONN_DEF_MAX_IN_BYTES_INWIN;
+		_max_out_bytes_inwin = SOKCONN_DEF_MAX_OUT_BYTES_INWIN;
+		_ctrl_window = 0;
+		_in_bytes_inwin=0;
+		_out_bytes_inwin=0;
 	}
 }
 
@@ -2277,4 +2286,6 @@ void socket_connection_t::__dump_iovec(const struct iovec *vector, int32 count, 
 }
 
 #endif //__FY_DEBUG_DUMP_IO__
+
+#endif //LINUX88888888888
 

@@ -52,8 +52,15 @@ typedef int8 mac_addr_t[MAC_ADDR_LEN];
 //readable MAC address format: AA:BB:CC:DD:EE:FF
 const uint16 MAC_ADDR_STRING_LEN = 17;
 
-#ifdef WIN32
+#ifdef LINUX
+
+#define fy_close_sok close
+
+#elif defined(WIN32)
+
 typedef uint32 in_addr_t;
+#define fy_close_sok closesocket
+
 #endif
 
 class socket_util_t 
@@ -181,6 +188,7 @@ uint32 const MSG_SOKLISNER_MAX_RANGE = MSG_SOKLISNER_POLLHUP;
 #ifdef __ENABLE_COMPLETION_PORT__
 
 const uint32 LISTENER_OVLP_COUNT=3;
+typedef uint32 socklen_t;
 
 #endif //__ENABLE_COMPLETION_PORT__
 #endif //WIN32
@@ -293,7 +301,7 @@ protected:
 #ifdef __ENABLE_COMPLETION_PORT__
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;
-	GUID _GuidAcceptEx;
+	static GUID _s_GuidAcceptEx;
 	uint32 _pending_accept_cnt;
 	std::deque<pointer_box_t> _delayed_accept_q;
 
@@ -358,7 +366,7 @@ uint32 const MSG_SOKCONN_RWERROR = MSG_USER + 9;
 //--add any socket connection message, it should be changed at the same time
 //2008-12-25
 uint32 const MSG_SOKCONN_MAX_RANGE = MSG_SOKCONN_RWERROR;
-
+#ifdef LINUX //8888
 class socket_connection_t : public aio_event_handler_it,
                             public msg_receiver_it,
 			    public stream_it,
@@ -474,8 +482,8 @@ protected:
 	//in gerneral, upper layer will call detach() within them
 	//--transfer aio event to msg to avoid potential calling a aio_proxy method within another aio_proxy method
 	//->
-        virtual void _on_msg_pollerr();
-        virtual void _on_msg_pollhup(); 
+	virtual void _on_msg_pollerr();
+	virtual void _on_msg_pollhup(); 
 	virtual void _on_msg_close_by_peer();
 	virtual void _on_msg_rwerror(int32 error_num); //other socket read/write error event excluding pollerr event,2009-1-6
 	//<-
@@ -522,7 +530,7 @@ private:
 
 #endif //__FY_DEBUG_RECONNECT__
 };
-
+#endif //LINUX 88888888
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_SOCKET_DREAMFREELANCER_20080926_H__
