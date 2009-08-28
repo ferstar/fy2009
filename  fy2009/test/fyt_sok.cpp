@@ -18,7 +18,7 @@
 #include "fy_socket.h"
 
 USING_FY_NAME_SPACE
-/*
+
 #define SERVPORT 8888
 #define BACKLOG 128
 
@@ -37,10 +37,10 @@ public:
 		//******test proves incoming rate control works well, 2008-10-10
 		_lisner->set_ctrl_window(200);
                 _lisner->set_max_incoming_cnt_inwin(50);
-
+		
 		aio_proxy_t *raw_aio_proxy=get_aio_proxy();
 		sp_aiosap_t aio_proxy((aio_sap_it*)raw_aio_proxy, true);
-                _lisner->listen(aio_proxy, _aio_prvd, lisn_addr, SERVPORT);
+                _lisner->listen(_aio_prvd, lisn_addr, SERVPORT);
 		msg_proxy_t *msg_proxy=get_msg_proxy();
 		int hb_ret_msg, hb_ret_aio;
 		_unlock_start();
@@ -84,15 +84,17 @@ public:
 	{
 		_susppend_pollout();			
 	}
-	void *lookup(uint32 iid) throw()
+	void *lookup(uint32 iid, uint32 pin) throw()
 	{
         	switch(iid)
         	{
         	case IID_self:
+			if(PIN_self != pin) return 0;
         	case IID_lookup:
+			if(PIN_lookup != pin) return 0;
                 	return this;
 		default:
-			return socket_connection_t::lookup(iid);
+			return socket_connection_t::lookup(iid, pin);
 		}
 	}
 
@@ -270,15 +272,17 @@ public:
 	{
 		this->aio_prvd = aio_prvd;
 	}
-        void *lookup(uint32 iid) throw()
+        void *lookup(uint32 iid, uint32 pin) throw()
         {
                 switch(iid)
                 {
                 case IID_self:
+			if(PIN_self != pin) return 0;
                 case IID_lookup:
+			if(PIN_lookup != pin) return 0;
                         return this;
                 default:
-                        return socket_listener_t::lookup(iid);
+                        return socket_listener_t::lookup(iid, pin);
                 }
         }
 protected:
@@ -309,7 +313,7 @@ protected:
 private:
 	sp_aiosap_t aio_prvd;	
 };
-*/ 
+ 
 bool g_stop_flag=false;
 
 #ifdef LINUX
@@ -409,9 +413,8 @@ int main(int argc,char **argv)
 	//test_ifr_get_mtu(); //pass, 2008-11-21
 	//test_ifr_get_mac(); //pass, 2008-11-21
 #endif//LINUX
-	test_uuid(); //pass, 2008-11-21
-
-	return 0;
+	//test_uuid(); //pass, 2008-11-21
+	//return 0;
 	//<-
 #ifdef LINUX
 	signal(SIGUSR2,sig_usr2);
@@ -448,18 +451,18 @@ int main(int argc,char **argv)
 	sp_tpool_t thd_pool;
 	if(is_svr)
 	{
-/*		printf("==single thread listener==\n");
+		FY_INFOD("==single thread listener==");
 		//->
 		sok_lisner=socket_listener_t::s_create();
 		in_addr_t lisn_addr=(in_addr_t)htonl(INADDR_ANY);
 
+		sok_lisner->set_ctrl_window(20);
 		sok_lisner->set_max_incoming_cnt_inwin(2);
 
-		sok_lisner->listen(aio_sap, aio_sap, lisn_addr, SERVPORT);	
+		sok_lisner->listen(aio_sap, lisn_addr, SERVPORT);	
 		//<-
-*/
 /*
-		printf("==multi-thread listner==\n");
+		FY_INFOD("==multi-thread listner==");
 		//->
 		thd.enable_aio();
 		thd.enable_msg();
@@ -469,7 +472,7 @@ int main(int argc,char **argv)
 		//<-
 */
 /*
-		printf("==test listener in thread-pool==\n");
+		FY_INFOD("==test listener in thread-pool==");
 		//->
 		thd_pool=thread_pool_t::s_create(1);
 		sp_thd_t thd=thd_pool->assign_thd(0);
@@ -487,13 +490,13 @@ int main(int argc,char **argv)
 		raw_my_listener->add_reference();
 
 		raw_my_listener->listen(aio_sap, aio_sap, htonl(INADDR_ANY), SERVPORT);
-		//<-	
+		//<-
+*/	
 	}
        else //as client, connect to
         {
-*/
-/*
-		printf("==raw socket client==\n");
+
+		FY_INFOD("==raw socket client==");
 		//->
         	//set server address
 		struct sockaddr_in svr_addr;
@@ -511,43 +514,42 @@ int main(int argc,char **argv)
 			int ret=::connect(conn_fd, (struct sockaddr *)&svr_addr, sizeof(struct sockaddr));
 			if(ret == -1)
 			{
-				CCP_ERROR("::connect to server failure:errno="<<(uint32)errno);
-				::close(conn_fd);
+				FY_ERROR("::connect to server failure:errno="<<(uint32)errno);
+				fy_close_sok(conn_fd);
 				conn_fd=0;
-				usleep(1000000);
+				fy_msleep(1);
 			}
 			else
 			{
-				CCP_INFOD("+++++sueedeed in connect,fd:"<<(int32)conn_fd);
-				::close(conn_fd);
+				FY_INFOD("+++++sueedeed in connect,fd:"<<(int32)conn_fd);
+				fy_close_sok(conn_fd);
 				conn_fd=0;
 			}
-			usleep(100);
 		}
 		//<-
-*/
+
 /*
-		printf("==test socket_connect_t in main thread==\n");
+		FY_INFOD("==test socket_connect_t in main thread==");
 		//->
 		sok_conn=socket_connection_t::s_create(false);	
 		sok_conn->connect(aio_sap, aio_sap, INADDR_ANY, SERVPORT, 16777343, 19999);	
 		//<-
 */
 /*
-		printf("==test socket_connect_t in thread-pool==\n");
+		FY_INFOD("==test socket_connect_t in thread-pool==");
 		//->
 		thd_pool=thread_pool_t::s_create(4);	
-		for(int i=0; i<CONN_CNT; ++i)
+		for(int32 i=0; i<CONN_CNT; ++i)
 		{
 			sok_conns[i]=socket_connection_t::s_create(true);
 			uint16 thd_idx=0;
 			sp_thd_t thd=thd_pool->assign_thd(&thd_idx);
-			printf("assigned thd idx:%d for conn[%d]\n",thd_idx, i);
+			FY_INFOD("assigned thd idx:"<<thd_idx<<" for conn:"<<i);
 			sok_conns[i]->post_connect(thd, aio_sap, INADDR_ANY, SERVPORT);
 		}
 		//<-
 */
-/*		printf("==test data receiving/sending==\n");
+/*		FY_INFOD("==test data receiving/sending==");
 		//->
 		thd_pool=thread_pool_t::s_create(1);
 		raw_my_conn=new test_conn_t();
@@ -568,20 +570,20 @@ int main(int argc,char **argv)
                 msg_proxy_t *msg_proxy=thd->get_msg_proxy();
                 msg_proxy->post_msg(msg);
 		//<-
+*/
         }
 
         int8 ret_hb=0;
-        aiop->set_max_slice(100);
+        aiop->set_max_slice(10);
         const int BUF_SIZE=32768;
         char buf[BUF_SIZE];
         while(true)
         {
 		if(g_stop_flag)
 		{
-			printf("!!!stopped by user!!!!\n");
+			FY_INFOD("!!!stopped by user!!!!");
 			break;
 		}
-
                 aiop->heart_beat();
                 raw_msg_proxy->heart_beat();
         }
@@ -592,7 +594,7 @@ int main(int argc,char **argv)
 	}
 	else
 	{
-		if(conn_fd != INVALID_SOCKET) ::close(conn_fd);
+		if(conn_fd != INVALID_SOCKET) fy_close_sok(conn_fd);
 	}
 	if(!sok_conn.is_null())
 	{
@@ -618,7 +620,7 @@ int main(int argc,char **argv)
         trace_prvd->unregister_tracer();
         trace_prvd->close();
 	msg_proxy_t::s_delete_tls_instance();
- */
+ 
         return 0;
 }
 
