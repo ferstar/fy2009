@@ -65,7 +65,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "FY_ENABLE_ASSERT" /D "FY_TEST_SOK" /D "FY_TRACE_ENABLE_IO" /D "__ENABLE_COMPLETION_PORT__" /YX /FD /GZ /c
+# ADD CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "FY_ENABLE_ASSERT" /D "FY_TEST_RAWSOK" /D "FY_TRACE_ENABLE_IO" /D "__ENABLE_COMPLETION_PORT__" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x804 /d "_DEBUG"
 # ADD RSC /l 0x804 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -95,6 +95,10 @@ SOURCE=..\..\test\fyt_base.cpp
 # Begin Source File
 
 SOURCE=..\..\test\fyt_msg.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\test\fyt_rawsok.cpp
 # End Source File
 # Begin Source File
 
