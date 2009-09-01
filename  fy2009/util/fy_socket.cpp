@@ -616,7 +616,7 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_prvd, in_addr_t listen_inaddr, u
         if(ret) FY_THROW_EX("soklsn-bind", "bind error,err="<<(uint32)errno); 
 
 	//start to listen
-        ret=::listen(tmp_sock_fd, 0);
+        ret=::listen(tmp_sock_fd, 20); //88
         if(ret) FY_THROW_EX("soklsn-lsn","listen error,err="<<(uint32)errno);
 
 	bb_t nd_listen_addr;
@@ -832,12 +832,15 @@ void socket_listener_t::on_msg(msg_t *msg)
 		else if(_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
 		{
 			FY_ASSERT(!_msg_proxy.is_null());
-		
+//88
+FY_INFOD("==MSG_SOKLISNER_INCOMING_LIMIT, still on ceiling, incoming cnt:"<<_incoming_cnt_inwin<<"max cnt:"<<_max_incoming_cnt_inwin);		
 			sp_msg_t sp_msg(msg, true);	
 			_msg_proxy->post_msg(sp_msg);//still on ceiling, check again later
 		}
 		else //_incoming_cnt_inwin has been reset,accept subsequent incoming connections
 		{
+//88
+FY_INFOD("==_accept 0");
 			_accept(0);
 		}
 		break;
@@ -1134,7 +1137,6 @@ void socket_listener_t::_on_msg_pollhup()
         FY_XFUNC("_on_msg_pollhup");
 }
 
-#ifdef LINUX //88888888
 //socket_connection_t
 sp_conn_t socket_connection_t::s_create(bool rcts_flag)
 {
@@ -1149,7 +1151,7 @@ socket_connection_t::socket_connection_t() : _cs(true)
 	_fd = INVALID_SOCKET;
 	_max_in_bytes_inwin = SOKCONN_DEF_MAX_IN_BYTES_INWIN;
 	_max_out_bytes_inwin = SOKCONN_DEF_MAX_OUT_BYTES_INWIN;
-	_ctrl_window = 0;
+	_utc_ctrl_window = 0;
 	_in_bytes_inwin=0;
 	_out_bytes_inwin=0;
 	_total_in_bytes=0;
@@ -1186,13 +1188,18 @@ void socket_connection_t::set_max_bytes_inwin(uint32 max_bytes, bool in_flag)
 void socket_connection_t::set_ctrl_window(uint32 ctrl_window) 
 {
 	FY_XFUNC("set_ctrl_window");
-	FY_XINFOI("set_ctrl_window,ctrl_window:"<<ctrl_window);
+	FY_XINFOI("set_ctrl_window,ctrl_window(ms):"<<ctrl_window);
 
-	if(_ctrl_window == ctrl_window) return;
+	uint32 utc_res=get_tick_count_res(user_clock_t::instance());
+	uint32 new_utc;
+	if(utc_res)
+		new_utc = ctrl_window/utc_res;
+	else
+		new_utc = ctrl_window;
+
+	if(new_utc == _utc_ctrl_window) return;
  
-	_ctrl_window = ctrl_window; 
-
-	FY_XINFOI("set_ctrl_window, ctrl_window(utc):"<<ctrl_window);
+	_utc_ctrl_window = new_utc; 
 
         if(_ctrl_timer_is_active) 
         {
@@ -1201,15 +1208,46 @@ void socket_connection_t::set_ctrl_window(uint32 ctrl_window)
                 _post_remove_msg(MSG_SOKCONN_CTRL_TIMER); //remove old timer
 
                 //set new timer
-                _post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _ctrl_window, -1);
+                _post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _utc_ctrl_window, -1);
         }
 	else if(INVALID_SOCKET != _fd)
 	{
 		FY_XTRACE_IO("set_ctrl_window, enable timer");
 
 		_ctrl_timer_is_active=true;
-		_post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _ctrl_window, -1);
+		_post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _utc_ctrl_window, -1);
 	}
+}
+
+void socket_connection_t::set_utc_ctrl_window(uint32 utc_ctrl_window)
+{
+        FY_XFUNC("set_utc_ctrl_window");
+        FY_XINFOI("set_utc_ctrl_window,utc_ctrl_window(utc):"<<utc_ctrl_window);
+
+	if(utc_ctrl_window == _utc_ctrl_window) return;
+	_utc_ctrl_window = utc_ctrl_window;
+
+        if(_ctrl_timer_is_active)
+        {
+                FY_XTRACE_IO("set_utc_ctrl_window, reset timer");
+
+                _post_remove_msg(MSG_SOKCONN_CTRL_TIMER); //remove old timer
+
+                //set new timer
+                _post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _utc_ctrl_window, -1);
+        }
+        else if(INVALID_SOCKET != _fd)
+        {
+                FY_XTRACE_IO("set_utc_ctrl_window, enable timer");
+
+                _ctrl_timer_is_active=true;
+                _post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _utc_ctrl_window, -1);
+        }	
+}
+
+uint32 socket_connection_t::get_ctrl_window() const throw()
+{
+        return _utc_ctrl_window * get_tick_count_res(user_clock_t::instance());
 }
 
 int32 socket_connection_t::attach(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, int32 fd, in_addr_t local_addr, uint16 local_port, 
@@ -1246,13 +1284,13 @@ int32 socket_connection_t::attach(sp_aiosap_t aio_sap, sp_aiosap_t dest_sap, int
 	_remote_addr = remote_addr;
 	_remote_port = remote_port;
 	_aio_sap = aio_sap;
-	if(_ctrl_window)
+	if(_utc_ctrl_window)
 	{
         	//trigger control check timer
 		FY_XINFOI("attach, enable timer");
 
 		_ctrl_timer_is_active=true;
-		_post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _ctrl_window, -1);
+		_post_msg_nopara(MSG_SOKCONN_CTRL_TIMER, _utc_ctrl_window, -1);
 	}
 
 	_post_msg_nopara(MSG_SOKCONN_INIT_POLLINOUT,1,0); //2008-12-25
@@ -1509,6 +1547,10 @@ void *socket_connection_t::lookup(uint32 iid, uint32 pin) throw()
 	case IID_iovec:
 		if(PIN_iovec != pin) return 0;
 		return static_cast<iovec_it*>(this);
+
+	case IID_owner_thread:
+		if(PIN_owner_thread != pin) return 0;
+		return static_cast<owner_thread_it*>(this);
 
         case IID_object_id:
                 return object_id_impl_t::lookup(iid, pin);
@@ -2088,6 +2130,15 @@ uint32 socket_connection_t::writev(struct iovec *vector, int32 count)
         return write_cnt;
 }
 
+uint32 socket_connection_t::get_owner_tid()
+{
+        if(_aio_sap.is_null()) return 0;
+
+        owner_thread_it *owner = (owner_thread_it*)_aio_sap->lookup(IID_owner_thread, PIN_owner_thread);
+        if(!owner) return 0;
+        return owner->get_owner_tid();
+}
+
 void socket_connection_t::_lazy_init_object_id() throw()
 {
         FY_TRY
@@ -2131,7 +2182,7 @@ void socket_connection_t::_reset(bool half_reset)
 	{
 		_max_in_bytes_inwin = SOKCONN_DEF_MAX_IN_BYTES_INWIN;
 		_max_out_bytes_inwin = SOKCONN_DEF_MAX_OUT_BYTES_INWIN;
-		_ctrl_window = 0;
+		_utc_ctrl_window = 0;
 		_in_bytes_inwin=0;
 		_out_bytes_inwin=0;
 	}
@@ -2141,10 +2192,10 @@ void socket_connection_t::_susppend_pollin()
 {
 	FY_XFUNC("_susppend_pollin");
 
-        uint32 tmp_delay=_ctrl_window>>2;
+        uint32 tmp_delay=_utc_ctrl_window>>2;
 	if(!tmp_delay) tmp_delay = 1;
 
-	FY_XTRACE_IO("_susppend_pollin, delay:"<<tmp_delay);
+	FY_XTRACE_IO("_susppend_pollin, delay(utc):"<<tmp_delay);
 
         _post_msg_nopara(MSG_SOKCONN_INCOMING_LIMIT, tmp_delay);
 }
@@ -2153,10 +2204,10 @@ void socket_connection_t::_susppend_pollout()
 {
 	FY_XFUNC("_susppend_pollout");
 
-        uint32 tmp_delay=_ctrl_window>>2;
+        uint32 tmp_delay=_utc_ctrl_window>>2;
 	if(!tmp_delay) tmp_delay = 1;
 
-	FY_XTRACE_IO("_susppend_pollout, delay:"<<tmp_delay);
+	FY_XTRACE_IO("_susppend_pollout, delay(utc):"<<tmp_delay);
 
 	_post_msg_nopara(MSG_SOKCONN_OUTGOING_LIMIT, tmp_delay);        
 }
@@ -2185,7 +2236,7 @@ void socket_connection_t::_post_msg_nopara(uint32 msg_type, uint32 utc_interval,
 
         //this msg is in same thread, thread-safe is unnecsssary
         sp_msg_t msg=msg_t::s_create(msg_type, 0, false);
-	if(utc_interval) msg->set_tc_interval(utc_interval);
+	if(utc_interval) msg->set_utc_interval(utc_interval);
 	if(repeat) msg->set_repeat(repeat);
 
         msg->set_receiver(sp_msg_rcver_t((msg_receiver_it*)this->lookup(IID_msg_receiver,PIN_msg_receiver),true));
@@ -2281,6 +2332,4 @@ void socket_connection_t::__dump_iovec(const struct iovec *vector, int32 count, 
 }
 
 #endif //__FY_DEBUG_DUMP_IO__
-
-#endif //LINUX88888888888
 

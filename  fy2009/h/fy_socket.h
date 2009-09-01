@@ -220,6 +220,9 @@ public:
 		_max_incoming_cnt_inwin = (max_cnt? max_cnt: DEFAULT_MAX_INCOMING_CNT_INWIN);
 	}
 	uint32 get_max_incoming_cnt_inwin() const throw() { return _max_incoming_cnt_inwin;}
+
+	//statistics
+	uint32 get_incoming_cnt_inwin() const throw() { return _incoming_cnt_inwin; }
 		
 	//listen on ip address and socket port,return socket fd
 	//,its calling thread is the owner thread of this object
@@ -308,8 +311,8 @@ protected:
 #endif //WIN32 
 };
 
-/*[bullet]
- *[desc] provide asynchronous tcp connection service for any upper layer based on tcp, integrate with aio service, message
+/*[tip]socket connection
+ *[desc] provide asynchronous tcp connection service for any upper layer based on tcp, integrated with aio service, message
  *       service and provide data flow control strategy, it can be used at both client and server side
  *[history] 
  * Initialize 2008-10-9
@@ -365,11 +368,12 @@ uint32 const MSG_SOKCONN_RWERROR = MSG_USER + 9;
 //--add any socket connection message, it should be changed at the same time
 //2008-12-25
 uint32 const MSG_SOKCONN_MAX_RANGE = MSG_SOKCONN_RWERROR;
-#ifdef LINUX //8888
+
 class socket_connection_t : public aio_event_handler_it,
                             public msg_receiver_it,
 			    public stream_it,
-			    public iovec_it, 
+			    public iovec_it,
+			    public owner_thread_it, 
                             public object_id_impl_t,
                             public ref_cnt_impl_t  
 {
@@ -377,20 +381,25 @@ public:
 	static sp_conn_t s_create(bool rcts_flag=false);
 public:
 	~socket_connection_t();
+
 	//statistics
 	uint32 get_total_in_bytes() const throw() { return _total_in_bytes; }
 	uint32 get_total_out_bytes() const throw() { return _total_out_bytes; }
+
 	//control incoming/outgoing bandwidth
 	//--can change it on the fly	
 	void set_max_bytes_inwin(uint32 max_bytes, bool in_flag);
 	uint32 get_max_bytes_inwin(bool in_flag) const throw() { return (in_flag? _max_in_bytes_inwin : _max_out_bytes_inwin); }
 
-        //connection will do in/out bandwidth check periodically, here, set check interval user tick-count
+        //connection will do in/out bandwidth check periodically, here, set check interval(unit:ms)
 	//if smaller delay is expected, smaller ctrl window is prefered
 	//zero control window means no bandwidth check
 	//--can change it on the fly
-        void set_ctrl_window(uint32 ctrl_window); 
-        uint32 get_ctrl_window() const throw() { return _ctrl_window; }
+        void set_ctrl_window(uint32 ctrl_window);
+	//similar to above, except unit is utc
+	void set_utc_ctrl_window(uint32 utc_ctrl_window);
+	uint32 get_ctrl_window() const throw(); 
+        uint32 get_utc_ctrl_window() const throw() { return _utc_ctrl_window; }
 
 	in_addr_t get_addr(bool local_flag) const throw() { return (local_flag? _local_addr : _remote_addr); }
 	uint16 get_port(bool local_flag) const throw() { return (local_flag? _local_port : _remote_port); }
@@ -450,6 +459,9 @@ public:
 	//iovec_it
 	uint32 readv(struct iovec *vector, int32 count);
 	uint32 writev(struct iovec *vector, int32 count);
+
+        //owner_thread_it
+        uint32 get_owner_tid();
 protected:
 	socket_connection_t();
 	void _lazy_init_object_id() throw();
@@ -502,7 +514,7 @@ protected:
 	//->
 	uint32 _max_in_bytes_inwin;
 	uint32 _max_out_bytes_inwin;
-	uint32 _ctrl_window; //user tick-count
+	uint32 _utc_ctrl_window; //user tick-count
 	uint32 _in_bytes_inwin;//accumulate incoming bytes in control window
 	uint32 _out_bytes_inwin;//accumulate outgoing bytes in control window
 	bool _ctrl_timer_is_active;
@@ -529,7 +541,7 @@ private:
 
 #endif //__FY_DEBUG_RECONNECT__
 };
-#endif //LINUX 88888888
+
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_SOCKET_DREAMFREELANCER_20080926_H__
