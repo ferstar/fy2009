@@ -368,7 +368,7 @@ uint32 const MSG_SOKCONN_RWERROR = MSG_USER + 9;
 //--add any socket connection message, it should be changed at the same time
 //2008-12-25
 uint32 const MSG_SOKCONN_MAX_RANGE = MSG_SOKCONN_RWERROR;
-
+/*88
 class socket_connection_t : public aio_event_handler_it,
                             public msg_receiver_it,
 			    public stream_it,
@@ -541,7 +541,7 @@ private:
 
 #endif //__FY_DEBUG_RECONNECT__
 };
-
+88*/
 DECL_FY_NAME_SPACE_END
 
 #endif //__FENGYI2009_SOCKET_DREAMFREELANCER_20080926_H__

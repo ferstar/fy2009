@@ -53,7 +53,7 @@ int main(int argc,char **argv)
         struct sockaddr_in svr_addr;
         svr_addr.sin_family=PF_INET; //protocol family
         svr_addr.sin_port=htons(SERVPORT); //listening port number--transfer short type to network sequence
-        svr_addr.sin_addr.s_addr = inet_addr("10.224.173.10");//htonl(INADDR_ANY); //IP address(autodetect)
+        svr_addr.sin_addr.s_addr = inet_addr("10.224.172.129");//htonl(INADDR_ANY); //IP address(autodetect)
           
 	if(is_svr)
 	{
@@ -146,7 +146,7 @@ int main(int argc,char **argv)
 			}
 			else
 			{
-				printf("c:%d\n",conn_cnt);
+				//printf("c:%d\n",conn_cnt);
 				if(!conn_cnt)
 				{
 #ifdef LINUX
