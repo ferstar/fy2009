@@ -22,6 +22,9 @@ USING_FY_NAME_SPACE
 #define SERVPORT 8888
 #define BACKLOG 128
 
+/*[tip]
+ *[desc]test the rate of accept() at listen side
+ */
 int main(int argc,char **argv)
 {
 #ifdef WIN32

@@ -449,15 +449,17 @@ int main(int argc,char **argv)
 	int conn_fd=INVALID_SOCKET;
 	listen_thread thd(aio_sap);
 	sp_tpool_t thd_pool;
+
+	int8 svr_addr_str[]="127.0.0.1";
+	in_addr_t lisn_addr = inet_addr(svr_addr_str);
 	if(is_svr)
 	{
 		FY_INFOD("==single thread listener==");
 		//->
 		sok_lisner=socket_listener_t::s_create();
-		in_addr_t lisn_addr=(in_addr_t)htonl(INADDR_ANY);
 
-		sok_lisner->set_ctrl_window(20);
-		sok_lisner->set_max_incoming_cnt_inwin(2);
+		sok_lisner->set_ctrl_window(200);
+		sok_lisner->set_max_incoming_cnt_inwin(10000);
 
 		sok_lisner->listen(aio_sap, lisn_addr, SERVPORT);	
 		//<-
@@ -478,7 +480,7 @@ int main(int argc,char **argv)
 		sp_thd_t thd=thd_pool->assign_thd(0);
 
                 sok_lisner=socket_listener_t::s_create();
-                in_addr_t lisn_addr=(in_addr_t)htonl(INADDR_ANY);
+                in_addr_t lisn_addr=svr_addr;//(in_addr_t)htonl(INADDR_ANY);
 
                 sok_lisner->set_max_incoming_cnt_inwin(2);
 		sok_lisner->post_listen(thd, aio_sap, lisn_addr, SERVPORT);
@@ -489,7 +491,7 @@ int main(int argc,char **argv)
 		raw_my_listener = new test_listener_t(aio_sap);
 		raw_my_listener->add_reference();
 
-		raw_my_listener->listen(aio_sap, aio_sap, htonl(INADDR_ANY), SERVPORT);
+		raw_my_listener->listen(aio_sap, aio_sap, svr_addr, SERVPORT);
 		//<-
 */	
 	}
@@ -502,8 +504,9 @@ int main(int argc,char **argv)
 		struct sockaddr_in svr_addr;
         	svr_addr.sin_family=PF_INET; //protocol family
        	 	svr_addr.sin_port=htons(SERVPORT); //listening port number--transfer short type to network sequence
-        	svr_addr.sin_addr.s_addr = INADDR_ANY; //IP address(autodetect)
+        	svr_addr.sin_addr.s_addr = lisn_addr;//INADDR_ANY; //IP address(autodetect)
 
+		//==raw socket connect call
 		while(true)
 		{
         		if ((conn_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
@@ -517,7 +520,7 @@ int main(int argc,char **argv)
 				FY_ERROR("::connect to server failure:errno="<<(uint32)errno);
 				fy_close_sok(conn_fd);
 				conn_fd=0;
-				fy_msleep(1);
+				fy_msleep(1000);
 			}
 			else
 			{
@@ -532,7 +535,7 @@ int main(int argc,char **argv)
 		FY_INFOD("==test socket_connect_t in main thread==");
 		//->
 		sok_conn=socket_connection_t::s_create(false);	
-		sok_conn->connect(aio_sap, aio_sap, INADDR_ANY, SERVPORT, 16777343, 19999);	
+		sok_conn->connect(aio_sap, aio_sap, svr_addr, SERVPORT, 16777343, 19999);	
 		//<-
 */
 /*
@@ -545,7 +548,7 @@ int main(int argc,char **argv)
 			uint16 thd_idx=0;
 			sp_thd_t thd=thd_pool->assign_thd(&thd_idx);
 			FY_INFOD("assigned thd idx:"<<thd_idx<<" for conn:"<<i);
-			sok_conns[i]->post_connect(thd, aio_sap, INADDR_ANY, SERVPORT);
+			sok_conns[i]->post_connect(thd, aio_sap, svr_addr, SERVPORT);
 		}
 		//<-
 */
@@ -560,7 +563,7 @@ int main(int argc,char **argv)
 		raw_my_conn->set_ctrl_window(20);
 
 		sp_thd_t thd=thd_pool->assign_thd(0);
-		raw_my_conn->post_connect(thd, aio_sap, INADDR_ANY, SERVPORT);	
+		raw_my_conn->post_connect(thd, aio_sap, svr_addr, SERVPORT);	
 
                 sp_msg_t msg=msg_t::s_create(MSG_TEST_TIMER, 0, false);
                 sp_msg_rcver_t rcver((msg_receiver_it*)raw_my_conn, true);

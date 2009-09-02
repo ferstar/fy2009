@@ -616,7 +616,7 @@ int32 socket_listener_t::listen(sp_aiosap_t aio_prvd, in_addr_t listen_inaddr, u
         if(ret) FY_THROW_EX("soklsn-bind", "bind error,err="<<(uint32)errno); 
 
 	//start to listen
-        ret=::listen(tmp_sock_fd, 20); //88
+        ret=::listen(tmp_sock_fd, FY_BACKLOG); 
         if(ret) FY_THROW_EX("soklsn-lsn","listen error,err="<<(uint32)errno);
 
 	bb_t nd_listen_addr;
@@ -832,15 +832,11 @@ void socket_listener_t::on_msg(msg_t *msg)
 		else if(_incoming_cnt_inwin >= _max_incoming_cnt_inwin)
 		{
 			FY_ASSERT(!_msg_proxy.is_null());
-//88
-FY_INFOD("==MSG_SOKLISNER_INCOMING_LIMIT, still on ceiling, incoming cnt:"<<_incoming_cnt_inwin<<"max cnt:"<<_max_incoming_cnt_inwin);		
 			sp_msg_t sp_msg(msg, true);	
 			_msg_proxy->post_msg(sp_msg);//still on ceiling, check again later
 		}
 		else //_incoming_cnt_inwin has been reset,accept subsequent incoming connections
 		{
-//88
-FY_INFOD("==_accept 0");
 			_accept(0);
 		}
 		break;
@@ -1136,7 +1132,7 @@ void socket_listener_t::_on_msg_pollhup()
 {
         FY_XFUNC("_on_msg_pollhup");
 }
-/*88
+
 //socket_connection_t
 sp_conn_t socket_connection_t::s_create(bool rcts_flag)
 {
@@ -2332,4 +2328,4 @@ void socket_connection_t::__dump_iovec(const struct iovec *vector, int32 count, 
 }
 
 #endif //__FY_DEBUG_DUMP_IO__
-88*/
+
